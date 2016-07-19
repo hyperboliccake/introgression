@@ -1,22 +1,39 @@
 # given a list of introgressed regions in this format:
 # Sigma1278b.chrX, + strand, 9910-10909
 #
-# generate a set of annotations in the introgressed/ folder:
+# generate a set of annotations in the ../../results/ folder:
 #
+# for each region called introgressed, generate a file in
+# results/regions/ that is the alignment for the two references and
+# the strain with the introgressed region,
+# S288c_CBS432_strain_chr_start-end.fasta. In this file, the aligned
+# bases within coding sequence are lower case. In addition, there is a
+# corresponding file S288c_CBS432_strain_chr_start-end.genes.txt
+# listing the genes that overlap with this region, and the indices of
+# the bases they overlap, in this format: 
+# gene_name, 0-149, 25236-25385 
+# gene_name, 200-600, ....
+# 
+# also generate a file in results/gene_alignments/ for each
+# introgressed gene, which contains one threeway alignment for each
+# strain in which the gene was called introgressed; the format of
+# this file is:
+# one line for each of the three strains in the alignment. each of
+# these lines contains the strain name, chromosome # (in roman numerals),
+# start position, end position, gene name
+# next there is a blank line, followed by the alignment.
+# the alignment is broken across lines for readability, and there is a
+# fourth row indicating whether each position matches the cerevisaie ('c') or
+# paradoxus ('p') reference or both (' ') or neither ('-').
+# alignments for other strains, if any, follow in the same format after
+# a blank line
+#
+# todo in future:
 # for each gene that is called introgressed in at least one strain,
-# created folder introgressed/gene/ containing the alignment
+# create folder gene/ containing the alignment
 # of cerevisiae and paradoxus references to all the introgressed
 # versions (gene_introgressed.fasta), and also to all of the versions
 # (gene_all.fasta).
-#
-# for each region called introgressed, generate a file in introgressed/regions/
-# that is the alignment for the two references and the strain with the
-# introgressed region, S288c_CBS432_strain_chr_start-end.fasta. In this file, the aligned
-# bases within coding sequence are lower case. In addition, there is a corresponding
-# file S288c_CBS432_strain_chr_start-end.genes.txt listing the genes that overlap
-# with this region, and the indices of the bases they overlap, in this format:
-# gene_name, 0-149, 25236-25385
-# gene_name, 200-600, ....
 
 
 import re
@@ -64,7 +81,7 @@ ref_par = 'CBS432'
 suffix = 'id'
 
 # read in introgressed regions
-lines = [x.split(',') for x in open('introgressed_' + suffix + '.txt', 'r').readlines()]
+lines = [x.split(',') for x in open('../../results/introgressed_' + suffix + '.txt', 'r').readlines()]
 regions = {} # introgressed regions keyed by strain and then chromosome
 for line in lines:
     strain = line[0][:line[0].find('_')].lower()
@@ -86,7 +103,7 @@ for strain in regions.keys():
     for chrm in regions[strain]:
         for entry in regions[strain][chrm]:
             print strain, chrm, entry
-            f = open('alignments_gb/S288c_CBS432_' + strain + '_chr' + chrm + '.maf', 'r')
+            f = open('../../alignments/genbank/S288c_CBS432_' + strain + '_chr' + chrm + '.maf', 'r')
             line = f.readline()        
             block = []
             relative_start = -1
@@ -147,7 +164,7 @@ for strain in regions.keys():
             f.close()
 
             assert relative_start != -1, strain + ' ' + chrm + ' ' + str(entry)
-            fout = open('introgressed/regions/S288c_CBS432_' + strain + '_chr' + chrm + '_' + str(entry[1]) + '-' + str(entry[2]) + '.maf', 'w')
+            fout = open('../../results/regions/S288c_CBS432_' + strain + '_chr' + chrm + '_' + str(entry[1]) + '-' + str(entry[2]) + '.maf', 'w')
             assert block[0][0] == 'a'
             block = block[1:]
             # use the same coordinates for all of them because we just
@@ -291,7 +308,7 @@ for strain in regions.keys():
         print regions[strain][chrm]
         for entry in regions[strain][chrm]:
             
-            f = open('introgressed/regions/S288c_CBS432_' + strain + '_chr' + chrm + '_' +  str(entry[1]) + '-' + str(entry[2]) + '.maf', 'r')
+            f = open('../../results/regions/S288c_CBS432_' + strain + '_chr' + chrm + '_' +  str(entry[1]) + '-' + str(entry[2]) + '.maf', 'r')
             lines = f.readlines()
             headers = lines[::2]
             h = headers[0].split()
@@ -315,9 +332,9 @@ for strain in regions.keys():
             #    seqs_context_after.append(s[s.rfind('|')+1:])
 
             f.close()
-            fn = 'introgressed/regions/S288c_CBS432_' + strain + '_chr' + chrm + '_' + str(entry[1]) + '-' + str(entry[2]) + '_annotated.maf'
+            fn = '../../results/regions/S288c_CBS432_' + strain + '_chr' + chrm + '_' + str(entry[1]) + '-' + str(entry[2]) + '_annotated.maf'
             f_mod = open(fn, 'w')
-            f_genes = open('introgressed/regions/S288c_CBS432_' + strain + '_chr' + chrm + '_' + str(entry[1]) + '-' + str(entry[2]) + '_genes.maf', 'w')
+            f_genes = open('../../results/regions/S288c_CBS432_' + strain + '_chr' + chrm + '_' + str(entry[1]) + '-' + str(entry[2]) + '_genes.maf', 'w')
             #seqs_annotated = []
             for gene in entry[5:]:
                 if gene[3] in all_genes_fns:
@@ -405,7 +422,7 @@ for strain in regions.keys():
 # gene x strain and strain x gene files
 #####
 
-f = open('introgressed_id_genes.txt', 'w')
+f = open('../../results/introgressed_id_genes.txt', 'w')
 for gene in all_genes:
     f.write(gene)
     for strain in all_genes[gene]:
@@ -413,7 +430,7 @@ for gene in all_genes:
     f.write('\n')
 f.close()
 
-f = open('introgressed_id_genes_fns.txt', 'w')
+f = open('../../results/introgressed_id_genes_fns.txt', 'w')
 for gene in all_genes_fns:
     f.write(gene)
     for fn in all_genes_fns[gene]:
@@ -421,7 +438,7 @@ for gene in all_genes_fns:
     f.write('\n')
 f.close()
 
-f = open('introgressed_id_strains.txt', 'w')
+f = open('../../results/introgressed_id_strains.txt', 'w')
 for strain in regions:
     num_regions = 0
     num_bp = 0
