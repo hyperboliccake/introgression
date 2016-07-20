@@ -1,6 +1,20 @@
+# generate a file in ../../results/gene_alignments/ for each
+# introgressed gene, which contains one threeway alignment for each
+# strain in which the gene was called introgressed; the format of
+# this file is:
+# one line for each of the three strains in the alignment. each of
+# these lines contains the strain name, chromosome # (in roman numerals),
+# start position, end position, gene name
+# next there is a blank line, followed by the alignment.
+# the alignment is broken across lines for readability, and there is a
+# fourth row indicating whether each position matches the cerevisaie ('c') or
+# paradoxus ('p') reference or both (' ') or neither ('-').
+# alignments for other strains, if any, follow in the same format after
+# a blank line
+
 import sys
 
-lines = [x.split(',') for x in open('Table_S5_introgressed_genes.csv', 'r').readlines()]
+lines = [x.split(',') for x in open('../Table_S5_introgressed_genes.csv', 'r').readlines()]
 genes = []
 genes_verified = []
 for i in range(2, len(lines)):
@@ -8,7 +22,7 @@ for i in range(2, len(lines)):
     if lines[i][4] == 'Verified':
         genes_verified.append(lines[i][2])
 
-lines = [x.strip().split(' ') for x in open('introgressed_id_genes.txt', 'r').readlines()]
+lines = [x.strip().split(' ') for x in open('../../results/introgressed_id_genes.txt', 'r').readlines()]
 my_genes = [x[0] for x in lines]
 my_genes_strains = {}
 for line in lines:
@@ -52,13 +66,13 @@ for x in sorted(pnm):
 outf.close()
 
 
-lines = [x.strip().split(' ') for x in open('introgressed_id_genes_fns.txt', 'r').readlines()]
+lines = [x.strip().split(' ') for x in open('../../results/introgressed_id_genes_fns.txt', 'r').readlines()]
 gene_to_fns = {}
 for line in lines:
     gene_to_fns[line[0]] = line[1:]
 
 for gene in gene_to_fns:
-    outf = open('introgressed/gene_alignments/' + gene + '_alignments.txt', 'w')    
+    outf = open('../../results/gene_alignments/' + gene + '_alignments.txt', 'w')    
     for fn in gene_to_fns[gene]:
         f = open(fn, 'r')
 

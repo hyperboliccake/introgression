@@ -1,4 +1,4 @@
-lines = [x.split(',') for x in open('Table_S5_introgressed_genes.csv', 'r').readlines()]
+lines = [x.split(',') for x in open('../Table_S5_introgressed_genes.csv', 'r').readlines()]
 genes = []
 genes_verified = []
 for i in range(2, len(lines)):
@@ -6,7 +6,7 @@ for i in range(2, len(lines)):
     if lines[i][4] == 'Verified':
         genes_verified.append(lines[i][2])
 
-lines = [x.split(' ') for x in open('introgressed_id_genes.txt', 'r').readlines()]
+lines = [x.split(' ') for x in open('../../results/introgressed_id_genes.txt', 'r').readlines()]
 my_genes = [x[0] for x in lines]
 
 print len(genes), 'genes from paper'
@@ -35,7 +35,7 @@ print 'genes that I found not in paper(', len(npm), '):'
 for x in npm:
     print x
 
-lines = [x.strip().split(' ') for x in open('introgressed_id_genes_fns.txt', 'r').readlines()]
+lines = [x.strip().split(' ') for x in open('../../results/introgressed_id_genes_fns.txt', 'r').readlines()]
 gene_to_fns = {}
 for line in lines:
     gene_to_fns[line[0]] = line[1:]

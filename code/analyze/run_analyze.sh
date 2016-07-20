@@ -34,4 +34,4 @@ module load scipy/latest
 
 cd /net/gs/vol1/home/aclark4/introgression/100genomes/chrm
 
-python analyze_100.py
+python analyze.py
