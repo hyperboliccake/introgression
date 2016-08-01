@@ -40,7 +40,7 @@ for g in my_genes:
     if g not in genes:
         npm.append(g)
 
-outf = open('genes_1.txt', 'w')
+outf = open('../../results/genes_1.txt', 'w')
 #outf.write('genes I identify that Strope et al. didn\'t:\n')
 for x in sorted(npm):
     outf.write(x)
@@ -49,7 +49,7 @@ for x in sorted(npm):
     outf.write('\n')
 outf.close()
 
-outf = open('genes_2.txt', 'w')
+outf = open('../../results/genes_2.txt', 'w')
 #outf.write('\ngenes I identify that Strope et al. also did:\n')
 for x in sorted(pm):
     outf.write(x)
@@ -58,7 +58,7 @@ for x in sorted(pm):
     outf.write('\n')
 outf.close()
 
-outf = open('genes_3.txt', 'w')
+outf = open('../../results/genes_3.txt', 'w')
 #outf.write('\ngenes Strope et al. identified that I don\'t:\n')
 for x in sorted(pnm):
     if x != '':

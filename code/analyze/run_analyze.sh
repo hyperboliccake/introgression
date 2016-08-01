@@ -32,6 +32,4 @@ module load scipy/latest
 
 # Script or command(s) to run via SGE
 
-cd /net/gs/vol1/home/aclark4/introgression/100genomes/chrm
-
 python analyze.py

@@ -13,12 +13,14 @@
 # keep track of all cerevisiae indices introgressed in one or more
 # strains
 
+import os
+
 #####
 # sfs of genes
 #####
 
 f_genes = open('../../results/introgressed_id_genes.txt', 'r')
-lines = [x.split() for x in f_genes.readline().strip()]
+lines = [x.strip().split() for x in f_genes.readlines()]
 f_genes.close()
 gene_hist = {}
 for l in lines:
@@ -42,24 +44,29 @@ f.close()
 #####
 
 prefix = '../../results/regions/'
-fns = [prefix + os.listdir(prefix)]
+all_fns = [prefix + x for x in os.listdir(prefix)]
+fns = []
+for fn in all_fns:
+    if ('annotated' not in fn) and ('genes' not in fn):
+        fns.append(fn)
 chrms_roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XIV']
 site_counts = dict(zip(chrms_roman, [{} for x in chrms_roman]))
 for fn in fns:
     f = open(fn, 'r')
     line = f.readline()[1:].split()
     assert line[0] == 'S288c'
-    f.close()
     chrm, start, end = line[1:]
+    start = int(start)
     assert chrm in chrms_roman
     line = f.readline()
+    f.close()
     # inclusive lower bound
     i = 0
     while line[i] != '|':
         if line[i] != '-':
             start += 1
         i += 1
-    line = line[i+1:line.rfind('|')]
+    line = line[i+1:]
     # exclusive upper bound
     i = 0
     end = start
@@ -79,7 +86,7 @@ for chrm in site_counts:
         if count not in site_hist:
             site_hist[count] = 0
         site_hist[count] += 1
-f = open('../../results/sfs_genes.txt', 'w')
+f = open('../../results/sfs_sites.txt', 'w')
 k = site_hist.keys()
 for i in range(1, max(k)):
     f.write(str(i) + ' ')

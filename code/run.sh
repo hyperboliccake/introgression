@@ -1,6 +1,6 @@
 # get alignments between each strain and the cerevisiae and paradoxus
 # references; align each chromosome separately
-python align/run_mugsy.sh
+#python align/run_mugsy.sh
 
 # predicted introgressed regions for each chromosome of each strain
 sh analyze/run_analyze.sh

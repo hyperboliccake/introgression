@@ -4,7 +4,7 @@ import copy
 import re
 import numpy.random
 
-sys.path.insert(0, '/net/gs/vol1/home/aclark4/introgression/recomb/hmm/')
+sys.path.insert(0, '../hmm/')
 from hmm_bw import *
 
 resume = False
@@ -29,7 +29,7 @@ def get_seqs_chrm(rc, rp, x, chrm):
     seqs = []
     scores = []
     psx = []
-    f = open('alignments_gb/' + rc + '_' + rp + '_' + x + '_chr' + chrm + '.maf', 'r')
+    f = open('../../alignments/genbank/' + rc + '_' + rp + '_' + x + '_chr' + chrm + '.maf', 'r')
     f.readline()
     n = -1
     while True:
@@ -269,7 +269,7 @@ for x in group_all:
     all_seqs += seqs
     all_ps += psx
 
-fi = open('introgressed_id.txt', 'w')
+fi = open('../../results/introgressed_id.txt', 'w')
 predicted = predict_introgressed_id(all_seqs)
 assert len(predicted) == len(all_seqs)
 for s in xrange(len(predicted)):
