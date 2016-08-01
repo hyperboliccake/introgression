@@ -3,17 +3,25 @@
 #python align/run_mugsy.sh
 
 # predicted introgressed regions for each chromosome of each strain
-sh analyze/run_analyze.sh
+# note: this requires ~12G memory
+cd analyze
+sh run_analyze.sh
+cd ..
 
 # extract alignments of introgressed regions and annotate genes in
 # those regions
-python analyze/process.py
+cd analyze
+python process.py
+cd ..
 
 # find predicted introgressed genes that are the same/different between
 # 100-genomes paper and my sets; also notate which sites match cer/par
 # references or both/neither for each region alignment
-python analyze/compare_all.py
+cd analyze
+python compare_all.py
+cd ..
 
 # do the above but interactively for individual genes
-python analyze/compare.py
-
+cd analyze
+python compare.py
+cd ..
