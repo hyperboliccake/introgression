@@ -1,0 +1,4 @@
+All have population size of 8 million, samples sizes of 10, 41, 51
+Times and mutation rate are also constant
+Only vary type of demographic model and outcrossing rate and migration rate
+
