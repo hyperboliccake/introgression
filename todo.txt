@@ -1,0 +1,27 @@
+1. Theory/simulations of robustness to ILS
+   
+   should probably run these without split populations?
+   make sure parameters are giving expected sequence divergence (~85% cer/par, x% within cer)
+
+   goals of simulations: 
+   establish tpr/fpr for reasonable parameters with HMM method
+   pick reasonable parameters for HMM - average across different demographic models?
+   show ILS is unlikely to be an issue (related to low fpr)
+
+2. HMM algorithm -> show advantages over previous approaches; evaulate power/FPR; boundaries
+
+3. Apply to data (maybe some new data?)
+   - 100 genomes + SGRP cer
+   - 37 par SGRP
+
+4. Empirical patterns
+   - how much introgression overall and per strain
+   - relationship between introgression levels among strains and phylogeny/geographic
+   - frequency dist
+   - size differences and inferences of timing
+   - functional variation/GO
+   - if par analyzed, similarities or diff compared to cer
+   - UNKNOWN
+
+5. Experimental/function
+   - GWAS
