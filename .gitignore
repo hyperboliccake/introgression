@@ -6,3 +6,4 @@
 *.maf
 *.txt
 !todo.txt
+results/*
