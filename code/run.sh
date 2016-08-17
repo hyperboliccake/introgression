@@ -1,3 +1,10 @@
+# TODO extract all directories into some file so they can be set separately
+
+# simulations
+cd sim
+sh run_sim_multi_model.sh
+cd ..
+
 # get alignments between each strain and the cerevisiae and paradoxus
 # references; align each chromosome separately
 #python align/run_mugsy.sh
