@@ -2,6 +2,7 @@
 # with reference genome, and convert to fasta file ... or vcf file and then fasta??
 
 import os
+import sys
 
 fastq_dir = '/net/dunham/vol2/Giang/DunhamBeer/DunhamBeer'
 
@@ -22,7 +23,7 @@ ref_fasta = '/net/akey/vol2/aclark4/nobackup/100_genomes/genomes/S288c_SGD-R64.f
 #####
 
 samdir = '/net/akey/vol2/aclark4/nobackup/introgression/data/beer/dunham/sam/'
-os.system('module load bwa/latest')
+os.system('module load bwa/latest') # this doesn't actually work because it makes a new shell instance every time - TODO fix this
 cmd = 'bwa index ' + ref_fasta 
 #print cmd
 #os.system(cmd)
