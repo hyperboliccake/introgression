@@ -53,7 +53,7 @@ ms_command = \
     '/net/gs/vol1/home/aclark4/software/msdir/ms ' + str(num_samples) + ' ' + str(num_reps) + \
     ' -t ' + str(theta) + \
     ' -r ' + str(rho) + ' ' + str(num_sites) + \
-    ' -I ' + str(num_samples_par) + ' ' + str(num_samples_cer)
+    ' -I 2 ' + str(num_samples_par) + ' ' + str(num_samples_cer)
 
 
 # introgression happens continuously from par to cer between the
