@@ -1,5 +1,14 @@
 # TODO extract all directories into some file so they can be set separately
 
+git status --porcelain > uncommitted.txt
+if [[ -s uncommitted.txt ]]
+then
+    echo 'uncommitted changes...exiting!'
+    exit 1
+fi
+git rev-parse HEAD > git_sha.txt
+
+
 # simulations
 cd sim
 sh run_sim_multi_model.sh
