@@ -13,6 +13,9 @@ git rev-parse HEAD > sha.txt
 cd sim
 sh run_sim_multi_model.sh
 cd ..
+cp sha.txt ../results/sim/
+
+exit 0
 
 # get alignments between each strain and the cerevisiae and paradoxus
 # references; align each chromosome separately
