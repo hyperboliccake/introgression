@@ -6,7 +6,7 @@ then
     echo 'uncommitted changes...exiting!'
     exit 1
 fi
-git rev-parse HEAD > git_sha.txt
+git rev-parse HEAD > sha.txt
 
 
 # simulations

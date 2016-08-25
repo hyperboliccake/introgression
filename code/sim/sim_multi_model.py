@@ -1,5 +1,7 @@
 # Run ms coalescent simulations under a variety of demographic models
 
+# aiming for ~89% sequence id b/t cer and par and ~99.5% within cer
+
 import os
 import sys
 
