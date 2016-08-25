@@ -11,7 +11,7 @@ git rev-parse HEAD > sha.txt
 
 # simulations
 cd sim
-sh run_sim_multi_model.sh
+qsub run_sim_multi_model.sh
 cd ..
 cp sha.txt ../results/sim/
 
