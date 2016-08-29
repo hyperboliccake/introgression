@@ -35,7 +35,7 @@ cd /net/gs/vol1/home/aclark4/projects/introgression/code/sim
 
 ARGS=$(head -n $SGE_TASK_ID sim_multi_model_args.txt | tail -n 1)
 
-python sim_multi_model.py $ARGS
+#python sim_multi_model.py $ARGS
 
 python sim_analyze_hmm_bw.py $ARGS
 

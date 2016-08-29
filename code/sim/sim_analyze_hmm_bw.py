@@ -232,6 +232,11 @@ def sort_recursively(a):
 def equivalent_topologies(a, b):
     return sort_recursively(a) == sort_recursively(b)
 
+def is_concordant(t, A, B):
+
+    return (is_whole_species(t[0], A) and is_whole_species(t[1], B)) or \
+        (is_whole_species(t[1], A) and is_whole_species(t[0], B))
+
 def is_monophyletically_concordant(t, A, B, C, split, label_to_species = None, species_topology = None):
     if split:
         if not is_split_concordant(t, B, C):
@@ -477,116 +482,6 @@ def evaluate_predicted(predicted, actual):
         num_predicted_tracts_actual, num_actual_tracts_predicted, \
         num_introgressed_tracts, num_not_introgressed_tracts, \
         num_predicted_introgressed_tracts, num_predicted_not_introgressed_tracts
-"""            
-def evaluate_predicted(predicted, actual):
-
-    # make predictions for every cer sequence
-    # and also keep track of lengths of all actual and predicted introgressed tracts
-    actual_lens = []
-    predicted_lens = []
-    num_correct = []
-    num_predicted_tracts_actual = [] # number of predicted introgressed tracts that overlap an actual one
-    num_actual_tracts_predicted = [] # number of actual introgressed tracts that overlap a predicted one
-    num_introgressed_tracts = []
-    num_not_introgressed_tracts = []
-    num_predicted_introgressed_tracts = []
-    num_predicted_not_introgressed_tracts = []
-    assert len(predicted) == len(actual), str(len(predicted)) + ' ' + str(len(actual))
-
-    # another more generous way of measuring correctness - fraction of
-    # introgressed tracts for which we predict at least one bp introgressed
-    overlap = []
-
-    for i in range(len(predicted)):
-
-        assert len(predicted[i]) == len(actual[i]), str(len(predicted[i])) + ' ' + str(len(actual[i]))
-
-        # assess how well we did (number of variant sites at which
-        # we correctly determine parental origin)
-        c = 0
-        ci = 0 # number of introgressed sites correct
-        in_ai = True # in actual introgressed region
-        ai_count = 0 # length of current actual introgressed region
-        in_pi = True # in predicted introgressed region
-        pi_count = 0 # length of current predicted introgressed region
-        hit = False # whether we've found at least one predicted bp in current introgressed tract
-
-        # loop through all sites (including nonpolymorphic)
-        for b in range(len(predicted[i])):
-            # we got it right!
-            if predicted[i][b] == actual[i][b]:
-                c += 1
-                # 1 is for par, introgressed; note that this is an
-                # int, not a string, because it is the index of the
-                # state, not the observed symbol
-                if actual[i][b] == 1:
-                    ci += 1
-
-            # getting lengths of actual introgressed tracts
-
-            # if the current positions is introgressed
-            if actual[i][b] == 1:
-                # and we were already in an introgressed region
-                if in_ai:
-                    ai_count += 1
-                # ...or we were not
-                else:
-                    in_ai = True
-                    ai_count = 1
-            # if the current position is not introgressed, end
-            # previous introgressed region
-            else:
-                if in_ai:
-                    actual_lens.append(ai_count)
-                    overlap.append(hit)
-                    hit = False
-                    in_ai = False
-                    ai_count = 0
-
-            # getting lengths of predicted introgressed tracts, same
-            # idea as above
-            if predicted[i][b] == 1:
-                if in_pi:
-                    pi_count += 1
-                else:
-                    in_pi = True
-                    pi_count = 1
-
-                if in_ai:
-                    hit = True
-            else:
-                if in_pi:
-                    predicted_lens.append(pi_count)
-                    in_pi = False
-                    pi_count = 0
-
-        # count the last tracts if we happened to end in one
-        if in_ai:
-            actual_lens.append(ai_count)
-            overlap.append(hit)
-        if in_pi:
-            predicted_lens.append(pi_count)
-
-        # total number of sites correct
-        fraction_correct.append(float(c)/len(predicted[i]))
-
-        # number of introgressed sites correct
-        actual_count = actual[i].count(1) # int, not string
-        if actual_count != 0:
-            fraction_introgressed_correct.append(float(ci)/actual_count)
-        else:
-            fraction_introgressed_correct.append(-1)
-
-    assert(len(overlap) == len(actual_lens))
-    fraction_correct_overlap = -1
-    if len(overlap) != 0:
-        fraction_correct_overlap = overlap.count(True) / float(len(overlap))
-    
-    return num_correct, num_true_positives, actual_lens, predicted_lens, num_true_positive_tracts, \
-        num_introgressed_tracts, num_not_introgressed_tracts, \
-        num_predicted_introgressed_tracts, num_predicted_not_introgressed_tracts
-"""
-
 
 # given fractional positions for snvs and length of sequence l,
 # determine integer positions; if allow_multi_hit is true, easy but if
@@ -629,31 +524,28 @@ model = sys.argv[2]
 N0 = int(sys.argv[3])
 
 num_samples_par = int(sys.argv[4])
-num_samples_cer_1 = int(sys.argv[5])
-num_samples_cer_2 = int(sys.argv[6])
-num_samples_cer = num_samples_cer_1 + num_samples_cer_2
+num_samples_cer = int(sys.argv[5])
 num_samples = num_samples_par + num_samples_cer
 
 # migration parameter is 2 * N0 * m, where mij is fraction of i made
 # up of j each generation; need to figure out how to make migration
 # rates equivalent for different models
-par_cer_migration = 2 * N0 * float(sys.argv[7])
+par_cer_migration = 2 * N0 * float(sys.argv[6])
 
 # in generations
-t_cer = float(sys.argv[8]) / (2 * N0)
-t_par_cer = float(sys.argv[9]) / (2 * N0)
+t_par_cer = float(sys.argv[7]) / (2 * N0)
 
 # 13,500 sites to get about 10% with one recombination event, .3% with
 # more than one (based on poisson(.1), 1 recombination per chromosome
 # of average length 750,000)
-num_sites = int(sys.argv[10])
+num_sites = int(sys.argv[8])
 
 # parameter is recombination rate between adjacent bp per generation
 # should probably be 1/750000 + 6.1 * 10^-6 (where 750000 is average
 # chr size)
-rho = 2 * N0 * float(sys.argv[11]) * (num_sites - 1)
+rho = 2 * N0 * float(sys.argv[9]) * (num_sites - 1)
 
-outcross_rate = float(sys.argv[12])
+outcross_rate = float(sys.argv[10])
 
 rho *= outcross_rate
 
@@ -661,14 +553,12 @@ rho *= outcross_rate
 mu = 1.84 * 10 ** -10
 theta = mu * 2 * num_sites * N0
 
-num_reps = int(sys.argv[13])
+num_reps = int(sys.argv[11])
 
 # take first index from each population to be reference sequence
 # [s288c is part of 41-strain group, which we're saying has migration happen]
 ref_ind_par = 0
-ref_ind_cer_1 = num_samples_par 
-ref_ind_cer_2 = num_samples_par + num_samples_cer_1
-ref_ind_cer = ref_ind_cer_1
+ref_ind_cer = num_samples_par 
 
 #####
 # stats to keep track of
@@ -678,82 +568,34 @@ ref_ind_cer = ref_ind_cer_1
 num_introgressed_cer = [[0 for i in range(num_samples_cer)] for n in range(num_reps)]
 
 # success of HMM predictions
-fraction_correct_all_11 = [[] for i in range(num_reps)]
-fraction_correct_all_12 = [[] for i in range(num_reps)]
-fraction_correct_all_21 = [[] for i in range(num_reps)]
-fraction_correct_all_22 = [[] for i in range(num_reps)]
+fraction_correct_all = [[] for i in range(num_reps)]
 
-fraction_introgressed_correct_all_11 = [[] for i in range(num_reps)]
-fraction_introgressed_correct_all_12 = [[] for i in range(num_reps)]
-fraction_introgressed_correct_all_21 = [[] for i in range(num_reps)]
-fraction_introgressed_correct_all_22 = [[] for i in range(num_reps)]
+fraction_introgressed_correct_all = [[] for i in range(num_reps)]
 
-predicted_lens_all_11 = [[] for i in range(num_reps)]
-predicted_lens_all_12 = [[] for i in range(num_reps)]
-predicted_lens_all_21 = [[] for i in range(num_reps)]
-predicted_lens_all_22 = [[] for i in range(num_reps)]
+predicted_lens_all = [[] for i in range(num_reps)]
 
 # success of windowed id predictions
-fraction_correct_all_11_window = [[] for i in range(num_reps)]
-fraction_correct_all_12_window = [[] for i in range(num_reps)]
-fraction_correct_all_21_window = [[] for i in range(num_reps)]
-fraction_correct_all_22_window = [[] for i in range(num_reps)]
+fraction_correct_all_window = [[] for i in range(num_reps)]
 
-fraction_introgressed_correct_all_11_window = [[] for i in range(num_reps)]
-fraction_introgressed_correct_all_12_window = [[] for i in range(num_reps)]
-fraction_introgressed_correct_all_21_window = [[] for i in range(num_reps)]
-fraction_introgressed_correct_all_22_window = [[] for i in range(num_reps)]
+fraction_introgressed_correct_all_window = [[] for i in range(num_reps)]
 
-predicted_lens_all_11_window = [[] for i in range(num_reps)]
-predicted_lens_all_12_window = [[] for i in range(num_reps)]
-predicted_lens_all_21_window = [[] for i in range(num_reps)]
-predicted_lens_all_22_window = [[] for i in range(num_reps)]
+predicted_lens_all_window = [[] for i in range(num_reps)]
 
 # actual lengths don't depend on prediction strategy
-actual_lens_all_11 = [[] for i in range(num_reps)]
-actual_lens_all_12 = [[] for i in range(num_reps)]
-actual_lens_all_21 = [[] for i in range(num_reps)]
-actual_lens_all_22 = [[] for i in range(num_reps)]
-
+actual_lens_all = [[] for i in range(num_reps)]
 
 fpr_cer = [0] * num_reps
 fpr_cer_only_par = [0] * num_reps
 
-# id between all cer and cer ref (from pop 1)
-avg_id_same_cer_1 = [0] * num_reps
-# id between all cer and cer ref (from pop 1)
-avg_id_same_cer_11 = [0] * num_reps
-# id between cer pop 2 and cer ref (from pop 1)
-avg_id_same_cer_12 = [0] * num_reps
+# id between all cer and cer ref
+avg_id_cer = [0] * num_reps
 
-# id between all cer and cer ref (from pop 2)
-avg_id_same_cer_2 = [0] * num_reps
-# id between all cer and cer ref (from pop 2)
-avg_id_same_cer_21 = [0] * num_reps
-# id between cer pop 2 and cer ref (from pop 2)
-avg_id_same_cer_22 = [0] * num_reps
-
-# id between all cer and par ref (from pop that introgresses)
-avg_id_diff_cer = [0] * num_reps
-# id between cer pop 1 and par ref (from pop that introgresses) 
-avg_id_diff_cer_1 = [0] * num_reps
-# id between cer pop 2 and par ref (from pop that introgresses)
-avg_id_diff_cer_2 = [0] * num_reps
+# id between all cer and par ref 
+avg_id_cer_par = [0] * num_reps
 
 num_lineages_at_join = [[] for n in range(num_reps)]
 
-monophyletically_concordant = [[] for n in range(num_reps)]
-monophyletically_concordant_split = [[] for n in range(num_reps)]
-topologically_concordant = [[] for n in range(num_reps)]
-split_concordant = [[] for n in range(num_reps)]
-species_topology = ['P', ['C1', 'C2']]
-label_to_species = {}
-# indexing labels from 0 not 1
-species_labels = ['P'] * num_samples_par + \
-    ['C1'] * num_samples_cer_1 + \
-    ['C2'] * num_samples_cer_2
-for i in range(num_samples):
-    label_to_species[i] = species_labels[i]
+concordant = [[] for n in range(num_reps)]
 
 prob_topological_concordance = 0
 
@@ -768,150 +610,48 @@ window_shift = 500
 # write results
 fout = open(outdir + results_filename, 'w')
 print 'writing to', outdir + results_filename
-fout.write('num_introgressed_cer_1\t' + \
-               'num_introgressed_cer_2\t' + \
-               'num_introgressed_tracts_cer_1\t' + \
-               'num_introgressed_tracts_cer_2\t' + \
-               'num_not_introgressed_tracts_cer_1\t' + \
-               'num_not_introgressed_tracts_cer_2\t' + \
-               'num_predicted_introgressed_cer_11\t' + \
-               'num_predicted_introgressed_cer_12\t' + \
-               'num_predicted_introgressed_cer_21\t' + \
-               'num_predicted_introgressed_cer_22\t' + \
-               'num_predicted_introgressed_tracts_cer_11\t' + \
-               'num_predicted_introgressed_tracts_cer_12\t' + \
-               'num_predicted_introgressed_tracts_cer_21\t' + \
-               'num_predicted_introgressed_tracts_cer_22\t' + \
-               'num_predicted_not_introgressed_tracts_cer_11\t' + \
-               'num_predicted_not_introgressed_tracts_cer_12\t' + \
-               'num_predicted_not_introgressed_tracts_cer_21\t' + \
-               'num_predicted_not_introgressed_tracts_cer_22\t' + \
-               'num_predicted_introgressed_cer_11_window\t' + \
-               'num_predicted_introgressed_cer_12_window\t' + \
-               'num_predicted_introgressed_cer_21_window\t' + \
-               'num_predicted_introgressed_cer_22_window\t' + \
-               'num_predicted_introgressed_tracts_cer_11_window\t' + \
-               'num_predicted_introgressed_tracts_cer_12_window\t' + \
-               'num_predicted_introgressed_tracts_cer_21_window\t' + \
-               'num_predicted_introgressed_tracts_cer_22_window\t' + \
-               'num_predicted_not_introgressed_tracts_cer_11_window\t' + \
-               'num_predicted_not_introgressed_tracts_cer_12_window\t' + \
-               'num_predicted_not_introgressed_tracts_cer_21_window\t' + \
-               'num_predicted_not_introgressed_tracts_cer_22_window\t' + \
-               'num_correct_11\t' + \
-               'num_introgressed_correct_11\t' + \
-               'num_predicted_tracts_actual_11\t' + \
-               'num_actual_tracts_predicted_11\t' + \
-               'num_correct_11_window\t' + \
-               'num_introgressed_correct_11_window\t' + \
-               'num_predicted_tracts_actual_11_window\t' + \
-               'num_actual_tracts_predicted_11_window\t' + \
-               'num_correct_12\t' + \
-               'num_introgressed_correct_12\t' + \
-               'num_predicted_tracts_actual_12\t' + \
-               'num_actual_tracts_predicted_12\t' + \
-               'num_correct_12_window\t' + \
-               'num_introgressed_correct_12_window\t' + \
-               'num_predicted_tracts_actual_12_window\t' + \
-               'num_actual_tracts_predicted_12_window\t' + \
-               'num_correct_21\t' + \
-               'num_introgressed_correct_21\t' + \
-               'num_predicted_tracts_actual_21\t' + \
-               'num_actual_tracts_predicted_21\t' + \
-               'num_correct_21_window\t' + \
-               'num_introgressed_correct_21_window\t' + \
-               'num_predicted_tracts_actual_21_window\t' + \
-               'num_actual_tracts_predicted_21_window\t' + \
-               'num_correct_22\t' + \
-               'num_introgressed_correct_22\t' + \
-               'num_predicted_tracts_actual_22\t' + \
-               'num_actual_tracts_predicted_22\t' + \
-               'num_correct_22_window\t' + \
-               'num_introgressed_correct_22_window\t' + \
-               'num_predicted_tracts_actual_22_window\t' + \
-               'num_actual_tracts_predicted_22_window\t' + \
-               'actual_lens_11\t' + \
-               'predicted_lens_11\t' + \
-               'predicted_lens_11_window\t' + \
-               'actual_lens_12\t' + \
-               'predicted_lens_12\t' + \
-               'predicted_lens_12_window\t' + \
-               'actual_lens_21\t' + \
-               'predicted_lens_21\t' + \
-               'predicted_lens_21_window\t' + \
-               'actual_lens_22\t' + \
-               'predicted_lens_22\t' + \
-               'predicted_lens_22_window\t' + \
-               'avg_id_same_cer_1\t' + \
-               'avg_id_same_cer_11\t' + \
-               'avg_id_same_cer_12\t' + \
-               'avg_id_same_cer_2\t' + \
-               'avg_id_same_cer_21\t' + \
-               'avg_id_same_cer_22\t' + \
-               'avg_id_diff_cer\t' + \
-               'avg_id_diff_cer_1\t' + \
-               'avg_id_diff_cer_2\t' + \
+fout.write('num_introgressed_cer\t' + \
+               'num_introgressed_tracts_cer\t' + \
+               'num_not_introgressed_tracts_cer\t' + \
+               'num_predicted_introgressed_cer\t' + \
+               'num_predicted_introgressed_tracts_cer\t' + \
+               'num_predicted_not_introgressed_tracts_cer\t' + \
+               'num_predicted_introgressed_cer_window\t' + \
+               'num_predicted_introgressed_tracts_cer_window\t' + \
+               'num_predicted_not_introgressed_tracts_cer_window\t' + \
+               'num_correct\t' + \
+               'num_introgressed_correct\t' + \
+               'num_predicted_tracts_actual\t' + \
+               'num_actual_tracts_predicted\t' + \
+               'num_correct_window\t' + \
+               'num_introgressed_correct_window\t' + \
+               'num_predicted_tracts_actual_window\t' + \
+               'num_actual_tracts_predicted_window\t' + \
+               'actual_lens\t' + \
+               'predicted_lens\t' + \
+               'predicted_lens_window\t' + \
+               'avg_id_cer\t' + \
+               'avg_id_cer_par\t' + \
                'num_lineages\t' + \
-               'fraction_topologically_concordant\t' + \
-               'fraction_monophyletically_concordant\t' + \
-               'prob_topological_concordance\t' + \
-               'prob_monophyletic_concordance\t' + \
-               'fraction_split_concordant\t' + \
-               'fraction_monophyletically_split_concordant\t' + \
-               'init_cer_11\t' + \
-               'init_par_11\t' + \
-               'trans_cer_cer_11\t' + \
-               'trans_cer_par_11\t' + \
-               'trans_par_cer_11\t' + \
-               'trans_par_par_11\t' + \
-               'emis_cer_cer_11\t' + \
-               'emis_cer_par_11\t' + \
-               'emis_cer_np_11\t' + \
-               'emis_par_cer_11\t' + \
-               'emis_par_par_11\t' + \
-               'emis_par_np_11\t' + \
-               'init_cer_12\t' + \
-               'init_par_12\t' + \
-               'trans_cer_cer_12\t' + \
-               'trans_cer_par_12\t' + \
-               'trans_par_cer_12\t' + \
-               'trans_par_par_12\t' + \
-               'emis_cer_cer_12\t' + \
-               'emis_cer_par_12\t' + \
-               'emis_cer_np_12\t' + \
-               'emis_par_cer_12\t' + \
-               'emis_par_par_12\t' + \
-               'emis_par_np_12\t' + \
-               'init_cer_21\t' + \
-               'init_par_21\t' + \
-               'trans_cer_cer_21\t' + \
-               'trans_cer_par_21\t' + \
-               'trans_par_cer_21\t' + \
-               'trans_par_par_21\t' + \
-               'emis_cer_cer_21\t' + \
-               'emis_cer_par_21\t' + \
-               'emis_cer_np_21\t' + \
-               'emis_par_cer_21\t' + \
-               'emis_par_par_21\t' + \
-               'emis_par_np_21\t' + \
-               'init_cer_22\t' + \
-               'init_par_22\t' + \
-               'trans_cer_cer_22\t' + \
-               'trans_cer_par_22\t' + \
-               'trans_par_cer_22\t' + \
-               'trans_par_par_22\t' + \
-               'emis_cer_cer_22\t' + \
-               'emis_cer_par_22\t' + \
-               'emis_cer_np_22\t' + \
-               'emis_par_cer_22\t' + \
-               'emis_par_par_22\t' + \
-               'emis_par_np_22\n')
+               'fraction_concordant\t' + \
+               'init_cer\t' + \
+               'init_par\t' + \
+               'trans_cer_cer\t' + \
+               'trans_cer_par\t' + \
+               'trans_par_cer\t' + \
+               'trans_par_par\t' + \
+               'emis_cer_cer\t' + \
+               'emis_cer_par\t' + \
+               'emis_cer_np\t' + \
+               'emis_par_cer\t' + \
+               'emis_par_par\t' + \
+               'emis_par_np\n')
 
 prob_topological_concordance = -1
 prob_monophyletic_concordance = -1
 
+assert not theory, 'theory calculations not yet implemented for single cer population'
 if theory:
-
     if theory_done:
         print 'reading theory results from file'
         f = open('out/' + results_filename, 'r')
@@ -923,24 +663,6 @@ if theory:
         prob_monophyletic_concordance = float(line[13])
         f.close()
 
-    else:
-        print 'python ils_rosenberg.py ' + \
-            str(num_samples_par) + ' ' + \
-            str(num_samples_cer_1) + ' ' + \
-            str(num_samples_cer_2) + ' ' + \
-            str(t_cer * 2) + ' ' + \
-            str(t_par_cer * 2 - t_cer * 2)
-        
-        results = \
-            os.popen('python ils_rosenberg.py ' + \
-                str(num_samples_par) + ' ' + \
-                str(num_samples_cer_1) + ' ' + \
-                str(num_samples_cer_2) + ' ' + \
-                str(t_cer * 2) + ' ' + \
-                str(t_par_cer * 2 - t_cer * 2)).read().split()        
-        prob_topological_concordance = results[-2]
-        prob_monophyletic_concordance = results[-1]
-        
 
 f = open(outdir + outfilename, 'r')
 line = f.readline()
@@ -984,52 +706,24 @@ while line != '' and n < num_reps:
         # 1 -> matches par ref but not cer ref
         # 2 -> matches cer ref and par ref
         # 3 -> doesn't match cer ref or par ref
-        seqs_filled_r1 = []
-        seqs_filled_r2 = []
+        seqs_filled = []
         for seq in seqs:
             # nonpolymorphic sites will match both references
-            s1 = ['2'] * num_sites
-            s2 = ['2'] * num_sites
-
+            s = ['2'] * num_sites
             # polymorphic sites
             for i in range(segsites):
-                # cer ref from pop 1
-                if seq[i] == seqs[ref_ind_cer_1][i]:
+                if seq[i] == seqs[ref_ind_cer][i]:
                     if seq[i] == seqs[ref_ind_par][i]:
-                        s1[positions[i]] = '2'
+                        s[positions[i]] = '2'
                     else:
-                        s1[positions[i]] = '0'
+                        s[positions[i]] = '0'
                 elif seq[i] == seqs[ref_ind_par][i]:
-                        s1[positions[i]] = '1'
+                        s[positions[i]] = '1'
                 else:
-                        s1[positions[i]] = '3'
+                        s[positions[i]] = '3'
                 
-                # cer ref from pop 2
-                if seq[i] == seqs[ref_ind_cer_2][i]:
-                    if seq[i] == seqs[ref_ind_par][i]:
-                        s2[positions[i]] = '2'
-                    else:
-                        s2[positions[i]] = '0'
-                elif seq[i] == seqs[ref_ind_par][i]:
-                        s2[positions[i]] = '1'
-                else:
-                        s2[positions[i]] = '3'
-
-                #if seqs[ref_ind_cer_1][i] != seqs[ref_ind_par][i]:
-                #    if seq[i] == seqs[ref_ind_cer_1][i]:
-                #        s1[positions[i]] = '0'
-                #    else:
-                #        s1[positions[i]] = '1'                    
-                #if seqs[ref_ind_cer_2][i] != seqs[ref_ind_par][i]:
-                #    if seq[i] == seqs[ref_ind_cer_2][i]:
-                #        s2[positions[i]] = '0'
-                #    else:
-                #        s2[positions[i]] = '1'                    
-            seqs_filled_r1.append(s1)
-            seqs_filled_r2.append(s2)
+            seqs_filled.append(s)
         
-                
-
         ########
         # figure out which sites are actually introgressed by looking at trees for
         # all regions without recombination
@@ -1047,32 +741,12 @@ while line != '' and n < num_reps:
             t = trees[ti]
             #print 'tree', ti, 'out of', len(trees)
             #print t
-
-            # determine whether tree is concordant according to several definitions
-            if is_monophyletically_concordant(t, 
-                                              range(num_samples_par), 
-                                              range(num_samples_par, num_samples_par + num_samples_cer_1), 
-                                              range(num_samples_par + num_samples_cer_1, num_samples), False, 
-                                              copy.copy(label_to_species), species_topology):
-                monophyletically_concordant[n].append(1)
+            
+            # should this be 0 or 1 indexed??
+            if is_concordant(t, range(1, num_samples_par), range(num_samples_par + 1, num_samples + 1)):
+                concordant[n].append(1)
             else:
-                monophyletically_concordant[n].append(0)
-            # "split" concordance
-            if is_monophyletically_concordant(t, 
-                                              range(num_samples_par), 
-                                              range(num_samples_par, num_samples_par + num_samples_cer_1), 
-                                              range(num_samples_par + num_samples_cer_1, num_samples), True):
-                monophyletically_concordant_split.append(1)
-            else:
-                monophyletically_concordant_split.append(0)
-            if is_topologically_concordant(t, copy.copy(label_to_species), species_topology):
-                topologically_concordant[n].append(1)
-            else:
-                topologically_concordant[n].append(0)
-            if is_split_concordant(t, range(num_samples_par, num_samples)):
-                split_concordant[n].append(1)
-            else:
-                split_concordant[n].append(1)
+                concordant[n].append(0)
             
             # identify cerevisiae sequences that are actually introgressed from
             # paradoxus (based on coalescent tree); indexed from 0
@@ -1108,41 +782,13 @@ while line != '' and n < num_reps:
 
         print 'HMM'
 
-        # ref from cer pop 1, predicting cer pop 1
-        predicted, hmm11 = predict_introgressed_hmm(seqs_filled_r1[num_samples_par:num_samples_par + num_samples_cer_1])
-        num_predicted_introgressed_11 = [sum(x) for x in predicted]
-        num_correct_11, num_introgressed_correct_11, actual_lens_11, predicted_lens_11, \
-            num_predicted_tracts_actual_11, num_actual_tracts_predicted_11, \
-            num_introgressed_tracts_11, num_not_introgressed_tracts_11, \
-            num_predicted_introgressed_tracts_11, num_predicted_not_introgressed_tracts_11 = \
-            evaluate_predicted(predicted, actual_state_seq[num_samples_par:num_samples_par + num_samples_cer_1])
-
-        # ref from cer pop 1, predicting cer pop 2
-        predicted, hmm12 = predict_introgressed_hmm(seqs_filled_r1[num_samples_par + num_samples_cer_1:num_samples])
-        num_predicted_introgressed_12 = [sum(x) for x in predicted]
-        num_correct_12, num_introgressed_correct_12, actual_lens_12, predicted_lens_12, \
-            num_predicted_tracts_actual_12, num_actual_tracts_predicted_12, \
-            num_introgressed_tracts_12, num_not_introgressed_tracts_12, \
-            num_predicted_introgressed_tracts_12, num_predicted_not_introgressed_tracts_12 = \
-            evaluate_predicted(predicted, actual_state_seq[num_samples_par + num_samples_cer_1:num_samples])
-
-        # ref from cer pop 2, predicting cer pop 1
-        predicted, hmm21 = predict_introgressed_hmm(seqs_filled_r2[num_samples_par:num_samples_par + num_samples_cer_1])
-        num_predicted_introgressed_21 = [sum(x) for x in predicted]
-        num_correct_21, num_introgressed_correct_21, actual_lens_21, predicted_lens_21, \
-            num_predicted_tracts_actual_21, num_actual_tracts_predicted_21, \
-            num_introgressed_tracts_21, num_not_introgressed_tracts_21, \
-            num_predicted_introgressed_tracts_21, num_predicted_not_introgressed_tracts_21 = \
-            evaluate_predicted(predicted, actual_state_seq[num_samples_par:num_samples_par + num_samples_cer_1])
-
-        # ref from cer pop 2, predicting cer pop 2
-        predicted, hmm22 = predict_introgressed_hmm(seqs_filled_r2[num_samples_par + num_samples_cer_1:num_samples])
-        num_predicted_introgressed_22 = [sum(x) for x in predicted]
-        num_correct_22, num_introgressed_correct_22, actual_lens_22, predicted_lens_22, \
-            num_predicted_tracts_actual_22, num_actual_tracts_predicted_22, \
-            num_introgressed_tracts_22, num_not_introgressed_tracts_22, \
-            num_predicted_introgressed_tracts_22, num_predicted_not_introgressed_tracts_22 = \
-            evaluate_predicted(predicted, actual_state_seq[num_samples_par + num_samples_cer_1:num_samples])
+        predicted, hmm = predict_introgressed_hmm(seqs_filled[num_samples_par:])
+        num_predicted_introgressed = [sum(x) for x in predicted]
+        num_correct, num_introgressed_correct, actual_lens, predicted_lens, \
+            num_predicted_tracts_actual, num_actual_tracts_predicted, \
+            num_introgressed_tracts, num_not_introgressed_tracts, \
+            num_predicted_introgressed_tracts, num_predicted_not_introgressed_tracts = \
+            evaluate_predicted(predicted, actual_state_seq[num_samples_par:])
 
 
         ########
@@ -1153,333 +799,105 @@ while line != '' and n < num_reps:
 
         print 'windowing'
 
-        # ref from cer pop 1, predicting cer pop 1
-        predicted = predict_introgressed(seqs_filled_r1[num_samples_par:num_samples_par + num_samples_cer_1], window_size, window_shift)
-        num_predicted_introgressed_11_window = [sum(x) for x in predicted]
-        num_correct_11_window, num_introgressed_correct_11_window, actual_lens_11_window, predicted_lens_11_window, \
-            num_predicted_tracts_actual_11_window, num_actual_tracts_predicted_11_window, \
-            num_introgressed_tracts_11_window, num_not_introgressed_tracts_11_window, \
-            num_predicted_introgressed_tracts_11_window, num_predicted_not_introgressed_tracts_11_window = \
-            evaluate_predicted(predicted, actual_state_seq[num_samples_par:num_samples_par + num_samples_cer_1])
-
-        # ref from cer pop 1, predicting cer pop 2
-        predicted = predict_introgressed(seqs_filled_r1[num_samples_par + num_samples_cer_1:num_samples], window_size, window_shift)
-        num_predicted_introgressed_12_window = [sum(x) for x in predicted]
-        num_correct_12_window, num_introgressed_correct_12_window, actual_lens_12_window, predicted_lens_12_window, \
-            num_predicted_tracts_actual_12_window, num_actual_tracts_predicted_12_window, \
-            num_introgressed_tracts_12_window, num_not_introgressed_tracts_12_window, \
-            num_predicted_introgressed_tracts_12_window, num_predicted_not_introgressed_tracts_12_window = \
-            evaluate_predicted(predicted, actual_state_seq[num_samples_par + num_samples_cer_1:num_samples])
-
-        # ref from cer pop 2, predicting cer pop 1
-        predicted = predict_introgressed(seqs_filled_r2[num_samples_par:num_samples_par + num_samples_cer_1], window_size, window_shift)
-        num_predicted_introgressed_21_window = [sum(x) for x in predicted]
-        num_correct_21_window, num_introgressed_correct_21_window, actual_lens_21_window, predicted_lens_21_window, \
-            num_predicted_tracts_actual_21_window, num_actual_tracts_predicted_21_window, \
-            num_introgressed_tracts_21_window, num_not_introgressed_tracts_21_window, \
-            num_predicted_introgressed_tracts_21_window, num_predicted_not_introgressed_tracts_21_window = \
-            evaluate_predicted(predicted, actual_state_seq[num_samples_par:num_samples_par + num_samples_cer_1])
-
-        # ref from cer pop 2, predicting cer pop 2
-        predicted = predict_introgressed(seqs_filled_r2[num_samples_par + num_samples_cer_1:num_samples], window_size, window_shift)
-        num_predicted_introgressed_22_window = [sum(x) for x in predicted]
-        num_correct_22_window, num_introgressed_correct_22_window, actual_lens_22_window, predicted_lens_22_window, \
-            num_predicted_tracts_actual_22_window, num_actual_tracts_predicted_22_window, \
-            num_introgressed_tracts_22_window, num_not_introgressed_tracts_22_window, \
-            num_predicted_introgressed_tracts_22_window, num_predicted_not_introgressed_tracts_22_window = \
-            evaluate_predicted(predicted, actual_state_seq[num_samples_par + num_samples_cer_1:num_samples])
+        predicted = predict_introgressed(seqs_filled[num_samples_par:], window_size, window_shift)
+        num_predicted_introgressed_window = [sum(x) for x in predicted]
+        num_correct_window, num_introgressed_correct_window, actual_lens_window, predicted_lens_window, \
+            num_predicted_tracts_actual_window, num_actual_tracts_predicted_window, \
+            num_introgressed_tracts_window, num_not_introgressed_tracts_window, \
+            num_predicted_introgressed_tracts_window, num_predicted_not_introgressed_tracts_window = \
+            evaluate_predicted(predicted, actual_state_seq[num_samples_par:])
 
         ########
         # sequence identities
         ########
 
         # reference from cer pop 1
-        total_len_1 = 0
-        total_len_11 = 0
-        total_len_12 = 0
+        total_len = 0
 
-        for seq in seqs_filled_r1[num_samples_par:num_samples_par + num_samples_cer_1]:
+        for seq in seqs_filled[num_samples_par:]:
 
             count0 = seq.count('0')
             count1 = seq.count('1')
             count2 = seq.count('2')
             count3 = len(seq) - count0 - count1 - count2
 
-            # id between all cer and cer ref (from pop 1)
-            avg_id_same_cer_1[n] += count0 + count2
-            total_len_1 += len(seq)
-
-            # id between cer pop1 and cer ref (from pop 1)
-            avg_id_same_cer_11[n] += count0 + count2
-            total_len_11 += len(seq)
-
-            # id between all cer and par ref (from pop that introgresses)
-            avg_id_diff_cer[n] += count1 + count2
-            # id between cer pop 1 and par ref (from pop that introgresses) 
-            avg_id_diff_cer_1[n] += count1 + count2
+            avg_id_cer[n] += count0 + count2
+            avg_id_cer_par[n] += count1 + count2
+            total_len += len(seq)
  
-        for seq in seqs_filled_r1[num_samples_par + num_samples_cer_1:num_samples]:
-
-            count0 = seq.count('0')
-            count1 = seq.count('1')
-            count2 = seq.count('2')
-            count3 = len(seq) - count0 - count1 - count2
-
-            # id between all cer and cer ref (from pop 1)
-            avg_id_same_cer_1[n] += count0 + count2
-            total_len_1 += len(seq)
-
-            # id between cer pop 2 and cer ref (from pop 1)
-            avg_id_same_cer_12[n] += count0 + count2
-            total_len_12 += len(seq)
-
-            # id between all cer and par ref (from pop that introgresses)
-            avg_id_diff_cer[n] += count1 + count2
-            # id between cer pop 2 and par ref (from pop that introgresses)
-            avg_id_diff_cer_2[n] += count1 + count2
-
-        avg_id_same_cer_1[n] /= float(total_len_1)
-        avg_id_same_cer_11[n] /= float(total_len_11)
-        avg_id_same_cer_12[n] /= float(total_len_12)
-
-        avg_id_diff_cer[n] /= float(total_len_1)
-        avg_id_diff_cer_1[n] /= float(total_len_11)
-        avg_id_diff_cer_2[n] /= float(total_len_12)
-
-
-        # reference from cer pop 2
-        total_len_2 = 0
-        total_len_21 = 0
-        total_len_22 = 0
-        for seq in seqs_filled_r2[num_samples_par:num_samples_par + num_samples_cer_1]:
-
-            count0 = seq.count('0')
-            count1 = seq.count('1')
-            count2 = seq.count('2')
-            count3 = len(seq) - count0 - count1 - count3
-
-            # id between all cer and cer ref (from pop 1)
-            avg_id_same_cer_2[n] += count0 + count2
-            total_len_2 += len(seq)
-
-            # id between cer pop1 and cer ref (from pop 1)
-            avg_id_same_cer_21[n] += count0 + count2
-            total_len_21 += len(seq)
-
-        for seq in seqs_filled_r2[num_samples_par + num_samples_cer_1:num_samples]:
-
-            count0 = seq.count('0')
-            count1 = seq.count('1')
-            count2 = seq.count('2')
-            count3 = len(seq) - count0 - count1 - count2
-
-            # id between all cer and cer ref (from pop 1)
-            avg_id_same_cer_2[n] += count0 + count2
-            total_len_2 += len(seq)
-
-            # id between cer pop 2 and cer ref (from pop 1)
-            avg_id_same_cer_22[n] += count0 + count2
-            total_len_22 += len(seq)
-
-        avg_id_same_cer_2[n] /= float(total_len_2)
-        avg_id_same_cer_21[n] /= float(total_len_21)
-        avg_id_same_cer_22[n] /= float(total_len_22)
+        avg_id_cer[n] /= float(total_len)
+        avg_id_cer_par[n] /= float(total_len)
 
         #####
         # write results to file
         #####
 
         # LIST, one for each individual
-        fout.write(str(num_introgressed_cer[n][:num_samples_cer_1]) + '\t')
-        fout.write(str(num_introgressed_cer[n][num_samples_cer_1:]) + '\t')
+        fout.write(str(num_introgressed_cer[n][:num_samples_cer]) + '\t')
 
         # LIST, one for each individual
         # introgressed tracts (positives) - just take an arbitrary one
         # for each reference because they're the same
-        fout.write(str(num_introgressed_tracts_11) + '\t')
-        fout.write(str(num_introgressed_tracts_22) + '\t')
+        fout.write(str(num_introgressed_tracts) + '\t')
 
         # LIST, one for each individual
         # not introgressed tracts (negatives)
-        fout.write(str(num_not_introgressed_tracts_11) + '\t')
-        fout.write(str(num_not_introgressed_tracts_22) + '\t')
+        fout.write(str(num_not_introgressed_tracts) + '\t')
 
         # LIST, one for each individual
-        fout.write(str(num_predicted_introgressed_11) + '\t')
-        fout.write(str(num_predicted_introgressed_12) + '\t')
-        fout.write(str(num_predicted_introgressed_21) + '\t')
-        fout.write(str(num_predicted_introgressed_22) + '\t')
+        fout.write(str(num_predicted_introgressed) + '\t')
 
         # LIST, one for each individual
-        fout.write(str(num_predicted_introgressed_tracts_11) + '\t')
-        fout.write(str(num_predicted_introgressed_tracts_12) + '\t')
-        fout.write(str(num_predicted_introgressed_tracts_21) + '\t')
-        fout.write(str(num_predicted_introgressed_tracts_22) + '\t')
+        fout.write(str(num_predicted_introgressed_tracts) + '\t')
 
         # LIST, one for each individual
-        fout.write(str(num_predicted_not_introgressed_tracts_11) + '\t')
-        fout.write(str(num_predicted_not_introgressed_tracts_12) + '\t')
-        fout.write(str(num_predicted_not_introgressed_tracts_21) + '\t')
-        fout.write(str(num_predicted_not_introgressed_tracts_22) + '\t')
+        fout.write(str(num_predicted_not_introgressed_tracts) + '\t')
 
         # LIST, one for each individual
-        fout.write(str(num_predicted_introgressed_11_window) + '\t')
-        fout.write(str(num_predicted_introgressed_12_window) + '\t')
-        fout.write(str(num_predicted_introgressed_21_window) + '\t')
-        fout.write(str(num_predicted_introgressed_22_window) + '\t')
+        fout.write(str(num_predicted_introgressed_window) + '\t')
 
         # LIST, one for each individual
-        fout.write(str(num_predicted_introgressed_tracts_11_window) + '\t')
-        fout.write(str(num_predicted_introgressed_tracts_12_window) + '\t')
-        fout.write(str(num_predicted_introgressed_tracts_21_window) + '\t')
-        fout.write(str(num_predicted_introgressed_tracts_22_window) + '\t')
+        fout.write(str(num_predicted_introgressed_tracts_window) + '\t')
 
         # LIST, one for each individual
-        fout.write(str(num_predicted_not_introgressed_tracts_11_window) + '\t')
-        fout.write(str(num_predicted_not_introgressed_tracts_12_window) + '\t')
-        fout.write(str(num_predicted_not_introgressed_tracts_21_window) + '\t')
-        fout.write(str(num_predicted_not_introgressed_tracts_22_window) + '\t')
+        fout.write(str(num_predicted_not_introgressed_tracts_window) + '\t')
 
         # LIST, one for each individual
-        fout.write(str(num_correct_11) + '\t')
-        fout.write(str(num_introgressed_correct_11) + '\t')
-        fout.write(str(num_predicted_tracts_actual_11) + '\t')
-        fout.write(str(num_actual_tracts_predicted_11) + '\t')
-        fout.write(str(num_correct_11_window) + '\t')
-        fout.write(str(num_introgressed_correct_11_window) + '\t')
-        fout.write(str(num_predicted_tracts_actual_11_window) + '\t')
-        fout.write(str(num_actual_tracts_predicted_11_window) + '\t')
-
-        # LIST, one for each individual
-        fout.write(str(num_correct_12) + '\t')
-        fout.write(str(num_introgressed_correct_12) + '\t')
-        fout.write(str(num_predicted_tracts_actual_12) + '\t')
-        fout.write(str(num_actual_tracts_predicted_12) + '\t')
-        fout.write(str(num_correct_12_window) + '\t')
-        fout.write(str(num_introgressed_correct_12_window) + '\t')
-        fout.write(str(num_predicted_tracts_actual_12_window) + '\t')
-        fout.write(str(num_actual_tracts_predicted_12_window) + '\t')
-
-        # LIST, one for each individual
-        fout.write(str(num_correct_21) + '\t')
-        fout.write(str(num_introgressed_correct_21) + '\t')
-        fout.write(str(num_predicted_tracts_actual_21) + '\t')
-        fout.write(str(num_actual_tracts_predicted_21) + '\t')
-        fout.write(str(num_correct_21_window) + '\t')
-        fout.write(str(num_introgressed_correct_21_window) + '\t')
-        fout.write(str(num_predicted_tracts_actual_21_window) + '\t')
-        fout.write(str(num_actual_tracts_predicted_21_window) + '\t')
-
-        # LIST, one for each individual
-        fout.write(str(num_correct_22) + '\t')
-        fout.write(str(num_introgressed_correct_22) + '\t')
-        fout.write(str(num_predicted_tracts_actual_22) + '\t')
-        fout.write(str(num_actual_tracts_predicted_22) + '\t')
-        fout.write(str(num_correct_22_window) + '\t')
-        fout.write(str(num_introgressed_correct_22_window) + '\t')
-        fout.write(str(num_predicted_tracts_actual_22_window) + '\t')
-        fout.write(str(num_actual_tracts_predicted_22_window) + '\t')
+        fout.write(str(num_correct) + '\t')
+        fout.write(str(num_introgressed_correct) + '\t')
+        fout.write(str(num_predicted_tracts_actual) + '\t')
+        fout.write(str(num_actual_tracts_predicted) + '\t')
+        fout.write(str(num_correct_window) + '\t')
+        fout.write(str(num_introgressed_correct_window) + '\t')
+        fout.write(str(num_predicted_tracts_actual_window) + '\t')
+        fout.write(str(num_actual_tracts_predicted_window) + '\t')
 
         # LIST, one for each tract across all individuals
-        fout.write(str(actual_lens_11) + '\t')
-        fout.write(str(predicted_lens_11) + '\t')
-        fout.write(str(predicted_lens_11_window) + '\t')
+        fout.write(str(actual_lens) + '\t')
+        fout.write(str(predicted_lens) + '\t')
+        fout.write(str(predicted_lens_window) + '\t')
 
-        # LIST, one for each tract across all individuals
-        fout.write(str(actual_lens_12) + '\t')
-        fout.write(str(predicted_lens_12) + '\t')
-        fout.write(str(predicted_lens_12_window) + '\t')
-
-        # LIST, one for each tract across all individuals
-        fout.write(str(actual_lens_21) + '\t')
-        fout.write(str(predicted_lens_21) + '\t')
-        fout.write(str(predicted_lens_21_window) + '\t')
-
-        # LIST, one for each tract across all individuals
-        fout.write(str(actual_lens_22) + '\t')
-        fout.write(str(predicted_lens_22) + '\t')
-        fout.write(str(predicted_lens_22_window) + '\t')
-
-        fout.write(str(avg_id_same_cer_1[n]) + '\t')
-        fout.write(str(avg_id_same_cer_11[n]) + '\t')
-        fout.write(str(avg_id_same_cer_12[n]) + '\t')
-
-        fout.write(str(avg_id_same_cer_2[n]) + '\t')
-        fout.write(str(avg_id_same_cer_21[n]) + '\t')
-        fout.write(str(avg_id_same_cer_22[n]) + '\t')
-
-        fout.write(str(avg_id_diff_cer[n]) + '\t')
-        fout.write(str(avg_id_diff_cer_1[n]) + '\t')
-        fout.write(str(avg_id_diff_cer_2[n]) + '\t')
+        fout.write(str(avg_id_cer[n]) + '\t')
+        fout.write(str(avg_id_cer_par[n]) + '\t')
 
         fout.write(str(mean(num_lineages_at_join[n])) + '\t')
 
-        fout.write(str(mean(topologically_concordant[n])) + '\t')
-        fout.write(str(mean(monophyletically_concordant[n])) + '\t')
-        fout.write(str(prob_topological_concordance) + '\t')
-        fout.write(str(prob_monophyletic_concordance) + '\t')
-        fout.write(str(mean(split_concordant[n])) + '\t')
-        fout.write(str(mean(monophyletically_concordant_split[n])) + '\t')
+        fout.write(str(mean(concordant[n])) + '\t')
 
-        fout.write(str(hmm11.init[0]) + '\t')
-        fout.write(str(hmm11.init[1]) + '\t')
+        fout.write(str(hmm.init[0]) + '\t')
+        fout.write(str(hmm.init[1]) + '\t')
 
-        fout.write(str(hmm11.trans[0][0]) + '\t')
-        fout.write(str(hmm11.trans[0][1]) + '\t')
-        fout.write(str(hmm11.trans[1][0]) + '\t')
-        fout.write(str(hmm11.trans[1][1]) + '\t')
+        fout.write(str(hmm.trans[0][0]) + '\t')
+        fout.write(str(hmm.trans[0][1]) + '\t')
+        fout.write(str(hmm.trans[1][0]) + '\t')
+        fout.write(str(hmm.trans[1][1]) + '\t')
 
-        fout.write(str(hmm11.emis[0]['0']) + '\t')
-        fout.write(str(hmm11.emis[0]['1']) + '\t')
-        fout.write(str(hmm11.emis[0]['2']) + '\t')
-        fout.write(str(hmm11.emis[1]['0']) + '\t')
-        fout.write(str(hmm11.emis[1]['1']) + '\t')
-        fout.write(str(hmm11.emis[1]['2']) + '\t')
-
-        fout.write(str(hmm12.init[0]) + '\t')
-        fout.write(str(hmm12.init[1]) + '\t')
-
-        fout.write(str(hmm12.trans[0][0]) + '\t')
-        fout.write(str(hmm12.trans[0][1]) + '\t')
-        fout.write(str(hmm12.trans[1][0]) + '\t')
-        fout.write(str(hmm12.trans[1][1]) + '\t')
-
-        fout.write(str(hmm12.emis[0]['0']) + '\t')
-        fout.write(str(hmm12.emis[0]['1']) + '\t')
-        fout.write(str(hmm12.emis[0]['2']) + '\t')
-        fout.write(str(hmm12.emis[1]['0']) + '\t')
-        fout.write(str(hmm12.emis[1]['1']) + '\t')
-        fout.write(str(hmm12.emis[1]['2']) + '\t')
-
-        fout.write(str(hmm21.init[0]) + '\t')
-        fout.write(str(hmm21.init[1]) + '\t')
-
-        fout.write(str(hmm21.trans[0][0]) + '\t')
-        fout.write(str(hmm21.trans[0][1]) + '\t')
-        fout.write(str(hmm21.trans[1][0]) + '\t')
-        fout.write(str(hmm21.trans[1][1]) + '\t')
-
-        fout.write(str(hmm21.emis[0]['0']) + '\t')
-        fout.write(str(hmm21.emis[0]['1']) + '\t')
-        fout.write(str(hmm21.emis[0]['2']) + '\t')
-        fout.write(str(hmm21.emis[1]['0']) + '\t')
-        fout.write(str(hmm21.emis[1]['1']) + '\t')
-        fout.write(str(hmm21.emis[1]['2']) + '\t')
-
-        fout.write(str(hmm22.init[0]) + '\t')
-        fout.write(str(hmm22.init[1]) + '\t')
-
-        fout.write(str(hmm22.trans[0][0]) + '\t')
-        fout.write(str(hmm22.trans[0][1]) + '\t')
-        fout.write(str(hmm22.trans[1][0]) + '\t')
-        fout.write(str(hmm22.trans[1][1]) + '\t')
-
-        fout.write(str(hmm22.emis[0]['0']) + '\t')
-        fout.write(str(hmm22.emis[0]['1']) + '\t')
-        fout.write(str(hmm22.emis[0]['2']) + '\t')
-        fout.write(str(hmm22.emis[1]['0']) + '\t')
-        fout.write(str(hmm22.emis[1]['1']) + '\t')
-        fout.write(str(hmm22.emis[1]['2']) + '\n')
+        fout.write(str(hmm.emis[0]['0']) + '\t')
+        fout.write(str(hmm.emis[0]['1']) + '\t')
+        fout.write(str(hmm.emis[0]['2']) + '\t')
+        fout.write(str(hmm.emis[1]['0']) + '\t')
+        fout.write(str(hmm.emis[1]['1']) + '\t')
+        fout.write(str(hmm.emis[1]['2']) + '\t')
 
         fout.flush()
 
