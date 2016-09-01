@@ -517,7 +517,7 @@ def integer_positions(positions, l, allow_multi_hit = False):
 tag = sys.argv[1]
 outdir = '../../results/sim/'
 outfilename = 'sim_out_' + tag + '.txt'
-results_filename = 'sim_out_' + tag + '_summary'
+results_filename = 'sim_out_' + tag + '_summary.txt'
 
 model = sys.argv[2]
 
@@ -897,7 +897,7 @@ while line != '' and n < num_reps:
         fout.write(str(hmm.emis[0]['2']) + '\t')
         fout.write(str(hmm.emis[1]['0']) + '\t')
         fout.write(str(hmm.emis[1]['1']) + '\t')
-        fout.write(str(hmm.emis[1]['2']) + '\t')
+        fout.write(str(hmm.emis[1]['2']) + '\n')
 
         fout.flush()
 
