@@ -811,7 +811,6 @@ while line != '' and n < num_reps:
         # sequence identities
         ########
 
-        # reference from cer pop 1
         total_len = 0
 
         for seq in seqs_filled[num_samples_par:]:
