@@ -9,17 +9,24 @@ fi
 git rev-parse HEAD > sha.txt
 
 
-# simulations
+# simulations and analysis
 cd sim
-qsub run_sim_multi_model.sh
+fn = "run_sim_multi_model"
+qsub -N $fn run_sim_multi_model.sh
+# while grep returns something, i.e. job still running
+while [qstat | grep -q $fn]
+do
+sleep 300
+done
+python sim_analyze_hmm_bw.py
+python aggregate.py
+Rscript plot.R
+cp ../sha.txt ../../results/sim/
 cd ..
-cp sha.txt ../results/sim/
-
-exit 0
 
 # get alignments between each strain and the cerevisiae and paradoxus
 # references; align each chromosome separately
-#python align/run_mugsy.sh
+python align/run_mugsy.sh
 
 # predicted introgressed regions for each chromosome of each strain
 # note: this requires ~12G memory
