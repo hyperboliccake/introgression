@@ -179,13 +179,12 @@ def predict_introgressed_hmm(seqs, training_inds = None):
         hmm.set_obs(training_seqs)
     else:
         hmm.set_obs(seqs)
-    hmm.set_init([.5,.5])
+    hmm.set_init([.85,.15])
 
     # 0,1 would also work here
     hmm.set_states(['cer', 'par'])
 
-    hmm_trans = .0005
-    hmm.set_trans([[1-hmm_trans,hmm_trans],[hmm_trans,1-hmm_trans]])
+    hmm.set_trans([[.9997,.0003],[.05,.95]])
 
     # combined error in parent sequences and observed sequence -
     # in this case 'error' comes from amout of difference
@@ -193,7 +192,8 @@ def predict_introgressed_hmm(seqs, training_inds = None):
     # same species; remember we've coded 0 for cer (non
     # introgressed) and 1 for par (introgressed)
     # hmm.set_emis({'cer':{0:.95, 1:.05},'par':{0:.05, 1:.95}}) 
-    hmm.set_emis([{'0':.5, '1':.0001, '2':.4998, '3':.0001},{'0':.0001, '1':.5, '2':.4998, '3':.0001}])
+    #hmm.set_emis([{'0':.5, '1':.0001, '2':.4998, '3':.0001},{'0':.0001, '1':.5, '2':.4998, '3':.0001}])
+    hmm.set_emis([{'0':.1, '1':.001, '2':.88, '3':.019},{'0':.0017, '1':.06, '2':.93, '3':.0083}])
 
 
     # Baum-Welch parameter estimation
