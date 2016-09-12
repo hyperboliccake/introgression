@@ -38,7 +38,6 @@ cp ../sha.txt ../../alignments/genbank/
 cd ..
 
 # predicted introgressed regions for each chromosome of each strain
-# note: this requires ~12G memory
 cd analyze
 fn = "run_analyze"
 # while grep returns something, i.e. job still running
