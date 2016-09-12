@@ -164,21 +164,12 @@ def get_seqs(rc, rp, x, chrms):
         all_psx += psx
     return all_seqs, all_psx
 
-def predict_introgressed_hmm(seqs, training_inds = None):
-
-    training_seqs = []
-    if training_inds != None:
-        for i in training_inds:
-            training_seqs.append(seqs[i])
+def predict_introgressed_hmm(seqs):
 
     # create a hidden markov model and determine which reference genome we
     # are most likely to be in at each variant site
     hmm = HMM()
 
-    if training_inds != None:
-        hmm.set_obs(training_seqs)
-    else:
-        hmm.set_obs(seqs)
     hmm.set_init([.85,.15])
 
     # 0,1 would also work here
@@ -194,10 +185,6 @@ def predict_introgressed_hmm(seqs, training_inds = None):
     # hmm.set_emis({'cer':{0:.95, 1:.05},'par':{0:.05, 1:.95}}) 
     #hmm.set_emis([{'0':.5, '1':.0001, '2':.4998, '3':.0001},{'0':.0001, '1':.5, '2':.4998, '3':.0001}])
     hmm.set_emis([{'0':.1, '1':.001, '2':.88, '3':.019},{'0':.0017, '1':.06, '2':.93, '3':.0083}])
-
-
-    # Baum-Welch parameter estimation
-    hmm.go()
 
     predicted = []
     for i in range(len(seqs)):
@@ -269,8 +256,8 @@ for x in group_all:
     all_seqs += seqs
     all_ps += psx
 
-fi = open('../../results/introgressed_id.txt', 'w')
-predicted = predict_introgressed_id(all_seqs)
+fi = open('../../results/introgressed_hmm.txt', 'w')
+predicted = predict_introgressed_hmm(all_seqs)
 assert len(predicted) == len(all_seqs)
 for s in xrange(len(predicted)):
     print '====', all_ps[s]
