@@ -26,18 +26,35 @@ cd ..
 
 # get alignments between each strain and the cerevisiae and paradoxus
 # references; align each chromosome separately
-python align/run_mugsy.sh
+cd align
+fn = "run_mugsy"
+# while grep returns something, i.e. job still running
+qsub -N $fn run_mugsy.sh
+while [qstat | grep -q $fn]
+do
+sleep 300
+done
+cp ../sha.txt ../../alignments/genbank/
+cd ..
 
 # predicted introgressed regions for each chromosome of each strain
 # note: this requires ~12G memory
 cd analyze
-sh run_analyze.sh
+fn = "run_analyze"
+# while grep returns something, i.e. job still running
+qsub -N $fn run_analyze.sh
+while [qstat | grep -q $fn]
+do
+sleep 300
+done
+cp ../sha.txt ../../results/
 cd ..
 
 # extract alignments of introgressed regions and annotate genes in
 # those regions
 cd analyze
 python process.py
+cp ../sha.txt ../../results/regions/
 cd ..
 
 # find predicted introgressed genes that are the same/different between
@@ -45,6 +62,7 @@ cd ..
 # references or both/neither for each region alignment
 cd analyze
 python compare_all.py
+cp ../sha.txt ../../results/gene_alignments/
 cd ..
 
 # do the above but interactively for individual genes
