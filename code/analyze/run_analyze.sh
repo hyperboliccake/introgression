@@ -32,4 +32,6 @@ module load scipy/latest
 
 # Script or command(s) to run via SGE
 
+cd /net/gs/vol1/home/aclark4/projects/introgression/code/analyze
+
 python analyze.py
