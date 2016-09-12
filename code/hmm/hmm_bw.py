@@ -54,10 +54,20 @@ class HMM:
      def set_trans(self, trans):
          
           self.trans = trans
+          for x in self.trans:
+               t = 0
+               for i in x:
+                    t += 1
+               assert isclose(t, 1)
 
      def set_emis(self, emis):
          
           self.emis = emis
+          for x in self.emis:
+               t = 0
+               for i in x:
+                    t += x[i]
+               assert isclose(t, 1)
 
      def set_obs(self, obs):
          
@@ -68,6 +78,7 @@ class HMM:
      def set_init(self, init):
           
           self.init = init
+          assert isclose(sum(self.init), 1)
 
      def print_results(self, num_its, LL):
 
