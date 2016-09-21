@@ -70,9 +70,8 @@ def get_seqs_chrm(rc, rp, x, chrm):
                 assert x in src, x + ' ' + src
                 srcx = src
                 seqx = text
-                # note that mugsy indexes from 0 (I think) and that
-                # for the reverse strand, it indexes from the other
-                # end
+                # note that mugsy indexes from 0 and that for the
+                # reverse strand, it indexes from the other end
                 startx = int(start)
                 sizex = int(size)
                 strandx = strand
@@ -187,9 +186,12 @@ def predict_introgressed_hmm(seqs):
     hmm.set_emis([{'0':.1, '1':.001, '2':.88, '3':.019},{'0':.0017, '1':.06, '2':.93, '3':.0083}])
 
     predicted = []
+    print len(seqs), 'seqs'
+    sys.stdout.flush()
     for i in range(len(seqs)):
         if i % 100 == 0:
             print 'viterbi on seq', i
+            sys.stdout.flush()
         obs_seq = seqs[i]
         hmm.set_obs(obs_seq)
         # this returns a list of state indices, so 0 and 1 for not introgressed and introgressed
@@ -250,17 +252,22 @@ all_ps = []
 
 chrms_roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XIV']
 
+print 'start'
 for x in group_all:
     print x
     seqs, psx = get_seqs(ref_cer, ref_par, x, chrms_roman)
     all_seqs += seqs
     all_ps += psx
-
+sys.stdout.flush()
 fi = open('../../results/introgressed_hmm.txt', 'w')
-predicted = predict_introgressed_hmm(all_seqs)
-assert len(predicted) == len(all_seqs)
+predicted, hmm = predict_introgressed_hmm(all_seqs)
+try:
+    assert len(predicted) == len(all_seqs)
+except:
+    print 'problem'
 for s in xrange(len(predicted)):
     print '====', all_ps[s]
+    sys.stdout.flush()
     in_int = False
     start_int = 0
     end_int = 0
@@ -277,8 +284,10 @@ for s in xrange(len(predicted)):
             fi.write(all_ps[s][0] + ', ' + all_ps[s][2] + ' strand, ' + str(all_ps[s][1] + start_int) + '-' + str(all_ps[s][1] + end_int) + ', ' + str(all_ps[s][1]) + ', ' + str(len(all_seqs[s])) + '\n')
             assert all_ps[s][1] + start_int >= all_ps[s][1] and all_ps[s][1] + end_int
             in_int = False
+            fi.flush()
     if in_int:
         fi.write(all_ps[s][0] + ', ' + all_ps[s][2] + ' strand, ' + str(all_ps[s][1] + start_int) + '-' + str(all_ps[s][1] + end_int) + ', ' + str(all_ps[s][1]) + ', ' + str(len(all_seqs[s])) + '\n')
+        fi.flush()
 fi.close()
 
 
