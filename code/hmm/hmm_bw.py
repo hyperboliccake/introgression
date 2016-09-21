@@ -57,8 +57,8 @@ class HMM:
           for x in self.trans:
                t = 0
                for i in x:
-                    t += 1
-               assert isclose(t, 1)
+                    t += i
+               assert isclose(t, 1), str(x) + ' ' + str(t)
 
      def set_emis(self, emis):
          
@@ -67,7 +67,7 @@ class HMM:
                t = 0
                for i in x:
                     t += x[i]
-               assert isclose(t, 1)
+               assert isclose(t, 1), str(x) + ' ' + str(t)
 
      def set_obs(self, obs):
          
@@ -78,7 +78,7 @@ class HMM:
      def set_init(self, init):
           
           self.init = init
-          assert isclose(sum(self.init), 1)
+          assert isclose(sum(self.init), 1), str(self.init) + ' ' + str(sum(self.init))
 
      def print_results(self, num_its, LL):
 
