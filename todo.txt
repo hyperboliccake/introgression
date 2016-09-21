@@ -1,7 +1,13 @@
 1. Theory/simulations of robustness to ILS
    
    should probably run these without split populations?
-   make sure parameters are giving expected sequence divergence (~85% cer/par, x% within cer)
+   make sure parameters are giving expected sequence divergence
+   - figure out what this percentage is from 100 genomes sequences/par reference:
+     ~99.5% id w/ cer ref
+     ~89% id w/ par ref
+     (these numbers are calculated from only match/mismatch columns in alignments
+     (gaps are ignored) so it's probably a bit of an overestimate if anything...
+     unless shittiness of alignments outweighs that)
 
    goals of simulations: 
    establish tpr/fpr for reasonable parameters with HMM method
