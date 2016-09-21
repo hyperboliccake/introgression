@@ -1,6 +1,8 @@
 import os
 import math
 import numpy.random
+sys.path.insert('../misc/')
+import mystats
 
 def parse_list(l):
     assert len(l) >= 2, l
@@ -8,37 +10,6 @@ def parse_list(l):
         return []
     return [float(x) for x in l[1:-1].split(',')]
     
-def mean(l):
-    if len(l) == 0:
-        return 'NA'
-    return float(sum(l)) / len(l)
-
-def std_dev(l):
-    if len(l) == 0:
-        return 'NA'
-    if len(l) == 1:
-        return 0
-    m = mean(l)
-    return math.sqrt(sum([(x - m)**2 for x in l]) / (len(l) - 1))
-
-def std_err(l):
-    if len(l) == 0:
-        return 'NA'
-    return std_dev(l) / math.sqrt(len(l))
-
-def bootstrap(l, n = 100, alpha = .05):
-    x = len(l)
-    if x == 0:
-        return 'NA', 'NA'
-    a = []
-    for i in range(n):
-        a.append(mean(numpy.random.choice(l, size = x, replace = True)))
-    a.sort()
-    print len(a), a.count(0)
-    print mean(a)
-    return a[int(alpha * n * .5)], a[int((1 - alpha * .5) * n)]
-
-
 params = [line.strip().split(' ') for line in open('sim_multi_model_args.txt', 'r').readlines()]
 param_names = ['tag', 'model', 'N0', 'num_samples_par', 'num_samples_cer', 'par_cer_migration', 't_par_cer', 'num_sites', 'rho', 'outcross_rate', 'num_reps']
 assert len(param_names) == len(params[0]), str(len(param_names)) + ' != ' + str(len(params[0]))
@@ -75,7 +46,7 @@ for i in ids:
         f_all.write(p + '\t')
     f_all.write('mean')
     for item in agg:
-        m = mean(item)
+        m = mystats.mean(item)
         f_all.write('\t' + str(m))
     f_all.write('\n')
     # standard error row
@@ -83,14 +54,14 @@ for i in ids:
         f_all.write(p + '\t')
     f_all.write('std_err')
     for item in agg:
-        se = std_err(item)
+        se = mystats.std_err(item)
         f_all.write('\t' + str(se))
     f_all.write('\n')
     # bootstrap
     bls = []
     bus = []
     for item in agg:
-        bl, bu = bootstrap(item)
+        bl, bu = mystats.bootstrap(item)
         print bl, bu
         bls.append(bl)
         bus.append(bu)
