@@ -127,9 +127,10 @@ for strain in regions.keys():
                     if entry[3]-1 == start and entry[4]-1 == int(line[3])-1 and entry[0] == line[4]:
                     #if entry[1] >= start and entry[1] <= end:
                         #assert entry[2] >= start and entry[2] <= end, strain + ' ' + chrm + ' ' + str(entry) + ' ' + str(start) + ' ' + str(end) + ', ' + str(entry[1]) + ' ' + str(entry[2]) + '\n' + str(line)
-                        assert entry[1] >= start and entry[1] <= end and entry[2] >= start and entry[2] <= end
+                        assert entry[1]-1 >= start and entry[1]-1 <= end and entry[2]-1 >= start and entry[2]-1 <= end, str(entry[1]) + ' ' + str(entry[2]) + ' ' + str(start) + ' ' + str(end)
                         # relative in alignment block, factoring in gaps
-                        relative_start = entry[1] - start
+                        # TODO why do i have to subtract 1 here??
+                        relative_start = entry[1] - start - 1
                         i = 0
                         a = 0
                         while i + a < len(line[6]) and i < relative_start:
@@ -139,7 +140,8 @@ for strain in regions.keys():
                                 i += 1
                         relative_start += a
 
-                        relative_end = entry[2] - start
+                        # TODO why do i have to subtract 1 here??
+                        relative_end = entry[2] - start - 1
                         i = 0
                         a = 0
                         while i + a < len(line[6]) and i < relative_end:
