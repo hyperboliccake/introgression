@@ -4,10 +4,14 @@
 
 import os
 import sys
+sys.path.insert(0, '..')
+import global_params as gp
 
+
+# TODO? make a script that generates param files based on args given
+# in global param file
 tag = sys.argv[1]
 model = sys.argv[2]
-outdir = '../../results/sim/'
 
 # parameters specific to all of the models
 
@@ -46,13 +50,13 @@ theta = mu * 2 * num_sites * N0
 
 num_reps = int(sys.argv[11])
 
-outfilename = 'sim_out_' + tag + '.txt'
+outfilename = gp.sim_out_prefix + tag + gp.sim_out_suffix
 
 # start of ms command
 # (in case you were thinking about it, DON'T subtract 1 from nsites for
 # the -r option)
 ms_command = \
-    '/net/gs/vol1/home/aclark4/software/msdir/ms ' + str(num_samples) + ' ' + str(num_reps) + \
+    gp.ms_install_path + '/ms ' + str(num_samples) + ' ' + str(num_reps) + \
     ' -t ' + str(theta) + \
     ' -r ' + str(rho) + ' ' + str(num_sites) + \
     ' -I 2 ' + str(num_samples_par) + ' ' + str(num_samples_cer)
@@ -83,7 +87,7 @@ else:
 
 ms_command += \
     ' -ej ' + str(t_par_cer) + ' 2 1' + \
-    ' -T > ' + outdir + outfilename
+    ' -T > ' + gp.sim_out_dir + '/' + outfilename
 
 print(ms_command)
 os.system(ms_command)

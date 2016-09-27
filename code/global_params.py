@@ -1,6 +1,6 @@
-#####
+#====
 # file extensions
-#####
+#====
 
 # suffix for _all_ fasta files
 fasta_suffix = '.fa'
@@ -8,9 +8,9 @@ fasta_suffix = '.fa'
 # suffix for _all_ alignment files; this needs to match the suffix output by mugsy
 alignment_suffix = '.maf'
 
-#####
+#====
 # sequence locations/names
-#####
+#====
 
 # directory for cerevisiae reference
 cer_ref_dir = '/net/akey/vol2/aclark4/nobackup/100_genomes/genomes/S288c_SGD-R64/'
@@ -34,9 +34,9 @@ dirs_cer = ['/net/akey/vol2/aclark4/nobackup/100_genomes/genomes_gb/']
 # directories should be used
 dirs_par = []
 
-#####
+#====
 # alignment files
-#####
+#====
 
 # directory for mugsy to output alignments and for subsequent parts of
 # the program to read the alignments; this directory needs to exist
@@ -47,15 +47,30 @@ alignments_dir = '../../alignments/genbank/'
 # directory alone?
 resume_alignment = True
 
-#####
+#====
+# simulations
+#====
+
+# output directory for simulations
+sim_out_dir = '../../results/sim/'
+
+# prefix for simulation output
+sim_out_prefix = 'sim_out_'
+
+# suffix for simulation output
+sim_out_suffix = '.txt'
+
+#====
 # software install locations
-#####
+#====
 
 mugsy_install_path = '~/software/mugsy'
 
-#####
+ms_install_path = '/net/gs/vol1/home/aclark4/software/msdir/'
+
+#====
 # other
-#####
+#====
 
 chrms_roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XIV']
 
