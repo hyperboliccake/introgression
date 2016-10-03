@@ -347,9 +347,98 @@ def predict_introgressed_hmm(seqs_filled):
 
     return predicted, hmm
 
+def evaluate_predicted_blocks(predicted, actual):
+    # in the sequences, 1 indicates introgressed (actual or predicted)
+    # and 0 indicates not
+
+    # each block entry is a list with four items: whether it is
+    # predicted to be introgressed (n for no, i for yes), the number
+    # of bases within it that are actually introgressed, the total
+    # block length, and the index of the strain
+    blocks_predicted = []
+    # the same as above except for true blocks
+    blocks_actual = []
+
+    for i in range(len(predicted)):
+
+        assert len(predicted[i]) == len(actual[i]), \
+            str(len(predicted[i])) + ' ' + str(len(actual[i]))
+
+        in_predicted_introgressed_block = (predicted[i][0] == 1)
+        in_actual_introgressed_block = (actual[i][0] == 1)
+
+        predicted_block_actual_sequence = []
+        actual_block_predicted_sequence = []
+
+        predicted_seq = predicted[i] + ['END']
+        actual_seq = actual[i] + ['END']
+
+        for j in range(len(predicted_seq)):
+            # === first take care of predicted block ====
+            # base not predicted to be introgressed
+            if predicted_seq[j] == 0 or \
+                    (predicted_seq[j] == 'END' and in_predicted_introgressed_block):
+                # end predicted introgressed block
+                if in_predicted_introgressed_block:
+                    current_predicted_block = \
+                        ['i', predicted_block_actual_sequence.count(1), \
+                             len(predicted_block_actual_sequence), i]
+                    blocks_predicted.append(current_predicted_block)
+                    in_predicted_introgressed_block = False
+                    predicted_block_actual_sequence = [actual_seq[j]]
+                # add on to current nonintrogressed block
+                else:
+                    predicted_block_actual_sequence.append(actual_seq[j])
+            # base predicted to be introgressed
+            else:
+                # add on to current introgressed block
+                if in_predicted_introgressed_block:
+                    predicted_block_actual_sequence.append(actual_seq[j])
+                # end predicted nonintrogressed block
+                else:
+                    current_predicted_block = \
+                        ['n', predicted_block_actual_sequence.count(1), \
+                             len(predicted_block_actual_sequence), i]
+                    blocks_predicted.append(current_predicted_block)
+                    in_predicted_introgressed_block = True
+                    predicted_block_actual_sequence = [actual_seq[j]]
+                
+            # === then take care of actual block ====
+            # base not actually introgressed
+            if actual_seq[j] == 0 or \
+                    (actual_seq[j] == 'END' and in_actual_introgressed_block):
+                # end actual introgressed block
+                if in_actual_introgressed_block:
+                    current_actual_block = \
+                        ['i', actual_block_predicted_sequence.count(1), \
+                             len(actual_block_predicted_sequence), i]
+                    blocks_actual.append(current_actual_block)
+                    in_actual_introgressed_block = False
+                    actual_block_predicted_sequence = [predicted_seq[j]]
+                # add on to current nonintrogressed block
+                else:
+                    actual_block_predicted_sequence.append(predicted_seq[j])
+            # base actually introgressed
+            else:
+                # add on to introgressed block
+                if in_actual_introgressed_block:
+                    actual_block_predicted_sequence.append(predicted_seq[j])
+                # add on to introgressed block
+                else:
+                    current_actual_block = \
+                        ['n', actual_block_predicted_sequence.count(1), \
+                             len(actual_block_predicted_sequence), i]
+                    blocks_actual.append(current_actual_block)
+                    in_actual_introgressed_block = True
+                    actual_block_predicted_sequence = [predicted_seq[j]]
+
+    return blocks_predicted, blocks_actual
+
 def evaluate_predicted(predicted, actual):
 
+
     assert len(predicted) == len(actual), str(len(predicted)) + ' ' + str(len(actual))
+
 
     # make predictions for every cer sequence
     # and also keep track of lengths of all actual and predicted introgressed tracts
@@ -650,6 +739,17 @@ fout.write('num_introgressed_cer\t' + \
 prob_topological_concordance = -1
 prob_monophyletic_concordance = -1
 
+outdir = '../../results/sim/'
+outfilename = 'sim_out_' + tag + '.txt'
+results_filename = 'sim_out_' + tag + '_summary.txt'
+
+f_blocks_predicted = open(outdir + 'sim_out_' + tag + '_blocks_predicted.txt', 'w')
+f_blocks_actual = open(outdir + 'sim_out_' + tag + '_blocks_actual.txt', 'w')
+f_blocks_predicted_window = \
+    open(outdir + 'sim_out_' + tag + '_blocks_predicted_window.txt', 'w')
+f_blocks_actual_window = \
+    open(outdir + 'sim_out_' + tag + '_blocks_actual_window.txt', 'w')
+
 assert not theory, 'theory calculations not yet implemented for single cer population'
 if theory:
     if theory_done:
@@ -690,10 +790,10 @@ while line != '' and n < num_reps:
         #print 'segsites:', segsites
         positions = [float(x) for x in f.readline()[len('positions: '):].split()]
         #print 'positions:', positions
-        print recomb_sites
+        #print recomb_sites
         # convert positions to integers
         positions = integer_positions(positions, num_sites)
-        print positions
+        #print positions
         # read in sequences (at this point only sites that are polymorphic)
         seqs = []
         for i in range(num_samples):
@@ -723,7 +823,7 @@ while line != '' and n < num_reps:
                         s[positions[i]] = '3'
                 
             seqs_filled.append(s)
-        
+
         ########
         # figure out which sites are actually introgressed by looking at trees for
         # all regions without recombination
@@ -774,7 +874,7 @@ while line != '' and n < num_reps:
                 else:
                     # 0 for cer (not introgressed)
                     actual_state_seq[s] += [0] * num_sites_t
-        
+
         ########
         # predict whether each site in each cer strain is
         # introgressed with a hidden markov model
@@ -783,13 +883,17 @@ while line != '' and n < num_reps:
         print 'HMM'
 
         predicted, hmm = predict_introgressed_hmm(seqs_filled[num_samples_par:])
+        assert set(predicted[0]) == set([0]), predicted[0]
+        if 1 in predicted[ref_ind_cer]:
+            print 'PROBLEM\n' + 'HMM\n ' + str(predicted[ref_ind_cer - num_samples_par]) + '\n' + str(seqs_filled[ref_ind_cer])
         num_predicted_introgressed = [sum(x) for x in predicted]
         num_correct, num_introgressed_correct, actual_lens, predicted_lens, \
             num_predicted_tracts_actual, num_actual_tracts_predicted, \
             num_introgressed_tracts, num_not_introgressed_tracts, \
             num_predicted_introgressed_tracts, num_predicted_not_introgressed_tracts = \
             evaluate_predicted(predicted, actual_state_seq[num_samples_par:])
-
+        blocks_predicted, blocks_actual = \
+            evaluate_predicted_blocks(predicted, actual_state_seq[num_samples_par:])
 
         ########
         # predict whether each site in each cer strain is
@@ -800,12 +904,16 @@ while line != '' and n < num_reps:
         print 'windowing'
 
         predicted = predict_introgressed(seqs_filled[num_samples_par:], window_size, window_shift)
+        if 1 in predicted[ref_ind_cer]:
+            print 'PROBLEM\n' + 'window\n ' + str(predicted[ref_ind_cer - num_samples_par]) + '\n' + str(seqs_filled[ref_ind_cer])
         num_predicted_introgressed_window = [sum(x) for x in predicted]
         num_correct_window, num_introgressed_correct_window, actual_lens_window, predicted_lens_window, \
             num_predicted_tracts_actual_window, num_actual_tracts_predicted_window, \
             num_introgressed_tracts_window, num_not_introgressed_tracts_window, \
             num_predicted_introgressed_tracts_window, num_predicted_not_introgressed_tracts_window = \
             evaluate_predicted(predicted, actual_state_seq[num_samples_par:])
+        blocks_predicted_window, blocks_actual_window = \
+            evaluate_predicted_blocks(predicted, actual_state_seq[num_samples_par:])
 
         ########
         # sequence identities
@@ -902,6 +1010,20 @@ while line != '' and n < num_reps:
 
         sys.stdout.flush()
 
+        for b in blocks_predicted:
+            f_blocks_predicted.write(str(n) + ' ' +  ' '.join([str(x) for x in b]) + '\n')
+        for b in blocks_actual:
+            f_blocks_actual.write(str(n) + ' ' + ' '.join([str(x) for x in b]) + '\n')
+        for b in blocks_predicted_window:
+            f_blocks_predicted_window.write(str(n) + ' ' + ' '.join([str(x) for x in b]) + '\n')
+        for b in blocks_actual_window:
+            f_blocks_actual_window.write(str(n) + ' ' + ' '.join([str(x) for x in b]) + '\n')
+
+        f_blocks_predicted.flush()
+        f_blocks_actual.flush()
+        f_blocks_predicted_window.flush()
+        f_blocks_actual_window.flush()
+
         n += 1
 
     line = f.readline()
@@ -909,6 +1031,9 @@ while line != '' and n < num_reps:
 
 f.close()
 fout.close()
-
+f_blocks_predicted.close()
+f_blocks_actual.close()
+f_blocks_predicted_window.close()
+f_blocks_actual_window.close()
 
 
