@@ -1,7 +1,8 @@
 import os
 import math
 import numpy.random
-sys.path.insert('../misc/')
+import sys
+sys.path.insert(0, '../misc/')
 import mystats
 
 def parse_list(l):
