@@ -42,3 +42,16 @@ current goals for pipeline:
 - extract directories into separate file
 - master run.sh that goes through all the steps without problems
 - automatically read in hmm parameters, based on medians from simulations
+
+for grant:
+1. show ILS not likely to be a problem
+2. description of HMM and validation of performance
+3. application to real data
+   - strain level summaries of introgressed sequence
+   - gene level summaries
+   - distribution of introgressed sequence size
+   - bed file of coordinates for one strain
+4. inferring timing/number of introgression events based on length distribution
+
+
+figure out why in simulations we seem to be predicting introgressed sequence in cerevisiae reference
