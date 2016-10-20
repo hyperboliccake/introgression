@@ -1,3 +1,4 @@
+
 #====
 # file extensions
 #====
@@ -16,13 +17,13 @@ alignment_suffix = '.maf'
 cer_ref_dir = '/net/akey/vol2/aclark4/nobackup/100_genomes/genomes/S288c_SGD-R64/'
 
 # name of cerevisiae reference
-cer_ref_strain = 'S288c_SGD-R64'
+cer_ref_strain = 'S288c'#_SGD-R64'
 
 # directory for paradoxus reference
 par_ref_dir = '/net/akey/vol2/aclark4/nobackup/100_genomes/paradoxus/strains/CBS432/assembly/CBS432/'
 
 # name of paradoxus reference
-par_ref_strain = 'CB432'
+par_ref_strain = 'CBS432'
 
 # all directories containing non-reference cerevisiae sequences;
 # program will assume that _all_ fasta files in each of these
@@ -34,6 +35,9 @@ dirs_cer = ['/net/akey/vol2/aclark4/nobackup/100_genomes/genomes_gb/']
 # directories should be used
 dirs_par = []
 
+# genbank file for _all_ species/strains
+gb_all = '/net/akey/vol2/aclark4/nobackup/100_genomes/sequence.gb'
+
 #====
 # alignment files
 #====
@@ -41,7 +45,7 @@ dirs_par = []
 # directory for mugsy to output alignments and for subsequent parts of
 # the program to read the alignments; this directory needs to exist
 # before running the program
-alignments_dir = '../../alignments/genbank/'
+alignments_dir = '../..//alignments/genbank/'
 
 # should we leave the alignments already completed in the alignments
 # directory alone?
@@ -59,6 +63,16 @@ sim_out_prefix = 'sim_out_'
 
 # suffix for simulation output
 sim_out_suffix = '.txt'
+
+#====
+# analysis
+#====
+
+analysis_out_dir = '../../results/'
+
+regions_out_dir = analysis_out_dir + '/regions/'
+
+
 
 #====
 # software install locations
