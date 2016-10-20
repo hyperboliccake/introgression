@@ -883,9 +883,14 @@ while line != '' and n < num_reps:
         print 'HMM'
 
         predicted, hmm = predict_introgressed_hmm(seqs_filled[num_samples_par:])
-        assert set(predicted[0]) == set([0]), predicted[0]
-        if 1 in predicted[ref_ind_cer]:
-            print 'PROBLEM\n' + 'HMM\n ' + str(predicted[ref_ind_cer - num_samples_par]) + '\n' + str(seqs_filled[ref_ind_cer])
+        #assert set(predicted[ref_ind_ced - num_samples_par]) == set([0]), predicted[0]
+        if 1 in predicted[ref_ind_cer - num_samples_par]:
+            print 'PROBLEM HMM'
+            #print 'PROBLEM\n' + 'HMM\n ' + str(predicted[ref_ind_cer - num_samples_par].index(1)) + '\n' + str(predicted[ref_ind_cer - num_samples_par]) + '\n' + str(seqs_filled[ref_ind_cer])
+            #print hmm.init
+            #print hmm.trans
+            #print hmm.emis
+            sys.exit()
         num_predicted_introgressed = [sum(x) for x in predicted]
         num_correct, num_introgressed_correct, actual_lens, predicted_lens, \
             num_predicted_tracts_actual, num_actual_tracts_predicted, \
@@ -904,8 +909,10 @@ while line != '' and n < num_reps:
         print 'windowing'
 
         predicted = predict_introgressed(seqs_filled[num_samples_par:], window_size, window_shift)
-        if 1 in predicted[ref_ind_cer]:
-            print 'PROBLEM\n' + 'window\n ' + str(predicted[ref_ind_cer - num_samples_par]) + '\n' + str(seqs_filled[ref_ind_cer])
+        if 1 in predicted[ref_ind_cer - num_samples_par]:
+            print 'PROBLEM window'
+            #print 'PROBLEM\n' + 'window\n ' + str(predicted[ref_ind_cer - num_samples_par].index(1)) + '\n' + str(predicted[ref_ind_cer - num_samples_par]) + '\n' + str(seqs_filled[ref_ind_cer])
+            sys.stdout.flush()
         num_predicted_introgressed_window = [sum(x) for x in predicted]
         num_correct_window, num_introgressed_correct_window, actual_lens_window, predicted_lens_window, \
             num_predicted_tracts_actual_window, num_actual_tracts_predicted_window, \
