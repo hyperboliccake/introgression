@@ -411,16 +411,6 @@ for gene, n in genes_sorted:
     f.write('\n')
 f.close()
 
-"""
-f = open(gp.analysis_out_dir + '/introgressed_genes_fns.txt', 'w')
-for gene, n in genes_sorted:
-    f.write(gene)
-    assert len(all_genes_fns[gene]) == len(list(set(all_genes_fns[gene]))), gene + ' ' + str(all_genes_fns[gene])
-    for fn in all_genes_fns[gene]:
-        f.write(' ' + fn)
-    f.write('\n')
-f.close()
-"""
 
 f = open(gp.analysis_out_dir + '/introgressed_strains.txt', 'w')
 strains_sorted = []
