@@ -292,50 +292,159 @@ def predict_introgressed(seqs_filled, window_size, window_shift, thresholds = [.
 
     return predicted
 
-def predict_introgressed_hmm(seqs_filled):
+def predict_introgressed_hmm_old(seqs_filled, third):
+
+    hmm = HMM()
+
+    hmm.set_obs(seqs_filled)
+
+    for 
+
+
+def predict_introgressed_hmm_old(seqs_filled, third):
 
     # create a hidden markov model and determine which reference genome we
     # are most likely to be in at each variant site
     hmm = HMM()
         
     hmm.set_obs(seqs_filled)
-    #hmm.set_obs([seqs_filled[0], seqs_filled[1]])
-    #hmm.set_obs(['0000001000000000010000000','000011111111111111122222'])
-    #hmm.set_obs(['012', '000'])
-    #hmm.set_obs(['00', '01'])
-    hmm.set_init([.5,.5])
-    """
-    fo = open('obs.txt', 'w')
-    for os in seqs_filled:
-        for o in os:
-            fo.write(o)
-        fo.write('\n')
-    fo.close()
-    
-    fo = open('int.txt', 'w')
-    for os in seqs_filled:
-        for o in os:
-            fo.write(o)
-        fo.write('\n')
-    fo.close()
-    """
-    # 0,1 would also work here
-    hmm.set_states(['cer', 'par'])
-    # a little weird because we know recombination rate we used
-    hmm_trans = .0005
-    
-    # hmm.set_trans({'cer':{'cer':1-hmm_trans, 'par':hmm_trans},
-    # 'par':{'cer':hmm_trans, 'par':1-hmm_trans}})
-    hmm.set_trans([[1-hmm_trans,hmm_trans],[hmm_trans,1-hmm_trans]])
 
-    # combined error in parent sequences and observed sequence -
-    # in this case 'error' comes from amout of difference
-    # reasonable to see between reference and other strains of
-    # same species; remember we've coded 0 for cer (non
-    # introgressed) and 1 for par (introgressed)
-    # hmm.set_emis({'cer':{0:.95, 1:.05},'par':{0:.05, 1:.95}}) 
-    hmm.set_emis([{'0':.5, '1':.0001, '2':.4998, '3':.0001},{'0':.0001, '1':.5, '2':.4998, '3':.0001}])
+    # only cer and par
+    if third == 'none':
+        hmm.set_init([.5, .5])
+        hmm.set_states(['cer', 'par'])
 
+        hmm_trans_cer_par = .0005
+
+        hmm.set_trans([\
+                [1-hmm_trans_cer_par,hmm_trans_cer_par],\
+                [hmm_trans_cer_par,1-hmm_trans_cer_par],\
+                    ])
+
+        emis_cer = {\
+            hmm_symbol['cer']:.5,\
+                hmm_symbol['cerpar']:.4998,\
+                hmm_symbol['par']:.0001,\
+                hmm_symbol['none']:.0001\
+                }
+        assert sum(emis_cer.values()) == 1, sum(emis_cer.values())
+
+        emis_par = {\
+            hmm_symbol['par']:.5,\
+                hmm_symbol['cerpar']:.4998,\
+                hmm_symbol['cer']:.0001,\
+                hmm_symbol['none']:.0001\
+                }
+        assert sum(emis_par.values()) == 1, sum(emis_par.values())
+    
+        hmm.set_emis([emis_cer, emis_par])
+    
+    elif third == 'bay':
+
+        hmm.set_init([1/3.,1/3.,1/3.])
+        # anything (of the correct length) would work here, because really
+        # we just use indices; difference between bayanus and unknown is
+        # in whether it matches bayanus sequence or just doesn't match
+        # cerevisiae and paradoxus
+        hmm.set_states(['cer', 'par', 'bay'])
+        # a little weird because we know recombination rate we used
+        hmm_trans_cer_par = .0005
+        hmm_trans_cer_bay = .0005
+        hmm_trans_par_bay = .0005
+    
+        # hmm.set_trans({'cer':{'cer':1-hmm_trans, 'par':hmm_trans},
+        # 'par':{'cer':hmm_trans, 'par':1-hmm_trans}})
+        hmm.set_trans([\
+                [1-(hmm_trans_cer_par-hmm_trans_cer_bay),hmm_trans_cer_par,hmm_trans_cer_bay],\
+                    [hmm_trans_cer_par,1-(hmm_trans_cer_par-hmm_trans_par_bay),hmm_trans_par_bay],\
+                    [hmm_trans_cer_bay,hmm_trans_par_bay,1-(hmm_trans_cer_bay-hmm_trans_par_bay)]\
+                    ])
+        
+        # 0    1       2       3          4    5       6    7
+        # cer, cerpar, cerbay, cerparbay, par, parbay, bay, none
+        emis_cer = {\
+            hmm_symbol['cer']:.5,\
+                hmm_symbol['cerpar']:.25,\
+                hmm_symbol['cerbay']:.15,\
+                hmm_symbol['cerparbay']:.0995,\
+                hmm_symbol['par']:.0001,\
+                hmm_symbol['parbay']:.0001,\
+                hmm_symbol['bay']:.0001,\
+                hmm_symbol['none']:.0001\
+                }
+        assert sum(emis_cer.values()) == 1, sum(emis_cer.values())
+        
+        emis_par = {\
+            hmm_symbol['par']:.5,\
+                hmm_symbol['cerpar']:.25,\
+                hmm_symbol['parbay']:.15,\
+                hmm_symbol['cerparbay']:.0995,\
+                hmm_symbol['cer']:.0001,\
+                hmm_symbol['cerbay']:.0001,\
+                hmm_symbol['bay']:.0001,\
+                hmm_symbol['none']:.0001\
+                }
+        assert sum(emis_par.values()) == 1, sum(emis_par.values())
+
+        emis_bay = {\
+            hmm_symbol['bay']:.5,\
+                hmm_symbol['parbay']:.25,\
+                hmm_symbol['cerbay']:.15,\
+                hmm_symbol['cerparbay']:.0995,\
+                hmm_symbol['par']:.0001,\
+                hmm_symbol['cerpar']:.0001,\
+                hmm_symbol['cer']:.0001,\
+                hmm_symbol['none']:.0001\
+                }
+        assert sum(emis_bay.values()) == 1, sum(emis_bay.values())
+
+        hmm.set_emis([emis_cer, emis_par, emis_bay])
+
+    elif third == 'unknown':
+
+        hmm.set_init([1/3.,1/3.,1/3.])
+        hmm.set_states(['cer', 'par', 'unk'])
+
+        hmm_trans_cer_par = .0005
+        hmm_trans_cer_unk = .0005
+        hmm_trans_par_unk = .0005
+
+        hmm.set_trans([\
+                [1-(hmm_trans_cer_par-hmm_trans_cer_unk),hmm_trans_cer_par,hmm_trans_cer_unk],\
+                    [hmm_trans_cer_par,1-(hmm_trans_cer_par-hmm_trans_par_unk),hmm_trans_par_unk],\
+                    [hmm_trans_cer_unk,hmm_trans_par_unk,1-(hmm_trans_cer_unk-hmm_trans_par_unk)]\
+                    ])
+
+        emis_cer = {\
+            hmm_symbol['cer']:.5,\
+                hmm_symbol['cerpar']:.4998,\
+                hmm_symbol['par']:.0001,\
+                hmm_symbol['none']:.0001\
+                }
+        assert sum(emis_cer.values()) == 1, sum(emis_cer.values())
+        
+        emis_par = {\
+            hmm_symbol['par']:.5,\
+                hmm_symbol['cerpar']:.4998,\
+                hmm_symbol['cer']:.0001,\
+                hmm_symbol['none']:.0001\
+                }
+        assert sum(emis_par.values()) == 1, sum(emis_par.values())
+
+        emis_unk = {\
+            hmm_symbol['par']:.0001,\
+                hmm_symbol['cerpar']:.0001,\
+                hmm_symbol['cer']:.0001,\
+                hmm_symbol['none']:.9997\
+                }
+        assert sum(emis_unk.values()) == 1, sum(emis_unk.values())
+
+        hmm.set_emis([emis_cer, emis_par, emis_unk])
+
+    else:
+        print 'option for third incorrect'
+        sys.exit()
+                
     # Baum-Welch parameter estimation
     hmm.go()
 
@@ -692,6 +801,13 @@ prob_topological_concordance = 0
 window_size = 1000
 window_shift = 500
 
+# symbol codings
+# 0    1       2       3          4    5       6    7
+# cer, cerpar, cerbay, cerparbay, par, parbay, bay, none
+hmm_symbol = {'cer':0, 'cerpar':1, 'cerbay':2, 'cerparbay':3, 'par':4, 'parbay':5, 'bay':6, 'none':7}
+
+hmm_type = 'bay'
+
 #####
 # loop through all reps
 #####
@@ -801,27 +917,26 @@ while line != '' and n < num_reps:
             #print(seqs[-1])
             assert(len(seqs[-1]) > 0)
 
-        # coding:
-        # 0 -> matches cer ref but not par ref
-        # 1 -> matches par ref but not cer ref
-        # 2 -> matches cer ref and par ref
-        # 3 -> doesn't match cer ref or par ref
+        #hmm_symbol = {'cer':0, 'cerpar':1, 'cerbay':2, 'cerparbay':3, 'par':4, 'parbay':5, 'bay':6, 'none':7}
         seqs_filled = []
         for seq in seqs:
-            # nonpolymorphic sites will match both references
-            s = ['2'] * num_sites
+            # nonpolymorphic sites will match all references
+            default_symbol = hmm_symbol['cerpar']
+            if hmm_type == 'bay':
+                default_symbol = hmm_symbol['cerparbay']
+            s = [default_symbol] * num_sites
             # polymorphic sites
             for i in range(segsites):
+                cer = ''
                 if seq[i] == seqs[ref_ind_cer][i]:
-                    if seq[i] == seqs[ref_ind_par][i]:
-                        s[positions[i]] = '2'
-                    else:
-                        s[positions[i]] = '0'
-                elif seq[i] == seqs[ref_ind_par][i]:
-                        s[positions[i]] = '1'
-                else:
-                        s[positions[i]] = '3'
-                
+                    cer = 'cer'
+                par = ''
+                if seq[i] == seqs[ref_ind_par][i]:
+                    par = 'par'
+                bay = ''
+                if hmm_type == 'bay' and seq[i] == seqs[ref_ind_bay][i]:
+                    bay = 'bay'
+                s[i] = hmm_symbol[cer + par + bay]
             seqs_filled.append(s)
 
         ########
@@ -830,7 +945,12 @@ while line != '' and n < num_reps:
         ########
 
         # store the sites that are introgressed for each cer strain
-        introgressed_actual = [[] for i in range(num_samples_cer)]
+        introgressed_states = ['par']
+        if hmm_type == 'bay':
+            introgressed_states.append('bay')
+        elif hmm_type == 'unk'
+            introgressed_states.append('unk')
+        introgressed_actual = [{} for i in range(num_samples_cer)]
 
         # sequence of states (cer or par), one for each site and strain (mostly like above)
         actual_state_seq = [[] for i in range(num_samples)]
@@ -882,7 +1002,7 @@ while line != '' and n < num_reps:
 
         print 'HMM'
 
-        predicted, hmm = predict_introgressed_hmm(seqs_filled[num_samples_par:])
+        predicted, hmm = predict_introgressed_hmm(seqs_filled[num_samples_par:], 'hmm_type')
         #assert set(predicted[ref_ind_ced - num_samples_par]) == set([0]), predicted[0]
         if 1 in predicted[ref_ind_cer - num_samples_par]:
             print 'PROBLEM HMM'
