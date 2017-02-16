@@ -1,29 +1,22 @@
 from sim_analyze_hmm_bw import *
+from concordance_functions import *
+sys.path.insert(0, '..')
+import global_params as gp
 
 tag, model, N0, include_bay, include_unk,\
     num_samples_cer, num_samples_par, num_samples_bay,\
     par_cer_migration, bay_cer_migration,\
     t_par_cer, t_bay_par_cer,\
-    num_sites, rho, outcross_rate, num_reps = \
+    num_sites, rho, theta, outcross_rate, num_reps = \
     process_args(sys.argv)
-
-outdir = '../../results/sim/'
-outfilename = 'sim_out_' + tag + '.txt'
-results_filename = 'sim_out_' + tag + '_summary.txt'
 
 num_samples = num_samples_par + num_samples_cer + num_samples_bay
 mu = 1.84 * 10 ** -10
 theta = mu * 2 * num_sites * N0
 
-class Species(Enum):
-    cer = 'cer'
-    par = 'par'
-    bay = 'bay'
-    unk = 'idk'
-
-index_to_species = [Species.cer] * num_species_cer + \
-    [Species.par] * num_species_par + \
-    [Species.bay] * num_species_bay
+index_to_species = [gp.Species.cer] * num_samples_cer + \
+    [gp.Species.par] * num_samples_par + \
+    [gp.Species.bay] * num_samples_bay
 
 # take first index from each population to be reference sequence
 ref_ind_cer = 0
@@ -32,7 +25,7 @@ ref_ind_bay = None
 if include_bay:
     ref_ind_bay = num_samples_cer + num_samples_par
 
-species_to_predict = Species.cer
+species_to_predict = gp.Species.cer
 
 
 #####
@@ -48,13 +41,6 @@ fraction_correct_all = [[] for i in range(num_reps)]
 fraction_introgressed_correct_all = [[] for i in range(num_reps)]
 
 predicted_lens_all = [[] for i in range(num_reps)]
-
-# success of windowed id predictions
-fraction_correct_all_window = [[] for i in range(num_reps)]
-
-fraction_introgressed_correct_all_window = [[] for i in range(num_reps)]
-
-predicted_lens_all_window = [[] for i in range(num_reps)]
 
 # actual lengths don't depend on prediction strategy
 actual_lens_all = [[] for i in range(num_reps)]
@@ -74,21 +60,17 @@ concordant = [[] for n in range(num_reps)]
 
 prob_topological_concordance = 0
 
-# windows for looking for introgressed sequence
-window_size = 1000
-window_shift = 500
-
 # symbol codings
 # 0    1       2       3          4    5       6    7
 # cer, cerpar, cerbay, cerparbay, par, parbay, bay, none
 #hmm_symbol = {'cer':0, 'cerpar':1, 'cerbay':2, 'cerparbay':3, 'par':4, 'parbay':5, 'bay':6, 'none':7}
 
-hmm_symbols = []
-individual_symbols = ['+', '-', '?']
-for c in individual_symbols:
-    for p in individual_symbols:
-        for b in individual_symbols:
-            hmm_symbols.append(c + p + b)
+#hmm_symbols = []
+#individual_symbols = ['+', '-', '?']
+#for c in individual_symbols:
+#    for p in individual_symbols:
+#        for b in individual_symbols:
+#            hmm_symbols.append(c + p + b)
 
 fill_symbol = '0'
 unsequenced_symbol = 'N'
@@ -97,29 +79,29 @@ mismatch_symbol = '-'
 unknown_symbol = '?'
 
 
-introgressed_states = [Species.cer, Species.par]
+introgressed_states = [gp.Species.cer, gp.Species.par]
 ref_inds = [ref_ind_cer, ref_ind_par]
 if include_bay:
-    introgressed_states.append(Species.bay)
+    introgressed_states.append(gp.Species.bay)
     ref_inds.append(ref_ind_bay)
 elif include_unk:
-    introgressed_states.append(Species.unk)
+    introgressed_states.append(gp.Species.unk)
 
 #####
 # loop through all reps
 #####
 
-outdir = '../../results/sim/'
-outfilename = 'sim_out_' + tag + '.txt'
-results_filename = 'sim_out_' + tag + '_summary.txt'
+gp_dir = '../'
+outfilename = gp.sim_out_prefix + tag + '.txt'
+results_filename = gp.sim_out_prefix + tag + '_summary.txt'
 
 # write results headers
-fout = open(outdir + results_filename, 'w')
-output_dic = make_output_dic(Species, species_to_predict)
+fout = open(gp_dir + gp.sim_out_dir + results_filename, 'w')
+output_dic = make_output_dic(introgressed_states, species_to_predict)
 write_output_line(fout, output_dic, True)
 
 # results files for tracts predicted to be and actually introgressed
-f_tracts_predicted = open(outdir + 'sim_out_' + tag + '_introgressed_tracts_predicted.txt', 'w')
+f_tracts_predicted = open(g;outdir + 'sim_out_' + tag + '_introgressed_tracts_predicted.txt', 'w')
 f_tracts_actual = open(outdir + 'sim_out_' + tag + '_introgressed_tracts_actual.txt', 'w')
 
 prob_topological_concordance = -1
@@ -151,16 +133,17 @@ while line != '' and n < num_reps:
         # read in results from next simulation
         #####
 
-        trees, recomb_sites, segsites, positions, seqs = read_sim(f)
+        trees, recomb_sites, segsites, positions, seqs = read_sim(f, num_sites, num_samples)
+        assert len(positions) == segsites
 
         #####
         # fill in nonpolymorphic sites in sequences, and code for HMM
         # predictions
         #####
 
-        seqs_filled = fill_seqs(seqs, segsites, num_sites, fill_symbol)
+        seqs_filled = fill_seqs(seqs, positions, num_sites, fill_symbol)
         ref_seqs = [seqs_filled[x] for x in ref_inds]
-        seqs_coded = code_seqs(seqs_filled, segsites, num_sites, ref_seqs, \
+        seqs_coded = code_seqs(seqs_filled, positions, num_sites, ref_seqs, \
                                    match_symbol, mismatch_symbol, unknown_symbol, unsequenced_symbol)
         
         ########
@@ -174,7 +157,7 @@ while line != '' and n < num_reps:
         # stuff to keep track of
         concordant = []
         num_lineages_at_join = []
-        num_introgressed = []
+        num_introgressed = [0] * num_samples
         # loop through the trees for all blocks with no recombination
         # within them
         for ti in range(len(trees)):
@@ -185,25 +168,24 @@ while line != '' and n < num_reps:
             
             # keep track of how often gene tree is concordant with
             # species tree, by whatever definition we're interested in
-            if is_concordant(t, index_to_species):
+            if is_concordant(t, index_to_species, species_to_predict):
                 concordant.append(True)
             else:
                 concordant.append(False)
-            
             # identify cerevisiae sequences that are introgressed from
             # paradoxus or bayanus, based on coalescent tree; return
             # result for all individuals (not just cerevisiae) to
             # simplify indexing and allow flexibility later on
             introgressed = None
-            if include_bayanus:
+            if include_bay:
                 # TODO finish this function 
                 introgressed = find_introgressed_3(t, t_par_cer, t_bay_par_cer, \
-                                                       Species.cer, Species.par, \
-                                                       Species.bay, index_to_species)
+                                                       gp.Species.cer, gp.Species.par, \
+                                                       gp.Species.bay, index_to_species)
             else:
                 # introgressed is a list of species
                 t_state_seqs, t_num_lineages = find_introgressed_2(t, t_par_cer, \
-                                                                       Species.cer, Species.par, \
+                                                                       gp.Species.cer, gp.Species.par, \
                                                                        index_to_species)
 
             # number of lineages that were present when all
@@ -217,12 +199,17 @@ while line != '' and n < num_reps:
             # the length of the block to the total number of
             # introgressed sites across all strains; also update the
             # state sequence
-            for i in range(len(num_samples)):
+            for i in range(num_samples):
                 if t_state_seqs[i] != index_to_species[i]:
                     num_introgressed[i] += num_sites_t
                 actual_state_seq[i] += [t_state_seqs[i]] * num_sites_t
 
-        d['num_introgressed_bases_actual_' + species_to_predict] = num_introgressed
+        num_introgressed_species_to_predict = []
+        for i in range(num_samples):
+            if index_to_species[i] == species_to_predict:
+                num_introgressed_species_to_predict.append(num_introgressed[i])
+        output_dic = update_value(output_dic, 'num_introgressed_bases_actual_' + species_to_predict, 
+                                  num_introgressed_species_to_predict)
                 
         ########
         # predict whether each site in each cer strain is
@@ -235,11 +222,14 @@ while line != '' and n < num_reps:
         # we wanted to predict introgression, the entry is None; for
         # other indices, the entry is a list of predicted species at
         # each position
+
         predicted, hmm = predict_introgressed_hmm(seqs_coded, species_to_predict, \
                                                       index_to_species, \
                                                       introgressed_states, \
                                                       match_symbol, mismatch_symbol, \
-                                                      unknown_symbol)
+                                                      unknown_symbol, \
+                                                      gp.expected_length_introgressed, \
+                                                      gp.expected_num_introgressed_tracts)
 
         num_predicted_introgressed = []
         for i in range(num_samples):
@@ -249,68 +239,82 @@ while line != '' and n < num_reps:
                     # this adds one if introgressed (true is 1, false is 0)
                     x += (predicted[i][j] != species_to_predict)
                 num_predicted_introgressed.append(x)
-        output_dic['num_introgressed_bases_predicted_' + species_to_predict] = num_predicted_introgressed
+        output_dic = update_value(output_dic, 'num_introgressed_bases_predicted_' + species_to_predict, num_predicted_introgressed)
 
         num_correct, num_introgressed_correct, actual_lens, predicted_lens, \
             num_predicted_tracts_actual, num_actual_tracts_predicted, \
             num_introgressed_tracts, num_not_introgressed_tracts, \
             num_predicted_introgressed_tracts, num_predicted_not_introgressed_tracts = \
-            evaluate_predicted(predicted, actual_state_seq[num_samples_par:])
-        d['num_bases_correct_' + species_to_predict] = num_correct 
+            evaluate_predicted(predicted, actual_state_seq, \
+                                   index_to_species, species_to_predict)
+        output_dic = update_value(output_dic, 'num_bases_correct_' + species_to_predict, num_correct)
+
         # true positives
-        d['num_actual_introgressed_bases_predicted_' + species_to_predict] = num_introgressed_correct
+        output_dic = update_value(output_dic, 'num_actual_introgressed_bases_predicted_' + species_to_predict, \
+                                      num_introgressed_correct)
 
 
+        ### tracts
         blocks_predicted, blocks_actual = \
-            evaluate_predicted_blocks(predicted, actual_state_seq[num_samples_par:])
+            evaluate_predicted_blocks(predicted, actual_state_seq, \
+                                          index_to_species, species_to_predict)
         
         # positives
-        d['num_introgressed_tracts_actual_' + species_to_predict] = \
-            count_blocks(blocks_actual, species_to_predict, ['positive'])
+        output_dic = update_value(output_dic, 'num_introgressed_tracts_actual_' + species_to_predict, \
+                                      count_blocks(blocks_actual, species_to_predict, ['positive']))
 
         # negatives
-        d['num_not_introgressed_tracts_actual_' + species_to_predict] = \
-            count_blocks(blocks_actual, species_to_predict, ['negative'])
+        output_dic = update_value(output_dic, 'num_not_introgressed_tracts_actual_' + species_to_predict, \
+                                      count_blocks(blocks_actual, species_to_predict, ['negative']))
 
         # predicted positives
-        d['num_introgressed_tracts_predicted_' + species_to_predict] = \
-            count_blocks(blocks_predicted, species_to_predict, ['positive'])
+        output_dic = update_value(output_dic, 'num_introgressed_tracts_predicted_' + species_to_predict, \
+                                      count_blocks(blocks_predicted, species_to_predict, ['positive']))
 
         # predicted negatives
-        d['num_not_introgressed_tracts_predicted_' + species_to_predict] = \
-            count_blocks(blocks_predicted, species_to_predict, ['negative'])
+        output_dic = update_value(output_dic, 'num_not_introgressed_tracts_predicted_' + species_to_predict, \
+                                      count_blocks(blocks_predicted, species_to_predict, ['negative']))
 
         # true positives (number of actual that tracts overlap with
         # predicted introgressed block)
-        d['num_actual_introgressed_tracts_predicted_' + species_to_predict] = \
-            count_blocks(blocks_actual, species_to_predict, ['true', 'positive'])
+        output_dic = update_value(output_dic, 'num_actual_introgressed_tracts_predicted_' + species_to_predict, \
+                                      count_blocks(blocks_actual, species_to_predict, ['true', 'positive']))
 
         # false positives (number of predicted tracts that don't
         # overlap with actually introgressed block)
-        d['num_predicted_introgressed_tracts_not_actual_' + species_to_predict] = \
-            count_blocks(blocks_predicted, species_to_predict, ['false', 'positive'])
+        output_dic = update_value(output_dic, 'num_predicted_introgressed_tracts_not_actual_' + species_to_predict, \
+                                      count_blocks(blocks_predicted, species_to_predict, ['false', 'positive']))
 
-        d['introgressed_tract_lengths_actual_' + species_to_predict] = \
-            [b[2] for b in filter(lambda x: x != species_to_predict, blocks_actual)]
-        d['introgressed_tract_lengths_predicted_' + species_to_predict] = \
-            [b[2] for b in filter(lambda x: x != species_to_predict, blocks_predicted)]
+        # tract lengths, actual and predicted
+        output_dic = update_value(output_dic, 'introgressed_tract_lengths_actual_' + species_to_predict, \
+                                      [b[2] for b in filter(lambda x: x != species_to_predict, blocks_actual)])
+        output_dic = update_value(output_dic, 'introgressed_tract_lengths_predicted_' + species_to_predict, \
+                                      [b[2] for b in filter(lambda x: x != species_to_predict, blocks_predicted)])
 
         # HMM parameters
         for i in range(len(introgressed_states)):
-            d['init_' + introgressed_states[i]] = hmm.emis[i]
+            output_dic = update_value(output_dic, 'init_' + introgressed_states[i], hmm.emis[i])
             
         for i in range(len(introgressed_states)):
             for j in range(len(introgressed_states)):
-                d['trans_' + introgressed_states[i] + '_' + introgressed_states[j]] = \
-                    hmm.trans[i][j]
+                output_dic = update_value(output_dic, 'trans_' + introgressed_states[i] + '_' + introgressed_states[j], \
+                                              hmm.trans[i][j])
 
-        for i in range(len(species)):
-            to_states = species
-            if unknown_state != None:
-                to_states.append(unknown_state)
-            for j in range(to_states):
-                d['emis_' + species[i] + '_' + species[j]] = hmm.emis[i][j]
-
+        # so here emis_cer_par is going to be the probability that cer
+        # state emits symbol that matches par, so *+; note that these
+        # don't have to add to 1 (introgressed_states includes unknown
+        # if appropriate)
+        for i in range(len(introgressed_states)):
+            to_states = introgressed_states
+            # TODO deal with unknown state? not here really but not to
+            # treat it like the other states in the hmm
+            for j in range(len(introgressed_states)):
+                total = 0
+                for s in hmm.emis[i].keys():
+                    if s[j] == match_symbol:
+                        total += hmm.emis[i][s]
+                output_dic = update_value(output_dic, 'emis_'  + introgressed_states[i] + '_' + \
+                                              to_states[j], total)
 
         ########
         # predict whether each site in each cer strain is
@@ -327,15 +331,15 @@ while line != '' and n < num_reps:
         s = seq_id(seqs_coded, index_to_species, introgressed_states)
         for i in range(len(introgressed_states)):
             for j in range(i, len(introgressed_states)):
-                d['avg_identity_' + \
-                      introgressed_states[i] + '_' + introgressed_states[j]] = \
-                      s[i][j]
+                output_dic = update_value(output_dic, \
+                                              'avg_identity_' + introgressed_states[i] + '_' + introgressed_states[j], \
+                                              s[i][j])
 
         #####
         # write results to file
         #####
 
-        write_output_line(fout, d, False)
+        write_output_line(fout, output_dic, False)
 
         
 
@@ -344,18 +348,14 @@ while line != '' and n < num_reps:
         sys.stdout.flush()
 
         for b in blocks_predicted:
-            f_blocks_predicted.write(str(n) + ' ' +  ' '.join([str(x) for x in b]) + '\n')
+            f_tracts_predicted.write(str(n) + ' ' +  ' '.join([str(x) for x in b]) + '\n')
         for b in blocks_actual:
-            f_blocks_actual.write(str(n) + ' ' + ' '.join([str(x) for x in b]) + '\n')
-        for b in blocks_predicted_window:
-            f_blocks_predicted_window.write(str(n) + ' ' + ' '.join([str(x) for x in b]) + '\n')
-        for b in blocks_actual_window:
-            f_blocks_actual_window.write(str(n) + ' ' + ' '.join([str(x) for x in b]) + '\n')
+            f_tracts_actual.write(str(n) + ' ' + ' '.join([str(x) for x in b]) + '\n')
 
-        f_blocks_predicted.flush()
-        f_blocks_actual.flush()
-        f_blocks_predicted_window.flush()
-        f_blocks_actual_window.flush()
+        f_tracts_predicted.flush()
+        f_tracts_actual.flush()
+
+        print 'DONE'
 
         n += 1
 
@@ -364,9 +364,7 @@ while line != '' and n < num_reps:
 
 f.close()
 fout.close()
-f_blocks_predicted.close()
-f_blocks_actual.close()
-f_blocks_predicted_window.close()
-f_blocks_actual_window.close()
+f_tracts_predicted.close()
+f_tracts_actual.close()
 
 

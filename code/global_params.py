@@ -1,3 +1,20 @@
+# TODO migrate the sim args file into here and create a script that
+# converts values in here to that file
+
+#====
+# biological parameters
+#====
+
+
+class Species:
+    cer = 'cer'
+    par = 'par'
+    bay = 'bay'
+    unk = 'idk'
+
+# TODO calculate this from model expectations or something?
+expected_length_introgressed = {Species.cer:-1, Species.par:100}
+expected_num_introgressed_tracts = {Species.cer:-1, Species.par:1}
 
 #====
 # file extensions
@@ -55,7 +72,7 @@ resume_alignment = True
 # simulations
 #====
 
-# output directory for simulations
+# output directory for simulpations
 sim_out_dir = '../../results/sim/'
 
 # prefix for simulation output
