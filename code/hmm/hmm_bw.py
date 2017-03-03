@@ -302,7 +302,7 @@ class HMM:
           # Markov process was at state j at time t
           alpha = []
           for seq in range(len(self.obs)):
-               print seq
+
                alpha_current = [[]]
                for s in xrange(len(self.states)):
                     emis = elog(self.emis[s][self.obs[seq][0]])

@@ -5,16 +5,7 @@
 # biological parameters
 #====
 
-
-class Species:
-    cer = 'cer'
-    par = 'par'
-    bay = 'bay'
-    unk = 'idk'
-
-# TODO calculate this from model expectations or something?
-expected_length_introgressed = {Species.cer:-1, Species.par:100}
-expected_num_introgressed_tracts = {Species.cer:-1, Species.par:1}
+mu = 1.84 * 10 ** -10
 
 #====
 # file extensions
@@ -73,7 +64,7 @@ resume_alignment = True
 #====
 
 # output directory for simulpations
-sim_out_dir = '../../results/sim/'
+sim_out_dir = '../results/sim/'
 
 # prefix for simulation output
 sim_out_prefix = 'sim_out_'

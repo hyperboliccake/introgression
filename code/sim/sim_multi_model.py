@@ -1,4 +1,6 @@
 # Run ms coalescent simulations under a variety of demographic models
+# (actually, just continuous migration, after the last divergence, for
+# now) 
 
 # aiming for ~89% sequence id b/t cer and par and ~99.5% within cer
 
@@ -9,17 +11,17 @@ sys.path.insert(0, '..')
 import global_params as gp
 
 
-tag, model, N0, include_bay, include_unk,\
-        num_samples_cer, num_samples_par, num_samples_bay,\
-        par_cer_migration, bay_cer_migration,\
-        t_cer_par, t_cer_bar_bay,\
-        num_sites, rho, theta, outcross_rate, num_reps = \
-        sim_analyze_hmm_bw.process_args(sys.argv)
+tag, topology, species_to, species_from1, species_from2, \
+    num_samples_species_to, num_samples_species_from1, num_samples_species_from2, \
+    N0_species_to, N0_species_from1, N0_species_from2, \
+    migration_from1, migration_from2, \
+    expected_length_introgressed, \
+    expected_num_introgressed_tracts, \
+    has_ref_from1, has_ref_from2, \
+    rho, outcross_rate, theta, num_sites, num_reps = \
+    sim_analyze_hmm_bw.process_args(sys.argv)
 
-num_samples = num_samples_cer + num_samples_par + num_samples_bay
-
-# TODO? make a script that generates param files based on args given
-# in global param file
+num_samples = num_samples_species_to + num_samples_species_from1 + num_samples_species_from2
 
 outfilename = gp.sim_out_prefix + tag + gp.sim_out_suffix
 
@@ -29,36 +31,52 @@ outfilename = gp.sim_out_prefix + tag + gp.sim_out_suffix
 ms_command = \
     gp.ms_install_path + '/ms ' + str(num_samples) + ' ' + str(num_reps) + \
     ' -t ' + str(theta) + \
-    ' -r ' + str(rho) + ' ' + str(num_sites) + \
-    ' -I 2 ' + str(num_samples_cer) + ' ' + str(num_samples_par)
+    ' -r ' + str(rho) + ' ' + str(num_sites)
 
-
-# introgression happens continuously from par to cer between the
-# present and t_cer_par (joining of par and cer lineages)
-if model == 'C':
+# 2 species
+if species_from2 == None:
+    join_time = topology[2]
     ms_command += \
-        ' -m 1 2 ' + str(par_cer_migration) + \
-        ' -em ' + str(t_cer_par) + ' 1 2 0' # this is probably implied
-
-# introgression happens in one pulse, at some time before t_cer_par
-# specified by the number after D
-elif model[0] == 'I':
-    # time of pulse of migration
-    t_mig = float(model[1:])
-    # pulse of migration for 1 generation of time
-    par_cer_migration *= t_cer_par * 2 * N0 # need to scale by 2 N0
+        ' -I 2 ' + str(num_samples_species_to) + ' ' + str(num_samples_species_from1)
     ms_command += \
-        ' -em ' + str(t_mig / (2.0 * N0)) + ' 1 2 ' + str(par_cer_migration) + \
-        ' -em ' + str((t_mig + 1) / (2.0 * N0)) + ' 1 2 0'
+        ' -m 1 2 ' + str(migration_from1) + \
+        ' -em ' + str(join_time) + ' 1 2 0' # this is probably implied
+    ms_command += \
+        ' -ej ' + str(join_time) + ' 1 2'
 
-# fail
+# 3 species
 else:
-    print 'incorrect model selection'
-    sys.exit()
+    if type(topology[0]) != type([]):
+        left = topology[0]
+        topology[0] = topology[1]
+        topology[1] = left
+    most_recent_join_time = topology[0][2]
+    least_recent_join_time = topology[2]
+    last_to_join = topology[1]
+    first_to_join1 = topology[0][0]
+    first_to_join2 = topology[0][1]
 
-ms_command += \
-    ' -ej ' + str(t_cer_par) + ' 1 2' + \
-    ' -T > ' + gp.sim_out_dir + '/' + outfilename
+    label = {species_to:'1', species_from1:'2', species_from2:'3'}
+
+    # note that we need to keep the species in the order to, from1,
+    # from2 (because we're assuming this is true in the analysis)
+    ms_command += ' -I 3 ' + str(num_samples_species_to) + ' ' + \
+        str(num_samples_species_from1) + ' ' + str(num_samples_species_from2)
+
+    ms_command += \
+        ' -m 1 2 ' + str(migration_from1) + \
+        ' -m 1 3 ' + str(migration_from2) + \
+        ' -em ' + str(most_recent_join_time) + ' 1 2 0' + \
+        ' -em ' + str(most_recent_join_time) + ' 1 3 0'
+
+    ms_command += \
+        ' -ej ' + str(most_recent_join_time) + ' ' + \
+        label[first_to_join2] + ' ' + label[first_to_join1]
+    ms_command += \
+        ' -ej ' + str(least_recent_join_time) + ' ' + \
+        label[last_to_join] + ' ' + label[first_to_join1]
+
+ms_command += ' -T > ' + gp.sim_out_dir + '/' + outfilename
 
 print(ms_command)
 os.system(ms_command)

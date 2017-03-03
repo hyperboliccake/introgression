@@ -49,6 +49,8 @@ def split(t, cutoff_time):
 
 # return list of lineages that exist at given time
 def get_labels(t):
+    if type(t) != type([]):
+        return [t]
     if len(t) == 2:
         return [t[0]]
     return get_labels(t[0]) + get_labels(t[1])
@@ -59,8 +61,8 @@ def is_partial_clade(t, species, index_to_species):
     labels = get_labels(t)
     for l in labels:
         if index_to_species[l] != species:
-            return False
-    return True
+            return False, index_to_species[l]
+    return True, species
 
 # checks whether t consists _only_ of labels in A or _only_ of
 # labels not in A
@@ -159,7 +161,8 @@ def sort_recursively(a):
 def equivalent_topologies(a, b):
     return sort_recursively(a) == sort_recursively(b)
 
-# returns true if species is monophyletic
+# returns true if species is monophyletic (regardless of how many
+# other species there are)
 def is_concordant(t, index_to_species, species):
     species_indices = []
     for i in range(len(index_to_species)):
