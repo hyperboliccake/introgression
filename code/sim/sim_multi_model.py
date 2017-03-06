@@ -2,7 +2,8 @@
 # (actually, just continuous migration, after the last divergence, for
 # now) 
 
-# aiming for ~89% sequence id b/t cer and par and ~99.5% within cer
+# aiming for ~89% sequence id b/t cer and par and ~99.5% within cer,
+# and ~70% between cer and bay (?)
 
 import os
 import sys
@@ -23,6 +24,7 @@ tag, topology, species_to, species_from1, species_from2, \
 
 num_samples = num_samples_species_to + num_samples_species_from1 + num_samples_species_from2
 
+gp_dir = '../'
 outfilename = gp.sim_out_prefix + tag + gp.sim_out_suffix
 
 # start of ms command
@@ -76,7 +78,7 @@ else:
         ' -ej ' + str(least_recent_join_time) + ' ' + \
         label[last_to_join] + ' ' + label[first_to_join1]
 
-ms_command += ' -T > ' + gp.sim_out_dir + '/' + outfilename
+ms_command += ' -T > ' + gp_dir + gp.sim_out_dir + '/' + outfilename
 
 print(ms_command)
 os.system(ms_command)

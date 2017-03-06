@@ -70,8 +70,9 @@ def process_args(l):
     i += 1
     N0_species_from1 = int(sys.argv[i])
     i += 1
-    migration_from1 = float(sys.argv[i])
+    migration_from1 = float(sys.argv[i]) * 2 * N0_species_from1
     i += 1
+    print 'migration', migration_from1
     expected_tract_lengths[species_from1] = float(sys.argv[i])
     i += 1
     expected_num_tracts[species_from1] = int(sys.argv[i])
@@ -92,7 +93,7 @@ def process_args(l):
         i += 1
         N0_species_from2 = int(sys.argv[i])
         i += 1
-        migration_from2 = float(sys.argv[i])
+        migration_from2 = float(sys.argv[i]) * 2 * N0_species_from2
         i += 1
         expected_tract_lengths[species_from2] = float(sys.argv[i])
         i += 1
@@ -127,16 +128,19 @@ def process_args(l):
     # parameter is recombination rate between adjacent bp per generation
     # should probably be 1/750000 + 6.1 * 10^-6 (where 750000 is average
     # chr size)
+    print 'recomb rate', float(sys.argv[i])
     rho = 2 * N0_species_to * float(sys.argv[i]) * (num_sites - 1)
     i += 1
 
     outcross_rate = float(sys.argv[i])
     i += 1
     
+    print 'outcross rate', outcross_rate
     rho *= outcross_rate
+    print 'rho', rho
 
-    # estimate from humans
     theta = gp.mu * 2 * num_sites * N0_species_to
+    print 'theta', theta
 
     num_reps = int(sys.argv[i])
     
@@ -367,7 +371,7 @@ def initial_probabilities(states, weighted_match_freqs, match_symbol, \
 # unlike for other parameters, calculate probabilities from the
 # appropriate species sequences instead of just the one being
 # predicted
-def emission_probabilities(states, d_freqs, match_symbol, mismatch_symbol, own_bias):
+def emission_probabilities(states, unknown_species, d_freqs, match_symbol, mismatch_symbol, own_bias):
     # idea is to assign emission probabilities dependant on frequency
     # of symbols; so if we want to get prob of par emitting ++- (cer
     # par bay), then we take frequency of ++-, multiplied by own_bias
@@ -381,13 +385,22 @@ def emission_probabilities(states, d_freqs, match_symbol, mismatch_symbol, own_b
         individual_symbol_freqs, symbol_freqs, weighted_match_freqs = d_freqs[states[i]]
         for symbol in symbol_freqs.keys():
             p = symbol_freqs[symbol]
-            if symbol[i] == match_symbol:
+            if states[i] == unknown_species:
+                # treat ? as - for now
+                if match_symbol in symbol:
+                    p *= (1 - own_bias)
+                else:
+                    p *= own_bias
+            elif symbol[i] == match_symbol:
                 p *= own_bias
-            elif symbol[i] == mismatch_symbol:
+            else: #symbol[i] == mismatch_symbol:
                 p *= (1 - own_bias)
-            else:
-                p *= ((own_bias) * individual_symbol_freqs[i][match_symbol] + \
-                          (1 - own_bias) * individual_symbol_freqs[i][mismatch_symbol])
+            # maybe this kind of guessing for '?' is worth doing? but
+            # should probably also do it for the initial/transition
+            # probabilities as well if doing it here
+            #else:
+            #    p *= ((own_bias) * individual_symbol_freqs[i][match_symbol] + \
+            #              (1 - own_bias) * individual_symbol_freqs[i][mismatch_symbol])
             emis_species[symbol] = p
         norm = float(sum(emis_species.values()))
         for symbol in emis_species:
@@ -395,8 +408,10 @@ def emission_probabilities(states, d_freqs, match_symbol, mismatch_symbol, own_b
         emis.append(emis_species)
     return emis
 
-def transition_probalities(expected_length_introgressed, expected_num_introgressed_tracts, \
-                               predict_species, num_bases, symbol_freqs, weighted_match_freqs):
+def transition_probalities(expected_length_introgressed, \
+                               expected_num_introgressed_tracts, \
+                               predict_species, num_bases, \
+                               weighted_match_freqs):
 
     ##states_not_predict = states
     ##states_not_predict.remove(predict_species)
@@ -444,9 +459,12 @@ def transition_probalities(expected_length_introgressed, expected_num_introgress
     expected_length_not_introgressed = float(expected_num_not_introgressed_bases) / \
         expected_num_not_introgressed_tracts
     
-    assert expected_num_not_introgressed_tracts >= 0, expected_num_not_introgressed_tracts
-    assert expected_num_not_introgressed_bases >= 0, expected_num_not_introgressed_bases
-    assert expected_length_not_introgressed >= 0, expected_length_not_introgressed
+    assert expected_num_not_introgressed_tracts >= 0, \
+        expected_num_not_introgressed_tracts
+    assert expected_num_not_introgressed_bases >= 0, \
+        expected_num_not_introgressed_bases
+    assert expected_length_not_introgressed >= 0, \
+        expected_length_not_introgressed
 
     # fraction of time we should choose given species state over
     # others based on number of sites that match it
@@ -493,7 +511,8 @@ def transition_probalities(expected_length_introgressed, expected_num_introgress
 
     return trans
 
-def get_symbol_freqs(states, index_to_species, seqs, match_symbol, mismatch_symbol, unknown_symbol):
+def get_symbol_freqs(states, index_to_species, seqs, unknown_species, \
+                         match_symbol, mismatch_symbol, unknown_symbol):
 
     # for each species/state set of sequences calculate: the
     # frequencies of individuals symbols for each species, the
@@ -505,10 +524,17 @@ def get_symbol_freqs(states, index_to_species, seqs, match_symbol, mismatch_symb
         for i in range(len(seqs)):
             if index_to_species[i] == state:
                 seqs_current.append(seqs[i])
-        d[state] = get_symbol_freqs_one(states, seqs_current, match_symbol, mismatch_symbol, unknown_symbol)
+        d[state] = get_symbol_freqs_one(states, seqs_current, unknown_species, \
+                                            match_symbol, mismatch_symbol, \
+                                            unknown_symbol)
     return d
 
-def get_symbol_freqs_one(states, seqs, match_symbol, mismatch_symbol, unknown_symbol):
+def get_symbol_freqs_one(states, seqs, unknown_species, \
+                             match_symbol, mismatch_symbol, unknown_symbol):
+
+    known_states = copy.deepcopy(states)
+    if unknown_species != None:
+        known_states.remove(unknown_species)
 
     # for a single species
 
@@ -517,7 +543,7 @@ def get_symbol_freqs_one(states, seqs, match_symbol, mismatch_symbol, unknown_sy
 
     # for species a(0): +, -; species b(1): +, -...etc
     individual_symbol_freqs = []
-    for i in range(len(states)):
+    for i in range(len(known_states)):
         d_species = {}
         for symbol in known_symbols:
             num = 0
@@ -530,7 +556,7 @@ def get_symbol_freqs_one(states, seqs, match_symbol, mismatch_symbol, unknown_sy
         individual_symbol_freqs.append(d_species)
 
     # for +++, ++-, +-+, etc
-    symbol_combinations = [''.join(x) for x in list(itertools.product(symbols, repeat=len(states)))]
+    symbol_combinations = [''.join(x) for x in list(itertools.product(symbols, repeat=len(known_states)))]
     symbol_freqs = dict(zip(symbol_combinations, [0]*len(symbol_combinations)))
     for symbol in symbol_freqs.keys():
         num = 0
@@ -544,7 +570,7 @@ def get_symbol_freqs_one(states, seqs, match_symbol, mismatch_symbol, unknown_sy
     # each get 1/2 pt, +++ gets 1/3 pt [treat ? like -] etc
     weighted_match_freqs = {}
     total = 0
-    for i in range(len(states)):
+    for i in range(len(known_states)):
         current = 0
         keep_symbols = [] # for first species +**
         weights = []
@@ -555,9 +581,21 @@ def get_symbol_freqs_one(states, seqs, match_symbol, mismatch_symbol, unknown_sy
         for seq in seqs:
             for j in range(len(keep_symbols)):
                 current += seq.count(keep_symbols[j]) * weights[j]
-        weighted_match_freqs[states[i]] = current
+        weighted_match_freqs[known_states[i]] = current
         total += current
-        
+
+    # for unknown species 1 pt for --- only (or ?)
+    current = 0
+    keep_symbols = []
+    for s in symbol_combinations:
+        if match_symbol not in s:
+            keep_symbols.append(s)
+    for seq in seqs:
+        for j in range(len(keep_symbols)):
+            current += seq.count(keep_symbols[j])
+    weighted_match_freqs[unknown_species] = current
+    total += current
+    
     for state in weighted_match_freqs:
         # total can only be zero if no species has matches
         weighted_match_freqs[state] /= float(total)
@@ -570,7 +608,16 @@ def convert_predictions(path, states):
         new_path.append(states[p])
     return new_path
 
-def predict_introgressed_hmm(seqs, predict_species, index_to_species, states, match_symbol, mismatch_symbol, unknown_symbol, expected_length_introgressed, expected_num_introgressed_tracts):
+def predict_introgressed_hmm(seqs, predict_species, index_to_species, states, \
+                                 unknown_species, \
+                                 match_symbol, mismatch_symbol, unknown_symbol, \
+                                 expected_length_introgressed, \
+                                 expected_num_introgressed_tracts):
+
+    if unknown_species != None:
+        assert len(seqs[0][0]) == len(states) - 1
+        assert set(index_to_species) == set(states), str(set(index_to_species)) + ' ' + str(states)
+        assert unknown_species == states[-1]
 
     seqs_to_predict = []
     seqs_to_predict_inds = []
@@ -583,9 +630,11 @@ def predict_introgressed_hmm(seqs, predict_species, index_to_species, states, ma
             seqs_to_predict_inds.append(i)
 
     d_freqs = get_symbol_freqs(\
-        states, index_to_species, seqs, match_symbol, mismatch_symbol, unknown_symbol)
+        states, index_to_species, seqs, unknown_species, \
+            match_symbol, mismatch_symbol, unknown_symbol)
 
-    individual_symbol_freqs, symbol_freqs, weighted_match_freqs = d_freqs[predict_species]
+    individual_symbol_freqs, symbol_freqs, weighted_match_freqs = \
+        d_freqs[predict_species]
 
     for s in symbol_freqs:
         print s, symbol_freqs[s]
@@ -600,17 +649,18 @@ def predict_introgressed_hmm(seqs, predict_species, index_to_species, states, ma
 
     # set init
     hmm.set_init(initial_probabilities(states, weighted_match_freqs, match_symbol, \
-                                           expected_length_introgressed, expected_num_introgressed_tracts, \
+                                           expected_length_introgressed, \
+                                           expected_num_introgressed_tracts, \
                                            len(seqs[0])))
 
     # set emis
-    hmm.set_emis(emission_probabilities(states, d_freqs, match_symbol, mismatch_symbol, .99))
+    hmm.set_emis(emission_probabilities(states, unknown_species, d_freqs, \
+                                            match_symbol, mismatch_symbol, .99))
 
     # set trans
     hmm.set_trans(transition_probalities(expected_length_introgressed, \
                                              expected_num_introgressed_tracts, \
                                              predict_species, len(seqs_to_predict[0]), \
-                                             symbol_freqs, \
                                              weighted_match_freqs))
 
     # Baum-Welch parameter estimation
@@ -628,56 +678,73 @@ def group_actual_predicted_bases(actual, predicted, states):
     # number of bases that fit into every category of actual x
     # predicted y for all x,y in states
 
+    # returns dictionary of lists (one entry per strain)
+
     d = {}
     for state_actual in states:
         for state_predicted in states:
-            d[(state_actual,state_predicted)] = 0
+            d[(state_actual,state_predicted)] = [0] * len(actual)
 
     for i in range(len(actual)):
         for j in range(len(actual[i])):
-            d[(actual[i][j], predicted[i][j])] += 1
+            d[(actual[i][j], predicted[i][j])][i] += 1
 
     return d
 
-def group_actual_predicted_blocks(blocks_actual, blocks_predicted, states):
+def group_actual_predicted_blocks(blocks_actual, blocks_predicted, states, num_samples):
     # each block entry is a list with four items: the species it was
     # predicted to be from, (dictionary of) the number of bases within
     # it that are actually from each species, the total block length,
     # and the index of the strain
+
+    # returns dictionaries of lists (one entry per strain)
     
     # first loop through actual blocks
     d_actual_predicted = {}
     d_actual_counts = {}
     for state_actual in states:
-        d_actual_counts[state_actual] = 0
+        # this is legit because species_to samples always come first 
+        d_actual_counts[state_actual] = [0] * num_samples
         for state_predicted in states:
-            d_actual_predicted[(state_actual,state_predicted)] = 0
+            d_actual_predicted[(state_actual,state_predicted)] = [0] * num_samples
 
     for b in range(len(blocks_actual)):
         state_actual = blocks_actual[b][0]
-        d_actual_counts[state_actual] += 1
+        sample_ind = blocks_actual[b][3]
+        d_actual_counts[state_actual][sample_ind] += 1
         for state_predicted in states:
             add = 0
             if blocks_actual[b][1][state_predicted] > 0:
                 add = 1
-            d_actual_predicted[(state_actual, state_predicted)] += add
+            d_actual_predicted[(state_actual, state_predicted)][sample_ind] += add
 
     # then loop through predicted blocks
     d_predicted_actual = {}
     d_predicted_counts = {}
     for state_predicted in states:
-        d_predicted_counts[state_predicted] = 0
+        d_predicted_counts[state_predicted] = [0] * num_samples
         for state_actual in states:
-            d_predicted_actual[(state_predicted,state_actual)] = 0
+            d_predicted_actual[(state_predicted,state_actual)] = [0] * num_samples
 
     for b in range(len(blocks_predicted)):
         state_predicted = blocks_predicted[b][0]
-        d_predicted_counts[state_predicted] += 1
+        sample_ind = blocks_predicted[b][3]
+        d_predicted_counts[state_predicted][sample_ind] += 1
         for state_actual in states:
             add = 0
             if blocks_predicted[b][1][state_actual] > 0:
                 add = 1
-            d_predicted_actual[(state_predicted, state_actual)] += add
+            d_predicted_actual[(state_predicted, state_actual)][sample_ind] += add
+
+    '''
+    # convert dictionaries to lists
+    for state in states:
+        d_actual_counts[state] = [d_actual_counts[state][x] for x in sorted(d_actual_counts[state].keys())]
+        d_predicted_counts[state] = [d_predicted_counts[state][x] for x in sorted(d_predicted_counts[state].keys())]
+    for key in d_actual_predicted.keys():
+        d_actual_predicted[key] = [d_actual_predicted[key][x] for x in sorted(d_actual_predicted[key].keys())]
+        d_predicted_actual[key] = [d_predicted_actual[key][x] for x in sorted(d_predicted_actual[key].keys())]
+    '''
 
     return d_actual_predicted, d_predicted_actual, d_actual_counts, d_predicted_counts
 

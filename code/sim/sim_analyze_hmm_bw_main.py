@@ -15,6 +15,7 @@ tag, topology, species_to, species_from1, species_from2, \
 
 num_samples = num_samples_species_to + num_samples_species_from1 + num_samples_species_from2
 
+# species_to always comes first
 index_to_species = [species_to] * num_samples_species_to + \
     [species_from1] * num_samples_species_from1 + \
     [species_from2] * num_samples_species_from2
@@ -36,27 +37,39 @@ unknown_symbol = '?'
 # take first index from each population to be reference sequence
 ref_ind_species_to = 0
 ref_ind_species_from1 = num_samples_species_to
-ref_ind_species_from2 = None
-ref_inds = [ref_ind_species_to, ref_ind_species_from1]
-
+ref_ind_species_from2 = num_samples_species_to + num_samples_species_from1
+ref_inds = [ref_ind_species_to]
 states = [species_to, species_from1]
-
+unknown_species = None
+if has_ref_from1:
+    ref_inds.append(ref_ind_species_from1)
+else:
+    unknown_species = species_from1
 if species_from2 != None:
-    ref_ind_species_from2 = num_samples_species_to + num_samples_species_from1
-    ref_inds.append(ref_ind_species_from2)
-
     states.append(species_from2)
+    if has_ref_from2:
+        ref_inds.append(ref_ind_species_from2)
+    else:
+        unknown_species = species_from2
+
+# if there are three species and the second is the species that has no
+# reference, flip the order of the states so that the species with no
+# reference always comes last; this will ensure that the indices of
+# the species in states correspond to the indices of the references
+# (and the sequence codings later)
+if species_from2 != None and not has_ref_from1:
+    states = states[0] + states[2] + states[1]
 
 #####
 # output files
 #####
 
 gp_dir = '../'
-outfilename = gp.sim_out_prefix + tag + '.txt'
-results_filename = gp.sim_out_prefix + tag + '_summary.txt'
+outfilename = gp_dir + gp.sim_out_dir +  gp.sim_out_prefix + tag + '.txt'
+results_filename = gp_dir + gp.sim_out_dir + gp.sim_out_prefix + tag + '_summary.txt'
 
 # write results headers
-fout = open(gp_dir + gp.sim_out_dir + results_filename, 'w')
+fout = open(results_filename, 'w')
 output_dic = make_output_dic(states, species_to)
 write_output_line(fout, output_dic, True)
 
@@ -89,7 +102,7 @@ if theory:
 # loop through all reps
 #####
 
-f = open(gp_dir + gp.sim_out_dir + outfilename, 'r')
+f = open(outfilename, 'r')
 line = f.readline()
 n = 0
 while line != '' and n < num_reps:
@@ -113,7 +126,8 @@ while line != '' and n < num_reps:
         # fill in the nonpolymorphic sites
         seqs_filled = fill_seqs(seqs, positions, num_sites, fill_symbol)
         ref_seqs = [seqs_filled[x] for x in ref_inds]
-        # convert from binary to symbols indicating which reference sequences each base matches
+        # convert from binary to symbols indicating which reference
+        # sequences each base matches
         print positions
         seqs_coded = code_seqs(seqs_filled, num_sites, ref_seqs, \
                                    match_symbol, mismatch_symbol, \
@@ -195,6 +209,7 @@ while line != '' and n < num_reps:
         predicted, hmm = predict_introgressed_hmm(seqs_coded, species_to, \
                                                       index_to_species, \
                                                       states, \
+                                                      unknown_species, \
                                                       match_symbol, mismatch_symbol, \
                                                       unknown_symbol, \
                                                       expected_length_introgressed, \
@@ -219,7 +234,7 @@ while line != '' and n < num_reps:
                                           species_to, states)
 
         d_actual_predicted, d_predicted_actual, d_actual_counts, d_predicted_counts = \
-            group_actual_predicted_blocks(blocks_actual, blocks_predicted, states)
+            group_actual_predicted_blocks(blocks_actual, blocks_predicted, states, num_samples_species_to)
         for group in d_actual_predicted:
             output_dic = update_value(output_dic, 'num_tracts_actual_' + group[0] + \
                                           '_predicted_' + group[1], \
@@ -234,7 +249,7 @@ while line != '' and n < num_reps:
             output_dic = update_value(output_dic, 'num_tracts_predicted_' + state, \
                                           d_predicted_counts[state])
 
-        # tract lengths, actual and predicted
+        # tract lengths, actual and predicted; list, not average
         for state in states:
             tract_lengths = [b[2] for b in filter(lambda x: x[0] == state, blocks_actual)]
             output_dic = update_value(output_dic, 'tract_lengths_actual_' + state, tract_lengths)
@@ -259,12 +274,14 @@ while line != '' and n < num_reps:
         # appropriate)
         for i in range(len(states)):
             to_states = states
-            # TODO deal with unknown state? not here really but not to
-            # treat it like the other states in the hmm
             for j in range(len(states)):
                 total = 0
                 for s in hmm.emis[i].keys():
-                    if s[j] == match_symbol:
+                    # for unknown state, include --- (as well as '?')
+                    if states[j] == unknown_species:
+                        if match_symbol not in s:
+                            total += hmm.emis[i][s]
+                    elif s[j] == match_symbol:
                         total += hmm.emis[i][s]
                 output_dic = update_value(output_dic, 'emis_'  + states[i] + '_' + \
                                               to_states[j], total)
