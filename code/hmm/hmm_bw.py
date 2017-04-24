@@ -72,7 +72,7 @@ class HMM:
      def set_obs(self, obs):
          
           # one sequence for Viterbi, or list of observed sequences
-          # for Baum-Welch
+          # for Baum-Welch; TODO maybe change this weirdness?
           self.obs = obs
 
      def set_init(self, init):
