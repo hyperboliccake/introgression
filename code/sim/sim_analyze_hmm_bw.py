@@ -1211,3 +1211,66 @@ def write_output_line(f, d, header_line):
         print item
         i += 1
     f.write(items[-1] + '\n')
+
+def average_hmm_params(init, emis, trans):
+    n = len(init)
+    num_states = len(init[0])
+
+    # init
+    init_avg = [0 for state in range(num_states)]
+    for i in range(n):
+        for state in range(num_states):
+            init_avg[state] += init[i][state]
+    for state in range(num_states):
+        init_avg[state] /= float(n)
+
+    # emis
+    emis_avg = [{} for state in range(num_states)]
+    for i in range(n):
+        for state in range(num_states):
+            for symbol in emis[i][state]:
+                if symbol not in emis_avg[state]:
+                    emis_avg[state][symbol] = 0
+                emis_avg[state][symbol] += emis[i][state][symbol]
+    for state in range(num_states):
+        for symbol in emis_avg[state]:
+            emis_avg[state][symbol] /= float(n)
+    
+    # trans
+    trans_avg = [[0 for state_to in range(num_states)] \
+                     for state_from in range(num_states)]
+    for i in range(n):
+        for state_from in range(num_states):
+            for state_to in range(num_states):
+                trans_avg[state_from][state_to] += trans[i][state_from][state_to]
+    for state_from in range(num_states):
+        for state_to in range(num_states):
+            trans_avg[state_from][state_to] /= float(n)
+        
+    return init_avg, emis_avg, trans_avg
+
+def write_hmm_params(init, emis, trans, states, unknown_state, fn):
+    f = open(fn, 'w')
+    # init
+    for i in range(len(states)):
+        f.write('init\t' + states[i] + '\t' + str(init[i]) + '\n')
+
+    # emis
+    refs = copy.deepcopy(states)
+    if unknown_state != None:
+        assert unknown_state == refs[-1]
+        refs = refs[:-1]
+    for i in range(len(states)):
+        for symbol in emis[i]:
+            f.write('emis\t' + states[i])
+            for j in range(len(refs)):
+                f.write('\t' + refs[j] + '\t' + symbol[j])
+            f.write('\t' + str(emis[i][symbol]) + '\n')
+    
+    # trans
+    for i in range(len(states)):
+        for j in range(len(states)):
+            f.write('trans\t' + states[i] + '\t' + states[j] + '\t' + \
+                        str(trans[i][j]) + '\n')
+
+    f.close()

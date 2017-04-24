@@ -21,14 +21,10 @@ index_to_species = [species_to] * num_samples_species_to + \
     [species_from2] * num_samples_species_from2
 
 #####
-# sequence and HMM symbols
+# sequence and HMM symbols (mostly moved to general_params)
 #####
 
 fill_symbol = '0'
-unsequenced_symbol = 'N'
-match_symbol = '+'
-mismatch_symbol = '-'
-unknown_symbol = '?'
 
 #####
 # reference sequences for each species and states
@@ -56,9 +52,20 @@ if species_from2 != None:
 # reference, flip the order of the states so that the species with no
 # reference always comes last; this will ensure that the indices of
 # the species in states correspond to the indices of the references
-# (and the sequence codings later)
-if species_from2 != None and not has_ref_from1:
-    states = states[0] + states[2] + states[1]
+# (and the sequence codings later); ACTUALLY just force the unknown
+# species to come last
+if species_from2 != None:
+    assert has_ref_from1
+#if species_from2 != None and not has_ref_from1:
+#    states = states[0] + states[2] + states[1]
+
+#####
+# keep track of HMM parameters to average at end
+#####
+
+init_all = []
+emis_all = []
+trans_all = []
 
 #####
 # output files
@@ -67,6 +74,7 @@ if species_from2 != None and not has_ref_from1:
 gp_dir = '../'
 outfilename = gp_dir + gp.sim_out_dir +  gp.sim_out_prefix + tag + '.txt'
 results_filename = gp_dir + gp.sim_out_dir + gp.sim_out_prefix + tag + '_summary.txt'
+hmm_filename = gp_dir + gp.sim_out_dir + 'hmm_parameters_' + tag + '.txt'
 
 # write results headers
 fout = open(results_filename, 'w')
@@ -130,8 +138,8 @@ while line != '' and n < num_reps:
         # sequences each base matches
         print positions
         seqs_coded = code_seqs(seqs_filled, num_sites, ref_seqs, \
-                                   match_symbol, mismatch_symbol, \
-                                   unknown_symbol, unsequenced_symbol)
+                                   gp.match_symbol, gp.mismatch_symbol, \
+                                   gp.unknown_symbol, gp.unsequenced_symbol)
 
         ########
         # figure out which sites are actually introgressed by
@@ -210,8 +218,9 @@ while line != '' and n < num_reps:
                                                       index_to_species, \
                                                       states, \
                                                       unknown_species, \
-                                                      match_symbol, mismatch_symbol, \
-                                                      unknown_symbol, \
+                                                      gp.match_symbol, \
+                                                      gp.mismatch_symbol, \
+                                                      gp.unknown_symbol, \
                                                       expected_length_introgressed, \
                                                       expected_num_introgressed_tracts)
 
@@ -279,12 +288,17 @@ while line != '' and n < num_reps:
                 for s in hmm.emis[i].keys():
                     # for unknown state, include --- (as well as '?')
                     if states[j] == unknown_species:
-                        if match_symbol not in s:
+                        if gp.match_symbol not in s:
                             total += hmm.emis[i][s]
-                    elif s[j] == match_symbol:
+                    elif s[j] == gp.match_symbol:
                         total += hmm.emis[i][s]
                 output_dic = update_value(output_dic, 'emis_'  + states[i] + '_' + \
                                               to_states[j], total)
+
+        # HMM parameters
+        init_all.append(hmm.init)
+        emis_all.append(hmm.emis)
+        trans_all.append(hmm.trans)
 
         ########
         # predict whether each site in each cer strain is
@@ -302,7 +316,8 @@ while line != '' and n < num_reps:
         for i in range(len(states)):
             for j in range(i, len(states)):
                 output_dic = update_value(output_dic, \
-                                              'avg_identity_' + states[i] + '_' + states[j], \
+                                              'avg_identity_' + states[i] + \
+                                              '_' + states[j], \
                                               s[i][j])
 
         #####
@@ -310,8 +325,8 @@ while line != '' and n < num_reps:
         #####
 
         write_output_line(fout, output_dic, False)
-
         fout.flush()
+
 
         sys.stdout.flush()
 
@@ -329,6 +344,8 @@ while line != '' and n < num_reps:
 
     line = f.readline()
 
+init, emis, trans = average_hmm_params(init_all, emis_all, trans_all)
+write_hmm_params(init, emis, trans, states, unknown_species, hmm_filename)
 
 f.close()
 fout.close()
