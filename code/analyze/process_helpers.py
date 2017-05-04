@@ -31,6 +31,7 @@ def read_regions(fn):
         entry['region_start'] = int(region_start)
         entry['region_end'] = int(region_end)
         entry['number_non_gap'] = int(number_non_gap_sites)
+        entry['region_id'] = 'region_' + str(i)
         #entry = alignment_block_label, strand, predicted_reference, \
         #    int(region_start), int(region_end), int(number_non_gap_sites)
         if strain not in regions:
@@ -39,6 +40,7 @@ def read_regions(fn):
             regions[strain][chrm] = []
         regions[strain][chrm].append(entry)
         line = f.readline()
+        i += 1
     f.close()
     return regions
 
@@ -60,8 +62,7 @@ def read_regions_with_genes(fn):
         if len(line) == 9:
             genes = line[-1]
             entry['genes'] = genes.split(' ')
-            if '' in entry['genes']:
-                entry['genes'].remove('')
+            assert '' not in entry['genes']
             line = line[:-1]
         else:
             entry['genes'] = []
@@ -123,14 +124,6 @@ def mark_gene(block, start, end, genes):
                                                       block_start)
         gene_relative_end = index_ignoring_gaps(seq, gene_end, \
                                                     block_start)
-        #if (gene_relative_start == -1 and gene_relative_end == -1) or \
-        #        ((gene_relative_start < start or gene_relative_start > end) and \
-        #        (gene_relative_end < start or gene_relative_end > end)):
-        #    continue
-        #elif gene_relative_start == -1:
-        #    gene_relative_start = 0
-        #elif gene_relative_end == -1:
-        #    gene_relative_end = block_end
 
         # if gene start and end are both before the block, they will
         # both be -1; if gene start and end are both after the block,
@@ -219,16 +212,31 @@ def write_region_alignment(block, entry, genes, \
     start_offset = i_start - i_start_with_context
     end_offset = i_end - i_start_with_context
 
-    gene_set = []
+    gene_set = [] # needs to be a list to preserve ordering
     gene_set_region = [] # not including context
+    gene_introgressed_bases_count = {}
+    gene_lengths = {}
+    # loop through all positions and keep track of all unique genes
+    # seen within the introgressed region, and also separately within
+    # the region including surrounding context
     for i in range(len(annotation)):
         g = annotation[i]
-        if g not in gene_set:
-            gene_set.append(g)
-        if i >= start_offset and i <= end_offset and g not in gene_set_region:
-            gene_set_region.append(g)
-    if '' in gene_set:
-        gene_set.remove('')
+        if g != '':
+            if g not in gene_set:
+                gene_set.append(g)
+            if i >= start_offset and i <= end_offset:
+                if g not in gene_set_region:
+                    gene_set_region.append(g)
+                    gene_lengths[g] = genes[g][1] - genes[g][0] + 1
+                    gene_introgressed_bases_count[g] = 0
+                # keep track of fraction of each gene that is
+                # introgressed; this isn't perfect, but numerator is
+                # number of sites within gene in introgressed block
+                # (relative to master reference) and denominator is gene
+                # length
+                gene_introgressed_bases_count[g] += 1
+        
+    gene_set = filter(lambda x: x != '', gene_set)
 
     # now write to file
     f = open(fn_annotated, 'w')
@@ -278,6 +286,12 @@ def write_region_alignment(block, entry, genes, \
     # store the genes we found in this region (NOT including stuff
     # only in context)
     entry['genes'] = gene_set_region
+
+    # introgressed fractions of genes
+    x = {}
+    for gene in gene_lengths:
+        x[gene] = float(gene_introgressed_bases_count[gene]) / gene_lengths[gene]
+    entry['genes_introgressed_fractions'] = x
 
 def write_region_alignment_old(block, entry, genes, \
                                strain, master_ref, refs, \
@@ -376,7 +390,10 @@ def read_genes(f):
 
         if not skip_this_gene:
             gene_name = line[line.find('/gene="')+7:-2]
-            genes[gene_name] = (start, end)
+            if gene_name != '':
+                genes[gene_name] = (start, end)
+            else:
+                print 'gene name not found: ' + line
 
     return genes
 

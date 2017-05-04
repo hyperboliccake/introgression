@@ -84,9 +84,15 @@ gp_dir = '../'
 fn_all_regions = gp.analysis_out_dir_absolute + 'introgressed_hmm_' + tag + '.txt'
 # introgressed regions keyed by strain and then chromosome
 regions = read_regions(fn_all_regions)
+#s = regions.keys()[0]
+#c = 'I'
+#regions_abbr = {s:{c:{}}}
+#regions_abbr[s][c] = regions[s][c][:5]
+#regions = regions_abbr
 
-
-##########
+#####
+# extract alignments for introgressed regions
+#####
 
 """
 introgressed region coords
@@ -104,11 +110,11 @@ for each strain x chrom in gene file
 """
 
 fn_align_prefix = gp_dir + gp.alignments_dir
-fn_region_prefix = gp.regions_out_dir_absolute + '/' + tag + '/'
+fn_region_prefix = gp.analysis_out_dir_absolute + '/' + tag + '/regions/'
 for r in gp.alignment_ref_order:
     if r in refs:
         fn_align_prefix += r + '_'
-        fn_region_prefix += r + '_'
+        #fn_region_prefix += r + '_'
 
 # just read genes from master reference for now, since that's how the
 # introgressed regions are indexed
@@ -121,7 +127,7 @@ for chrm in gp.chrms:
 
     for strain in regions:
         
-        print strain, chrm
+        print '***', strain, chrm
         sys.stdout.flush()
         # skip this strain x chromosome if there are no introgressed
         # regions for it
@@ -142,10 +148,9 @@ for chrm in gp.chrms:
 
             # write appropriate part of block to a file, and annotate with
             # gene info and write to another file
-            fn_region_current_prefix = fn_region_prefix + \
-                strain + '_chr' + chrm + '_' + \
-                str(entry['region_start']) + '-' + str(entry['region_end'])
+            fn_region_current_prefix = fn_region_prefix + entry['region_id']
             fn_region = fn_region_current_prefix + gp.alignment_suffix
+
             if not os.path.exists(os.path.dirname(fn_region)):
                 os.makedirs(os.path.dirname(fn_region))
             fn_region_annotated = fn_region_current_prefix + '_annotated' + \
@@ -154,13 +159,31 @@ for chrm in gp.chrms:
                                        strain, master_ref, refs, \
                                        fn_region, fn_region_annotated, \
                                        context = 100)
-            print fn_region_annotated
+
+
+######
+# keep track of all introgressed genes and the regions they're
+# introgressed in
+#####
+
+introgressed_genes = {} 
+
+for strain in regions:
+    for chrm in regions[strain]:
+        for entry in regions[strain][chrm]:
+            for gene in entry['genes']:
+                x = (entry['region_id'], strain, \
+                         entry['genes_introgressed_fractions'][gene], \
+                         entry['number_non_gap'])
+                if gene not in introgressed_genes:
+                    introgressed_genes[gene] = []
+                introgressed_genes[gene].append(x)
 
 #####
-# write file adding gene info to regions
+# write file adding region id and gene info to list of regions
 #####
 
-fn = gp.analysis_out_dir_absolute + 'introgressed_hmm_' + tag + '.txt'
+fn = gp.analysis_out_dir_absolute + tag + '/introgressed_hmm_' + tag + '.txt'
 
 fn_all_regions_genes = fn_all_regions[:-4] + '_genes.txt'
 f = open(fn_all_regions_genes, 'w')
@@ -168,6 +191,7 @@ f.write('strain\tchromosome\talignment_block_label\tstrand\tpredicted_reference\
 for strain in regions:
     for chrm in regions[strain]:
         for entry in regions[strain][chrm]:
+            f.write(entry['region_id'] + '\t')
             f.write(strain + '\t' + chrm + '\t')
             f.write(entry['block_label'] + '\t' + entry['strand'] + '\t')
             f.write(entry['predicted_reference'] + '\t')
@@ -175,6 +199,40 @@ for strain in regions:
             f.write(str(entry['number_non_gap']) + '\t')
             f.write(' '.join(entry['genes']) + '\n')
 f.close()
+
+
+#####
+# summarize introgressed gene information in a few different ways
+#####
+
+# overall file with list of all introgressed genes and summary info;
+# one file for each introgressed gene with row for each strain
+# introgressed in
+
+fn_all = gp.analysis_out_dir_absolute + tag + '/introgressed_hmm_' + tag + '_genes_summary.txt'
+f_all = open(fn_all, 'w')
+
+for gene in introgressed_genes:
+    avg_introgressed_fraction = 0
+    avg_number_non_gap = 0
+    fn_gene = gp.analysis_out_dir_absolute + tag + '/genes/' + gene + '.txt'
+    if not os.path.exists(os.path.dirname(fn_gene)):
+        os.makedirs(os.path.dirname(fn_gene))
+    f_gene = open(fn_gene, 'w')
+    for entry in introgressed_genes[gene]:
+        region_id, strain, introgressed_fraction, number_non_gap = entry
+        f_gene.write(region_id + '\t' + strain + '\t' + \
+                         str(introgressed_fraction) + '\t' + str(number_non_gap) + '\n')
+        avg_introgressed_fraction += introgressed_fraction
+        avg_number_non_gap += number_non_gap
+    f_gene.close()
+    num_strains = len(introgressed_genes[gene])
+    avg_introgressed_fraction /= float(num_strains)
+    avg_number_non_gap /= float(num_strains)
+    f_all.write(gene + '\t' + str(num_strains) + '\t' + \
+                    str(avg_introgressed_fraction) + '\t' + \
+                            str(avg_number_non_gap) + '\n')
+f_all.close()
 
 
 """
