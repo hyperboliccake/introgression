@@ -56,7 +56,7 @@ cd ..
 # extract alignments of introgressed regions and annotate genes in
 # those regions
 cd analyze
-python process.py
+python process_main.py
 cp ../sha.txt ../../results/regions/
 cd ..
 
