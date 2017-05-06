@@ -1,5 +1,6 @@
 import re
 import sys
+import os
 import copy
 sys.path.insert(0, '..')
 import global_params as gp
@@ -116,14 +117,21 @@ def mark_gene(block, start, end, genes):
     a = [''] * len(seq)
     len_a = len(a)
 
+    # pull out just region of interest from sequence
+    region_relative_start = index_ignoring_gaps(seq, start, block_start)
+    region_relative_end = index_ignoring_gaps(seq, end, block_start)
+    seq_region = seq[region_relative_start:region_relative_end+1]
+
     # just annotate whole alignment block and then pull out portion at
     # end; TODO make this more efficient
     for gene_name in genes:
         gene_start, gene_end = genes[gene_name]
-        gene_relative_start = index_ignoring_gaps(seq, gene_start, \
-                                                      block_start)
-        gene_relative_end = index_ignoring_gaps(seq, gene_end, \
-                                                    block_start)
+        # use region start instead of block start because we're using
+        # just that part of the sequence
+        gene_relative_start = index_ignoring_gaps(seq_region, gene_start, \
+                                                      start)
+        gene_relative_end = index_ignoring_gaps(seq_region, gene_end, \
+                                                    start)
 
         # if gene start and end are both before the block, they will
         # both be -1; if gene start and end are both after the block,
@@ -187,7 +195,7 @@ def write_region_alignment(block, entry, genes, \
         i_start_with_context = 0
     if i_end_with_context == len(seq_master_ref):
         i_end_with_context = len(seq_master_ref) - 1
-
+        
     # non-annotated file (and no context)
     f = open(fn, 'w')
     # start with references
@@ -344,8 +352,30 @@ def write_region_alignment_old(block, entry, genes, \
 
     f.close()
 
-def read_genes(f):
+def read_gene_file(fn):
+    f = open(fn, 'r')
+    genes = {}
+    line = f.readline()
+    while line != '':
+        line = line.split('\t')
+        genes[line[0]] = (int(line[1]), int(line[2]))
+        line = f.readline()
+    f.close()
+    return genes
 
+def write_gene_file(genes, fn):
+    f = open(fn, 'w')
+    for gene in genes:
+        start, end = genes[gene]
+        f.write(gene + '\t' + str(start) + '\t' + str(end) + '\n')
+    f.close()
+
+def read_genes(fn, fn_genes):
+
+    if os.path.isfile(fn_genes):
+        return read_gene_file(fn_genes)
+
+    f = open(fn, 'r')
     genes = {}
     line = f.readline()
     eof = False
@@ -394,6 +424,8 @@ def read_genes(f):
                 genes[gene_name] = (start, end)
             else:
                 print 'gene name not found: ' + line
+    f.close()
+    write_gene_file(genes, fn_genes)
 
     return genes
 

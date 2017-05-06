@@ -119,11 +119,16 @@ for r in gp.alignment_ref_order:
 # just read genes from master reference for now, since that's how the
 # introgressed regions are indexed
 for chrm in gp.chrms:
-    f = open(gp.gb_master_dir + master_ref + '/' \
-                 + master_ref + '_chr' + chrm + '.gb', 'r')
+    fn = gp.gb_master_dir + master_ref + '/' + \
+        master_ref + '_chr' + chrm + '.gb'
+    # for storing genes once they're read (or reading genes from if
+    # already exists)
+    fn_genes = gp.analysis_out_dir_absolute + '/' + \
+        master_ref + '_chr' + chrm + '_genes.txt'
 
-    genes = read_genes(f)
-    f.close()
+    print 'reading genes on chromosome', chrm
+    genes = read_genes(fn, fn_genes)
+    print 'done reading genes'
 
     for strain in regions:
         
@@ -142,6 +147,8 @@ for chrm in gp.chrms:
         # loop through all introgressed regions for this strain and
         # chromosome
         for entry in regions[strain][chrm]:
+            #print 'entry', entry
+
             # find corresponding alignment block, which we've already kept
             # track of
             current_alignment_block = alignment_blocks[entry['block_label']]
