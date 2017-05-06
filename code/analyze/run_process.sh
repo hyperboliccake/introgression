@@ -36,4 +36,4 @@ cd /net/gs/vol1/home/aclark4/projects/introgression/code/analyze
 
 ARGS=$(head -n $SGE_TASK_ID ../sim/sim_multi_model_args.txt | tail -n 1)
 
-python process.py $ARGS
+python process_main.py $ARGS
