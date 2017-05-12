@@ -26,6 +26,12 @@
 # versions (gene_introgressed.fasta), and also to all of the versions
 # (gene_all.fasta).
 
+# TODO: 
+## _annotated file should be .txt not .maf
+## also modify so that 80 characters per line
+## and extra row showing summary of which references match
+
+
 import re
 import sys
 import os
@@ -85,9 +91,12 @@ fn_all_regions = gp.analysis_out_dir_absolute + 'introgressed_hmm_' + tag + '.tx
 # introgressed regions keyed by strain and then chromosome
 regions = read_regions(fn_all_regions)
 #s = regions.keys()[0]
-#c = 'I'
+#t = regions.keys()[1]
+#c = 'IV'
 #regions_abbr = {s:{c:{}}}
-#regions_abbr[s][c] = regions[s][c][:5]
+#regions_abbr[t] = {c:{}}
+#regions_abbr[s][c] = regions[s][c][:10]
+#regions_abbr[t][c] = regions[t][c][:10]
 #regions = regions_abbr
 
 #####
@@ -161,7 +170,7 @@ for chrm in gp.chrms:
             if not os.path.exists(os.path.dirname(fn_region)):
                 os.makedirs(os.path.dirname(fn_region))
             fn_region_annotated = fn_region_current_prefix + '_annotated' + \
-                gp.alignment_suffix
+                '.txt'
             write_region_alignment(current_alignment_block, entry, genes, \
                                        strain, master_ref, refs, \
                                        fn_region, fn_region_annotated, \
@@ -216,24 +225,38 @@ f.close()
 # one file for each introgressed gene with row for each strain
 # introgressed in
 
-fn_all = gp.analysis_out_dir_absolute + tag + '/introgressed_hmm_' + tag + '_genes_summary.txt'
+fn_all = gp.analysis_out_dir_absolute + tag + '/introgressed_hmm_' + tag + \
+    '_genes_summary.txt'
 f_all = open(fn_all, 'w')
 
 for gene in introgressed_genes:
-    avg_introgressed_fraction = 0
-    avg_number_non_gap = 0
+    # keyed by strain, because gene can be broken across multiple
+    # alignment blocks/regions for the same strain
+    sum_introgressed_fraction = {}
+    sum_number_non_gap = {}
     fn_gene = gp.analysis_out_dir_absolute + tag + '/genes/' + gene + '.txt'
     if not os.path.exists(os.path.dirname(fn_gene)):
         os.makedirs(os.path.dirname(fn_gene))
     f_gene = open(fn_gene, 'w')
     for entry in introgressed_genes[gene]:
         region_id, strain, introgressed_fraction, number_non_gap = entry
+        if strain not in sum_introgressed_fraction:
+            sum_introgressed_fraction[strain] = 0
+            sum_number_non_gap[strain] = 0
+        sum_introgressed_fraction[strain] += introgressed_fraction
+        sum_number_non_gap[strain] += number_non_gap
         f_gene.write(region_id + '\t' + strain + '\t' + \
                          str(introgressed_fraction) + '\t' + str(number_non_gap) + '\n')
-        avg_introgressed_fraction += introgressed_fraction
-        avg_number_non_gap += number_non_gap
+
     f_gene.close()
-    num_strains = len(introgressed_genes[gene])
+
+    # now do averaging over strains
+    num_strains = len(sum_introgressed_fraction)
+    avg_introgressed_fraction = sum(sum_introgressed_fraction.values()) / \
+        float(num_strains)
+    avg_number_non_gap = sum(sum_number_non_gap.values()) / \
+        float(num_strains)
+
     avg_introgressed_fraction /= float(num_strains)
     avg_number_non_gap /= float(num_strains)
     f_all.write(gene + '\t' + str(num_strains) + '\t' + \
