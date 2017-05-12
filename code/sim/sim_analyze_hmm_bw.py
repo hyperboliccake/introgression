@@ -608,11 +608,43 @@ def convert_predictions(path, states):
         new_path.append(states[p])
     return new_path
 
+def initial_hmm_parameters(seqs, predict_species, index_to_species, states, \
+                               unknown_species, \
+                               match_symbol, mismatch_symbol, unknown_symbol, \
+                               expected_length_introgressed, \
+                               expected_num_introgressed_tracts):
+
+    d_freqs = get_symbol_freqs(\
+        states, index_to_species, seqs, unknown_species, \
+            match_symbol, mismatch_symbol, unknown_symbol)
+
+    individual_symbol_freqs, symbol_freqs, weighted_match_freqs = \
+        d_freqs[predict_species]
+
+    for s in symbol_freqs:
+        print s, symbol_freqs[s]
+
+    p = {}
+
+    p['init'] = initial_probabilities(states, weighted_match_freqs, match_symbol, \
+                                          expected_length_introgressed, \
+                                          expected_num_introgressed_tracts, \
+                                          len(seqs[0]))
+
+    p['emis'] = emission_probabilities(states, unknown_species, d_freqs, \
+                                            match_symbol, mismatch_symbol, .99)
+
+    p['trans'] = transition_probalities(expected_length_introgressed, \
+                                            expected_num_introgressed_tracts, \
+                                            predict_species, len(seqs[0]), \
+                                            weighted_match_freqs)
+
+    return p
+
 def predict_introgressed_hmm(seqs, predict_species, index_to_species, states, \
                                  unknown_species, \
                                  match_symbol, mismatch_symbol, unknown_symbol, \
-                                 expected_length_introgressed, \
-                                 expected_num_introgressed_tracts):
+                                 params, train=True):
 
     if unknown_species != None:
         assert len(seqs[0][0]) == len(states) - 1
@@ -629,16 +661,6 @@ def predict_introgressed_hmm(seqs, predict_species, index_to_species, states, \
             seqs_to_predict.append(seqs[i])
             seqs_to_predict_inds.append(i)
 
-    d_freqs = get_symbol_freqs(\
-        states, index_to_species, seqs, unknown_species, \
-            match_symbol, mismatch_symbol, unknown_symbol)
-
-    individual_symbol_freqs, symbol_freqs, weighted_match_freqs = \
-        d_freqs[predict_species]
-
-    for s in symbol_freqs:
-        print s, symbol_freqs[s]
-
     hmm = HMM()
 
     # set obs
@@ -647,24 +669,13 @@ def predict_introgressed_hmm(seqs, predict_species, index_to_species, states, \
     # set states
     hmm.set_states(states)
 
-    # set init
-    hmm.set_init(initial_probabilities(states, weighted_match_freqs, match_symbol, \
-                                           expected_length_introgressed, \
-                                           expected_num_introgressed_tracts, \
-                                           len(seqs[0])))
+    hmm.set_init(params['init'])
+    hmm.set_emis(params['emis'])
+    hmm.set_trans(params['trans'])
 
-    # set emis
-    hmm.set_emis(emission_probabilities(states, unknown_species, d_freqs, \
-                                            match_symbol, mismatch_symbol, .99))
-
-    # set trans
-    hmm.set_trans(transition_probalities(expected_length_introgressed, \
-                                             expected_num_introgressed_tracts, \
-                                             predict_species, len(seqs_to_predict[0]), \
-                                             weighted_match_freqs))
-
-    # Baum-Welch parameter estimation
-    hmm.go()
+    if train:
+        # Baum-Welch parameter estimation
+        hmm.go()
 
     predicted = []
     for i in range(len(seqs)):
@@ -1062,35 +1073,6 @@ def integer_positions(positions, l, allow_multi_hit = False):
         a.append(new_p)
     return a
 
-def read_sim(f, num_sites, num_samples):
-
-    # read in all the trees for blocks with no recombination within them
-    t_string = f.readline()
-    recomb_sites = []
-    trees = []
-    
-    while t_string[0] == '[':
-        t_start = t_string.find(']') + 1
-        recomb_sites.append(int(t_string[1:t_start-1]))
-        t_string = t_string[t_start:-1]
-        t = parse_ms_tree(t_string)
-        trees.append(t)
-        t_string = f.readline()
-
-    # read next couple of lines before sequences begin
-    segsites = int(t_string[len('segsites: '):-1])
-    positions = [float(x) for x in f.readline()[len('positions: '):].split()]
-    # convert positions to integers
-    # (allow sites to be hit multiple times because that seems reasonable)
-    # (zero-indexed)
-    positions = integer_positions(positions, num_sites, allow_multi_hit=True)
-    # read in sequences (at this point only sites that are polymorphic)
-    seqs = []
-    for i in range(num_samples):
-        seqs.append(f.readline()[:-1])
-        assert(len(seqs[-1]) > 0)    
-
-    return trees, recomb_sites, segsites, positions, seqs
 
 # add in the nonpolymorphic sites
 def fill_seqs(polymorphic_seqs, polymorphic_sites, nsites, fill):
@@ -1274,3 +1256,249 @@ def write_hmm_params(init, emis, trans, states, unknown_state, fn):
                         str(trans[i][j]) + '\n')
 
     f.close()
+
+def read_one_sim(f, num_sites, num_samples):
+
+    line = f.readline()
+    while line != '//\n':
+        if line == '':
+            return None
+        line = f.readline()
+
+    # read in all the trees for blocks with no recombination within them
+    t_string = f.readline()
+    recomb_sites = []
+    trees = []
+    
+    while t_string[0] == '[':
+        t_start = t_string.find(']') + 1
+        recomb_sites.append(int(t_string[1:t_start-1]))
+        t_string = t_string[t_start:-1]
+        t = parse_ms_tree(t_string)
+        trees.append(t)
+        t_string = f.readline()
+
+    # read next couple of lines before sequences begin
+    segsites = int(t_string[len('segsites: '):-1])
+    positions = [float(x) for x in f.readline()[len('positions: '):].split()]
+    # convert positions to integers
+    # (allow sites to be hit multiple times because that seems reasonable)
+    # (zero-indexed)
+    positions = integer_positions(positions, num_sites, allow_multi_hit=True)
+    # read in sequences (at this point only sites that are polymorphic)
+    seqs = []
+    for i in range(num_samples):
+        seqs.append(f.readline()[:-1])
+        assert(len(seqs[-1]) > 0)    
+
+    return trees, recomb_sites, segsites, positions, seqs        
+    
+
+def analyze_one(sim, hmm_params, num_sites, fill_symbol, ref_inds, ref_seqs, \
+                    num_samples_species_to, species_to, index_to_species, \
+                    topology, states, unknown_species, \
+                    output_dic, fout, \
+                    train=True):
+
+    trees, recomb_sites, segsites, positions, seqs = sim
+
+    #####
+    # fill in nonpolymorphic sites in sequences, and code for HMM
+    # predictions
+    #####
+    
+    # fill in the nonpolymorphic sites
+    seqs_filled = fill_seqs(seqs, positions, num_sites, fill_symbol)
+    ref_seqs = [seqs_filled[x] for x in ref_inds]
+    # convert from binary to symbols indicating which reference
+    # sequences each base matches
+    print positions
+    seqs_coded = code_seqs(seqs_filled, num_sites, ref_seqs, \
+                               gp.match_symbol, gp.mismatch_symbol, \
+                               gp.unknown_symbol, gp.unsequenced_symbol)
+
+    ########
+    # figure out which sites are actually introgressed by
+    # separately looking at the tree for each stretch without
+    # recombination
+    ########
+
+    # sequence of states, one for each site and strain
+    actual_state_seq = [[] for i in range(num_samples_species_to)]
+    # keep track of whether each tree is concordant with the species tree
+    concordant = []
+    # and how many lineages of the to species are left when it
+    # first joins another species
+    num_lineages_at_join = []
+    # and how many bases are introgressed in total in each strain
+    num_introgressed = [0] * num_samples_species_to
+    # loop through the trees for all blocks with no recombination
+    # within them
+    for ti in range(len(trees)):
+
+        # note that species indices/labels are shifted to start at
+        # 0 instead of 1
+        t = trees[ti]
+            
+        # is this tree concordant with the species tree? (only
+        # checks whether the to species is monophyletic, which
+        # indicates that ILS not possible)
+        if is_concordant(t, index_to_species, species_to):
+            concordant.append(True)
+        else:
+            concordant.append(False)
+
+        # identify sequences that are introgressed from the one or
+        # two other species, based on coalescent tree; could clean
+        # this up a little
+        introgressed = None
+        num_lineages_at_join_current = None
+        # three species
+        if species_from2 != None:
+            introgressed, num_lineages_at_join_current = \
+                find_introgressed_3(t, species_to, topology, index_to_species)
+        # two species
+        else:
+            # introgressed is a list of species (one entry for
+            # each individual in to species)
+            introgressed, num_lineages_at_join_current = \
+                find_introgressed_2(t, topology[2], species_to, index_to_species)
+        print introgressed[0]
+        # number of lineages that were present when all
+        # populations joined
+        num_lineages_at_join.append(num_lineages_at_join_current)
+
+        # number of sites in the current block of sequence
+        num_sites_t = recomb_sites[ti]
+
+        # for all strains that have this block introgressed, add
+        # the length of the block to the total number of
+        # introgressed sites across all strains; also update the
+        # state sequence
+        for i in range(num_samples_species_to):
+            if introgressed[i] != species_to:
+                num_introgressed[i] += num_sites_t
+            actual_state_seq[i] += [introgressed[i]] * num_sites_t
+
+    ########
+    # predict whether each site in each cer strain is
+    # introgressed with a hidden markov model
+    ########
+
+    print 'HMM'
+    
+    # predicted is a list with one entry for each individual of
+    # species_to; each entry gives predicted species for each
+    # position
+    predicted, hmm = predict_introgressed_hmm(seqs_coded, species_to, \
+                                                  index_to_species, \
+                                                  states, \
+                                                  unknown_species, \
+                                                  gp.match_symbol, \
+                                                  gp.mismatch_symbol, \
+                                                  gp.unknown_symbol, \
+                                                  train)
+    
+    num_correct, num_introgressed_correct, actual_lens, predicted_lens, \
+        num_predicted_tracts_actual, num_actual_tracts_predicted, \
+        num_introgressed_tracts, num_not_introgressed_tracts, \
+        num_predicted_introgressed_tracts, num_predicted_not_introgressed_tracts = \
+        evaluate_predicted(predicted, actual_state_seq, species_to)
+       
+    
+    groups = group_actual_predicted_bases(actual_state_seq, predicted, states)
+    for group in groups:
+        output_dic = update_value(output_dic, 'num_bases_actual_' + group[0] + \
+                                      '_predicted_' + group[1], \
+                                      groups[group])
+
+    ### tracts
+    blocks_predicted, blocks_actual = \
+        evaluate_predicted_blocks(predicted, actual_state_seq, \
+                                      species_to, states)
+
+    d_actual_predicted, d_predicted_actual, d_actual_counts, d_predicted_counts = \
+        group_actual_predicted_blocks(blocks_actual, blocks_predicted, states, num_samples_species_to)
+    for group in d_actual_predicted:
+        output_dic = update_value(output_dic, 'num_tracts_actual_' + group[0] + \
+                                          '_predicted_' + group[1], \
+                                          d_actual_predicted[group])
+    for group in d_predicted_actual:
+        output_dic = update_value(output_dic, 'num_tracts_predicted_' + group[0] + \
+                                      '_actual_' + group[1], \
+                                      d_predicted_actual[group])
+    for state in states:
+        output_dic = update_value(output_dic, 'num_tracts_actual_' + state, \
+                                      d_actual_counts[state])
+        output_dic = update_value(output_dic, 'num_tracts_predicted_' + state, \
+                                      d_predicted_counts[state])
+
+    # tract lengths, actual and predicted; list, not average
+    for state in states:
+        tract_lengths = [b[2] for b in filter(lambda x: x[0] == state, blocks_actual)]
+        output_dic = update_value(output_dic, 'tract_lengths_actual_' + state, tract_lengths)
+
+        tract_lengths = [b[2] for b in filter(lambda x: x[0] == state, blocks_predicted)]
+        output_dic = update_value(output_dic, 'tract_lengths_predicted_' + state, tract_lengths)
+
+
+    # HMM parameters
+    for i in range(len(states)):
+        output_dic = update_value(output_dic, 'init_' + states[i], hmm.init[i])
+            
+    for i in range(len(states)):
+        for j in range(len(states)):
+            output_dic = update_value(output_dic, \
+                                          'trans_' + states[i] + '_' + states[j], \
+                                          hmm.trans[i][j])
+
+    # so here emis_cer_par is going to be the probability that cer
+    # state emits symbol that matches par, so *+; note that these
+    # don't have to add to 1 (states includes unknown if
+    # appropriate)
+    for i in range(len(states)):
+        to_states = states
+        for j in range(len(states)):
+            total = 0
+            for s in hmm.emis[i].keys():
+                # for unknown state, include --- (as well as '?')
+                if states[j] == unknown_species:
+                    if gp.match_symbol not in s:
+                        total += hmm.emis[i][s]
+                elif s[j] == gp.match_symbol:
+                    total += hmm.emis[i][s]
+            output_dic = update_value(output_dic, 'emis_'  + states[i] + '_' + \
+                                          to_states[j], total)
+
+    # HMM parameters
+    init_all.append(hmm.init)
+    emis_all.append(hmm.emis)
+    trans_all.append(hmm.trans)
+
+    ########
+    # sequence identities
+    ########
+
+    s = seq_id(seqs_filled, index_to_species, states)
+    for i in range(len(states)):
+        for j in range(i, len(states)):
+            output_dic = update_value(output_dic, \
+                                          'avg_identity_' + states[i] + \
+                                          '_' + states[j], \
+                                          s[i][j])
+
+    #####
+    # write results to file
+    #####
+
+    write_output_line(fout, output_dic, False)
+    fout.flush()
+    sys.stdout.flush()
+
+    for b in blocks_predicted:
+        f_tracts_predicted.write(str(n) + ' ' +  ' '.join([str(x) for x in b]) + '\n')
+    for b in blocks_actual:
+        f_tracts_actual.write(str(n) + ' ' + ' '.join([str(x) for x in b]) + '\n')
+
+    f_tracts_predicted.flush()
+    f_tracts_actual.flush()
