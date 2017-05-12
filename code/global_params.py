@@ -44,6 +44,9 @@ gb_master_dir = '/net/akey/vol2/aclark4/nobackup/'
 # order that references appear in filename
 alignment_ref_order = ['S288c', 'CBS432']
 
+# shortened names
+ref_codes = ['C', 'P']
+
 # directory for mugsy to output alignments and for subsequent parts of
 # the program to read the alignments; this directory needs to exist
 # before running the program
