@@ -84,7 +84,7 @@ def process_args(l):
     num_samples_species_from2 = 0
     N0_species_from2 = N0_species_from1
     migration_from2 = 0
-    has_ref_from2 = True
+    has_ref_from2 = False
     if len(species) == 3:
         species_from2 = sys.argv[i]
         i += 1
