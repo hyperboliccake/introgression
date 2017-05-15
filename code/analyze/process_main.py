@@ -59,6 +59,8 @@ tag, topology, species_to, species_from1, species_from2, \
     rho, outcross_rate, theta, num_sites, num_reps = \
     sim.process_args(sys.argv)
 
+
+
 # reference names for actual species
 states = []
 i = -1
@@ -82,6 +84,25 @@ if unknown_state:
     refs = refs[:-1]
 master_ref = refs[0]
 
+
+# TODO don't hard code this obvs
+# shortened names
+#species_to_ref_name = []
+#species_to_ref_name[species_to] = refs[0]
+#species_to_ref_name[species_from1] = refs[1]
+#if len(refs) == 3:
+#    species_to_ref_name[species_from2] = refs[2]
+species = [species_to, species_from1, species_from2]
+species_to_ref = {species_to:refs[0]}
+if has_ref_from1:
+    species_to_ref[species_from1] = refs[1]
+if has_ref_from2:
+    species_to_ref[species_from2] = refs[2]
+ref_codes = [species[i][0].upper() for i in range(len(refs))]
+ref_to_code = dict(zip(refs, ref_codes))
+print ref_to_code
+
+
 #####
 # read in introgressed regions
 #####
@@ -90,15 +111,16 @@ gp_dir = '../'
 fn_all_regions = gp.analysis_out_dir_absolute + 'introgressed_hmm_' + tag + '.txt'
 # introgressed regions keyed by strain and then chromosome
 regions = read_regions(fn_all_regions)
-#s = regions.keys()[0]
-#t = regions.keys()[1]
-#c = 'IV'
-#regions_abbr = {s:{c:{}}}
-#regions_abbr[t] = {c:{}}
-#regions_abbr[s][c] = regions[s][c][:10]
-#regions_abbr[t][c] = regions[t][c][:10]
-#regions = regions_abbr
-
+'''
+s = regions.keys()[0]
+t = regions.keys()[1]
+c = 'IV'
+regions_abbr = {s:{c:{}}}
+regions_abbr[t] = {c:{}}
+regions_abbr[s][c] = regions[s][c][:10]
+regions_abbr[t][c] = regions[t][c][:10]
+regions = regions_abbr
+'''
 #####
 # extract alignments for introgressed regions
 #####
@@ -173,6 +195,8 @@ for chrm in gp.chrms:
                 '.txt'
             write_region_alignment(current_alignment_block, entry, genes, \
                                        strain, master_ref, refs, \
+                                       ref_to_code, \
+                                       species_to_ref[species_to], entry['predicted_reference'], \
                                        fn_region, fn_region_annotated, \
                                        context = 100)
 
@@ -190,7 +214,8 @@ for strain in regions:
             for gene in entry['genes']:
                 x = (entry['region_id'], strain, \
                          entry['genes_introgressed_fractions'][gene], \
-                         entry['number_non_gap'])
+                         entry['number_non_gap'], \
+                         entry['ref_from_count'])
                 if gene not in introgressed_genes:
                     introgressed_genes[gene] = []
                 introgressed_genes[gene].append(x)
@@ -203,7 +228,7 @@ fn = gp.analysis_out_dir_absolute + tag + '/introgressed_hmm_' + tag + '.txt'
 
 fn_all_regions_genes = fn_all_regions[:-4] + '_genes.txt'
 f = open(fn_all_regions_genes, 'w')
-f.write('strain\tchromosome\talignment_block_label\tstrand\tpredicted_reference\tregion_start\tregion_end\tnumber_non_gap_sites\tgenes\n')
+f.write('strain\tchromosome\talignment_block_label\tstrand\tpredicted_reference\tregion_start\tregion_end\tnumber_non_gap_sites\tgenes\tref_from_count\n')
 for strain in regions:
     for chrm in regions[strain]:
         for entry in regions[strain][chrm]:
@@ -213,7 +238,8 @@ for strain in regions:
             f.write(entry['predicted_reference'] + '\t')
             f.write(str(entry['region_start']) + '\t' + str(entry['region_end']) + '\t')
             f.write(str(entry['number_non_gap']) + '\t')
-            f.write(' '.join(entry['genes']) + '\n')
+            f.write(' '.join(entry['genes']) + '\t')
+            f.write(str(entry['ref_from_count']) + '\n')
 f.close()
 
 
@@ -228,25 +254,33 @@ f.close()
 fn_all = gp.analysis_out_dir_absolute + tag + '/introgressed_hmm_' + tag + \
     '_genes_summary.txt'
 f_all = open(fn_all, 'w')
+f_all.write('gene\tnumber_strains\taverage_introgressed_fraction\taverage_number_non_gap\taverage_ref_from_count\n')
+
+f_gene_heading = 'region_id\tstrain\tintrogressed_fraction\tnumber_non_gap\tref_from_count\n'
 
 for gene in introgressed_genes:
     # keyed by strain, because gene can be broken across multiple
     # alignment blocks/regions for the same strain
     sum_introgressed_fraction = {}
     sum_number_non_gap = {}
+    sum_ref_from_count = {}
     fn_gene = gp.analysis_out_dir_absolute + tag + '/genes/' + gene + '.txt'
     if not os.path.exists(os.path.dirname(fn_gene)):
         os.makedirs(os.path.dirname(fn_gene))
     f_gene = open(fn_gene, 'w')
+    f_gene.write(f_gene_heading)
     for entry in introgressed_genes[gene]:
-        region_id, strain, introgressed_fraction, number_non_gap = entry
+        region_id, strain, introgressed_fraction, number_non_gap, ref_from_count = entry
         if strain not in sum_introgressed_fraction:
             sum_introgressed_fraction[strain] = 0
             sum_number_non_gap[strain] = 0
+            sum_ref_from_count[strain] = 0
         sum_introgressed_fraction[strain] += introgressed_fraction
         sum_number_non_gap[strain] += number_non_gap
+        sum_ref_from_count[strain] += ref_from_count
         f_gene.write(region_id + '\t' + strain + '\t' + \
-                         str(introgressed_fraction) + '\t' + str(number_non_gap) + '\n')
+                         str(introgressed_fraction) + '\t' + str(number_non_gap) + '\t' + \
+                         str(ref_from_count) + '\n')
 
     f_gene.close()
 
@@ -256,12 +290,15 @@ for gene in introgressed_genes:
         float(num_strains)
     avg_number_non_gap = sum(sum_number_non_gap.values()) / \
         float(num_strains)
+    avg_ref_from_count = sum(sum_ref_from_count.values()) / \
+        float(num_strains)
 
     avg_introgressed_fraction /= float(num_strains)
     avg_number_non_gap /= float(num_strains)
     f_all.write(gene + '\t' + str(num_strains) + '\t' + \
                     str(avg_introgressed_fraction) + '\t' + \
-                            str(avg_number_non_gap) + '\n')
+                    str(avg_number_non_gap) + '\t' + \
+                    str(avg_ref_from_count) + '\n')
 f_all.close()
 
 

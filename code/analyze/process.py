@@ -175,8 +175,9 @@ def write_nonannotated(fn, refs, strain, block, i_start, i_end):
     f.write(seq.lower() + '\n')
     f.close()
 
-def write_annotated(block, master_ref, seq_master_ref, strain, \
-                        genes, \
+def write_annotated(block, refs, master_ref, strain, \
+                        ref_to, ref_from, genes, \
+                        ref_to_code, \
                         i_start_with_context, i_end_with_context, \
                         i_start, i_end, \
                         fn_annotated):
@@ -196,7 +197,7 @@ def write_annotated(block, master_ref, seq_master_ref, strain, \
     gene_introgressed_bases_count = {}
     gene_lengths = {}
     # corresponding sequence (just so we know where gaps are)
-    annotation_seq = seq_master_ref[i_start_with_context:i_end_with_context+1]
+    annotation_seq = block['strains'][master_ref]['sequence'][i_start_with_context:i_end_with_context+1]
     # loop through all positions and keep track of all unique genes
     # seen within the introgressed region, and also separately within
     # the region including surrounding context
@@ -232,7 +233,7 @@ def write_annotated(block, master_ref, seq_master_ref, strain, \
     row_width = 80
     x = 0
     n = i_end_with_context - i_start_with_context + 1
-    all_strains = gp.alignment_ref_order + [strain]
+    all_strains = refs + [strain]
 
     # first write order of strains
     for current_strain in all_strains:
@@ -241,21 +242,29 @@ def write_annotated(block, master_ref, seq_master_ref, strain, \
     f.write('introgressed\n\n')
     
     # get seqs
-    seqs = []
+    seqs = {}
     for current_strain in all_strains:
-        seqs.append(block['strains'][current_strain]['sequence']\
-                [i_start_with_context:i_end_with_context+1])
+        seqs[current_strain] = block['strains'][current_strain]['sequence']\
+            [i_start_with_context:i_end_with_context+1]
 
     match_both = ' '
     match_neither = 'x'
 
+    introgressed_code = ref_to_code[ref_from]
+
     introgressed = ' ' * (i_start - i_start_with_context) + \
-        'i' * (i_end - i_start + 1) + \
+        introgressed_code * (i_end - i_start + 1) + \
         ' ' * (i_end_with_context - i_end)
+
+    # number of sites that match only species from and not species to
+    # within the introgressed region (indication of how well-supported
+    # the region is)
+    ref_from_count = 0
 
     while x <= n:
         m = min(x + row_width, n)
-        for seq in seqs:
+        for strain in all_strains:
+            seq = seqs[strain]
             for i in range(x, m):
                 if annotation[i] != '':
                     f.write(seq[i].upper())
@@ -263,24 +272,34 @@ def write_annotated(block, master_ref, seq_master_ref, strain, \
                     f.write(seq[i].lower())
             f.write('\n')
 
-        # row for which reference strain matches; TODO generalize to
-        # more than 2 references?
+        # row for which reference strain matches (only accounts for 2
+        # references - the reference for the species the strain is in
+        # and the reference that the region is predicted to be
+        # introgressed from)
         for i in range(x, m):
-            if seqs[-1][i] == gp.gap_symbol or \
-                    seqs[0][i] == gp.gap_symbol or \
-                    seqs[1][i] == gp.gap_symbol:
+            base_x = seqs[strain][i]
+            base_from = seqs[ref_from][i]
+            base_to = seqs[ref_to][i]
+            if base_x == gp.gap_symbol or \
+                    base_from == gp.gap_symbol or \
+                    base_to == gp.gap_symbol:
                 f.write(' ')
-            elif seqs[-1][i] == seqs[0][i]:
-                if seqs[-1][i] == seqs[1][i]:
+            elif base_x == base_to:
+                if base_x == base_from:
                     # matches both refs
                     f.write(match_both)
                 else:
                     # matches ref 0 only 
-                    f.write(gp.ref_codes[0])
+                    f.write(ref_to_code[ref_to])
             else:
-                if seqs[-1][i] == seqs[1][i]:
+                if base_x == base_from:
                     # matches ref 1 only
-                    f.write(gp.ref_codes[1])
+                    f.write(ref_to_code[ref_from])
+                    # increment number of matches to reference from,
+                    # but only if we're in the introgressed region and
+                    # not just surrounding context
+                    if introgressed[i] == introgressed_code:
+                        ref_from_count += 1
                 else:
                     # matches neither ref
                     f.write(match_neither)
@@ -294,10 +313,12 @@ def write_annotated(block, master_ref, seq_master_ref, strain, \
         # next set of rows
         x += row_width
 
-    return gene_set_region, gene_introgressed_bases_count, gene_lengths
+    return gene_set_region, gene_introgressed_bases_count, gene_lengths, ref_from_count
 
 def write_region_alignment(block, entry, genes, \
                                strain, master_ref, refs, \
+                               ref_to_code, \
+                               ref_to, ref_from, \
                                fn, fn_annotated, context = 0):
     '''write relevant portion of alignment block'''
 
@@ -340,9 +361,10 @@ def write_region_alignment(block, entry, genes, \
     write_nonannotated(fn, refs, strain, block, i_start, i_end)
 
     # write annotated alignment
-    gene_set_region, gene_introgressed_bases_count, gene_lengths = \
-        write_annotated(block, master_ref, seq_master_ref, strain, \
-                            genes, \
+    gene_set_region, gene_introgressed_bases_count, gene_lengths, ref_from_count = \
+        write_annotated(block, refs, master_ref, strain, \
+                            ref_to, ref_from, genes, \
+                            ref_to_code, \
                             i_start_with_context, i_end_with_context, \
                             i_start, i_end, \
                             fn_annotated)
@@ -357,6 +379,8 @@ def write_region_alignment(block, entry, genes, \
     for gene in gene_lengths:
         x[gene] = float(gene_introgressed_bases_count[gene]) / gene_lengths[gene]
     entry['genes_introgressed_fractions'] = x
+
+    entry['ref_from_count'] = ref_from_count
 
 def read_gene_file(fn):
     f = open(fn, 'r')
