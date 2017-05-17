@@ -464,8 +464,6 @@ def summarize_gene_info(fn_all, introgressed_genes, tag, threshold=0):
         avg_ref_from_count = sum(sum_ref_from_count.values()) / \
             float(num_strains)
 
-        avg_introgressed_fraction /= float(num_strains)
-        avg_number_non_gap /= float(num_strains)
         f_all.write(gene + '\t' + str(num_strains) + '\t' + \
                         str(avg_introgressed_fraction) + '\t' + \
                         str(avg_number_non_gap) + '\t' + \

@@ -111,16 +111,16 @@ gp_dir = '../'
 fn_all_regions = gp.analysis_out_dir_absolute + 'introgressed_hmm_' + tag + '.txt'
 # introgressed regions keyed by strain and then chromosome
 regions = read_regions(fn_all_regions)
-"""
+
 s = regions.keys()[0]
 t = regions.keys()[1]
-c = 'IV'
+c = 'III'
 regions_abbr = {s:{c:{}}}
 regions_abbr[t] = {c:{}}
-regions_abbr[s][c] = regions[s][c][:10]
-regions_abbr[t][c] = regions[t][c][:10]
+regions_abbr[s][c] = regions[s][c][:100]
+regions_abbr[t][c] = regions[t][c][:100]
 regions = regions_abbr
-"""
+
 #####
 # extract alignments for introgressed regions
 #####
