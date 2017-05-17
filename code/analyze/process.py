@@ -418,3 +418,57 @@ def read_genes(fn, fn_genes):
 
     return genes
 
+def summarize_gene_info(fn_all, introgressed_genes, tag, threshold=0):
+    
+    f_all = open(fn_all, 'w')
+    f_all.write('gene\tnumber_strains\taverage_introgressed_fraction\taverage_number_non_gap\taverage_ref_from_count\n')
+
+    f_gene_heading = 'region_id\tstrain\tintrogressed_fraction\tnumber_non_gap\tref_from_count\n'
+
+    for gene in introgressed_genes:
+        # keyed by strain, because gene can be broken across multiple
+        # alignment blocks/regions for the same strain
+        sum_introgressed_fraction = {}
+        sum_number_non_gap = {}
+        sum_ref_from_count = {}
+        fn_gene = gp.analysis_out_dir_absolute + tag + '/genes/' + gene + '.txt'
+        if not os.path.exists(os.path.dirname(fn_gene)):
+            os.makedirs(os.path.dirname(fn_gene))
+        f_gene = open(fn_gene, 'w')
+        f_gene.write(f_gene_heading)
+        for entry in introgressed_genes[gene]:
+            region_id, strain, introgressed_fraction, number_non_gap, ref_from_count = entry
+            if ref_from_count >= threshold:
+                if strain not in sum_introgressed_fraction:
+                    sum_introgressed_fraction[strain] = 0
+                    sum_number_non_gap[strain] = 0
+                    sum_ref_from_count[strain] = 0
+                sum_introgressed_fraction[strain] += introgressed_fraction
+                sum_number_non_gap[strain] += number_non_gap
+                sum_ref_from_count[strain] += ref_from_count
+            f_gene.write(region_id + '\t' + strain + '\t' + \
+                             str(introgressed_fraction) + '\t' + str(number_non_gap) + '\t' + \
+                             str(ref_from_count) + '\n')
+
+        f_gene.close()
+
+        # now do averaging over strains
+        num_strains = len(sum_introgressed_fraction)
+        if num_strains == 0:
+            continue
+
+        avg_introgressed_fraction = sum(sum_introgressed_fraction.values()) / \
+            float(num_strains)
+        avg_number_non_gap = sum(sum_number_non_gap.values()) / \
+            float(num_strains)
+        avg_ref_from_count = sum(sum_ref_from_count.values()) / \
+            float(num_strains)
+
+        avg_introgressed_fraction /= float(num_strains)
+        avg_number_non_gap /= float(num_strains)
+        f_all.write(gene + '\t' + str(num_strains) + '\t' + \
+                        str(avg_introgressed_fraction) + '\t' + \
+                        str(avg_number_non_gap) + '\t' + \
+                        str(avg_ref_from_count) + '\n')
+
+    f_all.close()
