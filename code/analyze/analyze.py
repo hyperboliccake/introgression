@@ -334,6 +334,8 @@ if unknown_state:
     refs = refs[:-1]
 master_ref = refs[0]
 
+gp_dir = '../'
+
 # get the filenames of all the strains we're going to predict; this is
 # probably not the simplest way to set this up but whatever
 strain_names = []
@@ -342,15 +344,17 @@ for d in gp.non_ref_dirs[states[0]]:
     fns = filter(lambda x: x[-3:] == '.fa', fns)
     strain_names += [x[:x.find('_')] for x in fns]
 strain_names = list(set(strain_names))
-
-gp_dir = '../'
+f_strain_list = open(gp.analysis_out_dir_absolute + '/' + tag + '/strain_list.txt', 'w')
+f_strain_list.write('\n'.join(strain_names) + '\n')
+f_strain_list.close()
 
 fn_hmm = gp_dir + gp.sim_out_dir + 'hmm_parameters_' + tag + '.txt'
 init, emis, trans = read_hmm_params(fn_hmm, states, sim_states, unknown_state)
 
-fn_out = gp_dir + gp.analysis_out_dir + 'introgressed_hmm_' + tag + '.txt'
+fn_out = gp.analysis_out_dir_absolute + 'introgressed_hmm_' + tag + '.txt'
 f_out = open(fn_out, 'w')
 f_out.write('strain\tchromosome\talignment_block_label\tstrand\tpredicted_reference\tregion_start\tregion_end\tnumber_non_gap_sites\n')
+
 
 # one at a time because memory
 for x in strain_names:
