@@ -111,16 +111,16 @@ gp_dir = '../'
 fn_all_regions = gp.analysis_out_dir_absolute + 'introgressed_hmm_' + tag + '.txt'
 # introgressed regions keyed by strain and then chromosome
 regions = read_regions(fn_all_regions)
-
+"""
 s = regions.keys()[0]
 t = regions.keys()[1]
 c = 'III'
 regions_abbr = {s:{c:{}}}
 regions_abbr[t] = {c:{}}
-regions_abbr[s][c] = regions[s][c][:100]
-regions_abbr[t][c] = regions[t][c][:100]
+regions_abbr[s][c] = regions[s][c][:10]
+regions_abbr[t][c] = regions[t][c][:10]
 regions = regions_abbr
-
+"""
 #####
 # extract alignments for introgressed regions
 #####
@@ -149,6 +149,7 @@ for r in gp.alignment_ref_order:
 
 # just read genes from master reference for now, since that's how the
 # introgressed regions are indexed
+gene_info = {}
 for chrm in gp.chrms:
     fn = gp.gb_master_dir + master_ref + '/' + \
         master_ref + '_chr' + chrm + '.gb'
@@ -159,6 +160,8 @@ for chrm in gp.chrms:
 
     print 'reading genes on chromosome', chrm
     genes = read_genes(fn, fn_genes)
+    for gene in genes:
+        gene_info[gene] = (chrm, genes[gene][0], genes[gene][1])
     print 'done reading genes'
 
     for strain in regions:
@@ -212,10 +215,15 @@ for strain in regions:
     for chrm in regions[strain]:
         for entry in regions[strain][chrm]:
             for gene in entry['genes']:
-                x = (entry['region_id'], strain, \
-                         entry['genes_introgressed_fractions'][gene], \
-                         entry['number_non_gap'], \
-                         entry['ref_from_count'])
+                x = {}
+                x['region_id'] = entry['region_id']
+                x['strain'] = strain
+                x['start'] = entry['region_start']
+                x['end'] = entry['region_end']
+                x['introgressed_fraction'] = \
+                    entry['genes_introgressed_fractions'][gene]
+                x['number_non_gap'] = entry['number_non_gap']
+                x['ref_from_count'] = entry['ref_from_count']
                 if gene not in introgressed_genes:
                     introgressed_genes[gene] = []
                 introgressed_genes[gene].append(x)
@@ -254,7 +262,7 @@ f.close()
 fn_all = gp.analysis_out_dir_absolute + tag + '/introgressed_hmm_' + tag + \
     '_genes_summary.txt'
 
-summarize_gene_info(fn_all, introgressed_genes, tag, threshold=0)
+summarize_gene_info(fn_all, introgressed_genes, gene_info, tag, threshold=0)
 
 # same summaries, but filter out all the regions with not enough
 # support (< x sites that match reference for species predicted to be
@@ -262,7 +270,4 @@ summarize_gene_info(fn_all, introgressed_genes, tag, threshold=0)
 fn_all_filtered = gp.analysis_out_dir_absolute + tag + '/introgressed_hmm_' + tag + \
     '_genes_summary_filtered.txt'
 
-summarize_gene_info(fn_all_filtered, introgressed_genes, tag, threshold=8)
-
-
-
+summarize_gene_info(fn_all_filtered, introgressed_genes, gene_info, tag, threshold=8)
