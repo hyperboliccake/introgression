@@ -111,6 +111,7 @@ gp_dir = '../'
 fn_all_regions = gp.analysis_out_dir_absolute + 'introgressed_hmm_' + tag + '.txt'
 # introgressed regions keyed by strain and then chromosome
 regions = read_regions(fn_all_regions)
+#regions = {'yjm683':regions['yjm683']}
 """
 s = regions.keys()[0]
 t = regions.keys()[1]

@@ -49,13 +49,8 @@ def index_ignoring_gaps(s, i, s_start):
     '''returns the index of the ith non-gap character in s, given that
     the start index of s is s_start (instead of needing to be 0)'''
 
-    #if mode == 'error' and (i < s_start or i >= s_start + s_length):
-    #    return -1
-    #if i < s_start:
-    #    return 0
-    #if i >= s_start + s_length:
-    #    return s_start + s_length
-    
+    assert s_start >= 0
+
     x = 0
     non_gap_count = 0
     i -= s_start
@@ -70,6 +65,9 @@ def index_ignoring_gaps(s, i, s_start):
     return x
 
 def mark_gene(block, start, end, genes):
+    # start is 
+    # end is
+    
     seq = block['sequence']
     block_start = block['start']
     block_end = block_start + block['length'] - 1 # subtract 1 so index of end
@@ -79,13 +77,12 @@ def mark_gene(block, start, end, genes):
     #region_relative_end = index_ignoring_gaps(seq, end, block_start)
     #seq_region = seq[region_relative_start:region_relative_end+1]
     seq_region = seq[start:end+1]
-    seq_region_start_ind = block_start + start
+    #seq_region_start_ind = block_start + start #WRONG
+    seq_region_start_ind = block_start + start - seq[:start].count(gp.gap_symbol)
 
     a = [''] * len(seq_region)
     len_a = len(a)
 
-    # just annotate whole alignment block and then pull out portion at
-    # end; TODO make this more efficient
     for gene_name in genes:
         gene_start, gene_end = genes[gene_name]
 
