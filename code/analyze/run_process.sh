@@ -1,6 +1,6 @@
 # 
 # Use the bash shell to interpret this job script 
-#$ -S /bin/bash -t 1-27 -l m_mem_free=2G
+#$ -S /bin/bash -t 9-9 -l m_mem_free=2G
 # 
 # Send an e-mail to the address 
 # specified in .sge_request when this job ends. 
