@@ -1,4 +1,4 @@
-# Given a list of introgressed regions in this format:
+# Given a list of introgresssed regions in this format:
 # Sigma1278b.chrX, + strand, regionStart-regionEnd, blockStart, blockEnd
 #
 # generate a set of annotations in the ../../results/analyze/ folder:
@@ -253,7 +253,7 @@ f.close()
 
 
 #####
-# summarize introgressed gene information in a few different ways
+# summarize introgressed gene/strain information in a few different ways
 #####
 
 # overall file with list of all introgressed genes and summary info;
@@ -262,13 +262,26 @@ f.close()
 
 fn_all = gp.analysis_out_dir_absolute + tag + '/introgressed_hmm_' + tag + \
     '_genes_summary.txt'
+fn_strains = gp.analysis_out_dir_absolute + tag + \
+    '/introgressed_hmm_' + tag + '_strains_summary.txt'
+fn_strains_g = gp.analysis_out_dir_absolute + tag + \
+    '/introgressed_hmm_' + tag + '_strains_g_summary.txt'
 
-summarize_gene_info(fn_all, introgressed_genes, gene_info, tag, threshold=0)
+
+summarize_gene_info(fn_all, fn_strains, fn_strains_g, \
+                        introgressed_genes, gene_info, tag, threshold=0)
 
 # same summaries, but filter out all the regions with not enough
 # support (< x sites that match reference for species predicted to be
 # introgressed from)
 fn_all_filtered = gp.analysis_out_dir_absolute + tag + '/introgressed_hmm_' + tag + \
     '_genes_summary_filtered.txt'
+fn_strains_filtered = gp.analysis_out_dir_absolute + tag + \
+    '/introgressed_hmm_' + tag + '_strains_summary_filtered.txt'
+fn_strains_g_filtered = gp.analysis_out_dir_absolute + tag + \
+    '/introgressed_hmm_' + tag + '_strains_g_summary_filtered.txt'
 
-summarize_gene_info(fn_all_filtered, introgressed_genes, gene_info, tag, threshold=8)
+
+summarize_gene_info(fn_all_filtered, fn_strains_filtered, fn_strains_g_filtered, \
+                        introgressed_genes, gene_info, tag, threshold=8)
+
