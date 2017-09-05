@@ -415,12 +415,15 @@ def read_genes(fn, fn_genes):
 
     return genes
 
-def summarize_gene_info(fn_all, introgressed_genes, gene_info, tag, threshold=0):
+def summarize_gene_info(fn_all, fn_strains, fn_strains_g, \
+                            introgressed_genes, gene_info, tag, threshold=0):
     
     f_all = open(fn_all, 'w')
     f_all.write('gene\tchromosome\tstart\tend\tnumber_strains\taverage_introgressed_fraction\taverage_number_non_gap\taverage_ref_from_count\n')
 
     f_gene_heading = 'region_id\tstrain\tstart\tend\tintrogressed_fraction\tnumber_non_gap\tref_from_count\n'
+
+    strain_genes = {}
 
     for gene in introgressed_genes:
         # keyed by strain, because gene can be broken across multiple
@@ -443,6 +446,10 @@ def summarize_gene_info(fn_all, introgressed_genes, gene_info, tag, threshold=0)
                 sum_introgressed_fraction[strain] += entry['introgressed_fraction']
                 sum_number_non_gap[strain] += entry['number_non_gap']
                 sum_ref_from_count[strain] += entry['ref_from_count']
+                if strain not in strain_genes:
+                    strain_genes[strain] = []
+                strain_genes[strain].append(gene)
+
             f_gene.write(entry['region_id'] + '\t' + \
                              strain + '\t' + \
                              str(entry['start']) + '\t' + \
@@ -475,3 +482,13 @@ def summarize_gene_info(fn_all, introgressed_genes, gene_info, tag, threshold=0)
                         str(avg_ref_from_count) + '\n')
 
     f_all.close()
+
+    f_strains = open(fn_strains, 'w')
+    f_strains_g = open(fn_strains_g, 'w')
+    for strain in strain_genes:
+        line = strain + '\t' + str(len(strain_genes[strain]))
+        f_strains.write(line + '\n')
+        line += '\t' + '\t'.join(strain_genes[strain])
+        f_strains_g.write(line + '\n')
+    f_strains.close()
+    f_strains_g.close()
