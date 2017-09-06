@@ -1,6 +1,6 @@
 # 
 # Use the bash shell to interpret this job script 
-#$ -S /bin/bash -t 1-27 -tc 27 -l m_mem_free=12G
+#$ -S /bin/bash -t 1-31 -tc 31 -l m_mem_free=2G
 # 
 # Send an e-mail to the address 
 # specified in .sge_request when this job ends. 
@@ -33,9 +33,9 @@ module load python/2.7.3
 # Script or command(s) to run via SGE
 cd /net/gs/vol1/home/aclark4/projects/introgression/code/sim
 
-ARGS=$(head -n $SGE_TASK_ID sim_multi_model_args.txt | tail -n 1)
+ARGS=$(head -n $SGE_TASK_ID sim_compare_args.txt | tail -n 1)
 
-python sim_multi_model.py $ARGS
+#python sim_multi_model.py $ARGS
 
 python sim_analyze_hmm_bw_main.py $ARGS
 
