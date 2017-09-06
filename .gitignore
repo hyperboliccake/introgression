@@ -5,6 +5,8 @@
 *.out
 *.maf
 *.txt
+*.fasta
+*.fa
 !todo.txt
 !code/sim/sim_multi_model_args.txt
 !code/sim/sim_multi_model_args.readme.txt
