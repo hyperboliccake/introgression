@@ -180,6 +180,8 @@ class HMM:
                               # add the current sequence contribution to total
                               num = elogsum(num, num_seq)
                               den = elogsum(den, den_seq)
+                         assert den != LOGZERO, \
+                             'probably something wrong with initial parameter values'
                          row.append(eexp(elogproduct(num, -den)))
                     a.append(row)
      
@@ -206,6 +208,8 @@ class HMM:
                               # add the current sequence contribution to total
                               num = elogsum(num, num_seq)
                               den = elogsum(den, den_seq)
+                         assert den != LOGZERO, \
+                             'probably something wrong with initial parameter values'
                          d[symbol] = eexp(elogproduct(num, -den))
                     b.append(d)
           
