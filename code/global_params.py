@@ -22,7 +22,8 @@ alignment_suffix = '.maf'
 #====
 
 ref_dir = {'S288c':'/net/akey/vol2/aclark4/nobackup/100_genomes/genomes/S288c_SGD-R64/', \
-                'CBS432':'/net/akey/vol2/aclark4/nobackup/100_genomes/paradoxus/strains/CBS432/assembly/CBS432/'}
+                'CBS432':'/net/gs/vol1/home/aclark4/projects/introgression/data/CBS432/'}
+
 
 # will look at all *.fa files in these directories; expects filenames
 # in the format strain_chrX.fa
@@ -43,6 +44,10 @@ gb_master_dir = '/net/akey/vol2/aclark4/nobackup/'
 
 # order that references appear in filename
 alignment_ref_order = ['S288c', 'CBS432']
+
+# this is kind of dumb, but the name of the fasta files to get seqs
+# from won't necessarily just be the names we want to use
+ref_fn_prefix = {'S288c':'S288c_SGD-R64', 'CBS432':'CBS432'}
 
 # directory for mugsy to output alignments and for subsequent parts of
 # the program to read the alignments; this directory needs to exist
@@ -66,6 +71,7 @@ unknown_symbol = '?'
 
 unsequenced_symbol = 'N'
 gap_symbol = '-'
+unaligned_symbol = '?'
 
 #====
 # simulations
@@ -125,11 +131,15 @@ genes_out_dir_absolute = analysis_out_dir_absolute + '/genes/'
 
 mugsy_install_path = '~/software/mugsy/'
 
+tcoffee_install_path = '~/software/T-COFFEE_installer_Version_11.00.8cbe486_linux_x64/bin/'
+
+mafft_install_path = '~/software/mafft/bin/'
+
 ms_install_path = '/net/gs/vol1/home/aclark4/software/msdir/'
 
 #====
 # other
 #====
 
-chrms = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XIV']
+chrms = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI']
 
