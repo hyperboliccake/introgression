@@ -78,7 +78,7 @@ else:
         ' -ej ' + str(least_recent_join_time) + ' ' + \
         label[last_to_join] + ' ' + label[first_to_join1]
 
-ms_command += ' -T > ' + gp_dir + gp.sim_out_dir + '/' + outfilename
+ms_command += ' -T > ' + gp_dir + gp.sim_out_dir + '/ms/' + outfilename
 
 print(ms_command)
 os.system(ms_command)
