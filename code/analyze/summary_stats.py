@@ -15,7 +15,7 @@ import global_params as gp
 tag = sys.argv[1]
 
 fn = gp.analysis_out_dir_absolute + 'introgressed_hmm_' + tag + '_genes.txt'
-regions = process_helpers.read_regions_with_genes(fn)
+regions = process_helpers.read_regions(fn)
 regions = remove_duplicates(regions)
 
 print 'gap hist'
