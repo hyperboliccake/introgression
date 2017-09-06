@@ -1,0 +1,2 @@
+This file is just here so that git will track this directory, without
+tracking any of the actual alignments.
