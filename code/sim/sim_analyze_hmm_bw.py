@@ -872,22 +872,6 @@ def seq_id(seqs, index_to_species, species_order):
     return s
 
 
-# add in the nonpolymorphic sites
-def fill_seqs(polymorphic_seqs, polymorphic_sites, nsites, fill):
-    
-    seqs_filled = []
-    for seq in polymorphic_seqs:
-        s = ''
-        poly_ind = 0
-        for i in range(nsites):
-            if i in polymorphic_sites:
-                s += seq[poly_ind]
-                poly_ind += 1
-            else:
-                s += fill
-        seqs_filled.append(s)
-    return seqs_filled
-
 # convert sequences from bases to symbols indicating which references they match
 def code_seqs(seqs, nsites, ref_seqs, match_symbol, mismatch_symbol, unknown_symbol, unsequenced_symbol):
 

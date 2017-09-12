@@ -1,3 +1,19 @@
+# add in the nonpolymorphic sites
+def fill_seqs(polymorphic_seqs, polymorphic_sites, nsites, fill):
+    
+    seqs_filled = []
+    for seq in polymorphic_seqs:
+        s = ''
+        poly_ind = 0
+        for i in range(nsites):
+            if i in polymorphic_sites:
+                s += seq[poly_ind]
+                poly_ind += 1
+            else:
+                s += fill
+        seqs_filled.append(s)
+    return seqs_filled
+
 # given fractional positions for snvs and length of sequence l,
 # determine integer positions; if allow_multi_hit is true, easy but if
 # not, shift them around to include all the snvs
@@ -30,6 +46,8 @@ def integer_positions(positions, l, allow_multi_hit = False):
 
 def read_one_sim(f, num_sites, num_samples):
 
+    sim = {}
+
     line = f.readline()
     while line != '//\n':
         if line == '':
@@ -48,18 +66,21 @@ def read_one_sim(f, num_sites, num_samples):
         t = parse_ms_tree(t_string)
         trees.append(t)
         t_string = f.readline()
+    sim['recomb_sites'] = recomb_sites
+    sim['trees'] = trees
 
     # read next couple of lines before sequences begin
-    segsites = int(t_string[len('segsites: '):-1])
+    sim['segsites'] = int(t_string[len('segsites: '):-1])
     positions = [float(x) for x in f.readline()[len('positions: '):].split()]
     # convert positions to integers
     # (allow sites to be hit multiple times because that seems reasonable)
     # (zero-indexed)
-    positions = integer_positions(positions, num_sites, allow_multi_hit=True)
+    sim['positions'] = integer_positions(positions, num_sites, allow_multi_hit=True)
     # read in sequences (at this point only sites that are polymorphic)
     seqs = []
     for i in range(num_samples):
         seqs.append(f.readline()[:-1])
-        assert(len(seqs[-1]) > 0)    
+        assert(len(seqs[-1]) > 0)
+    sim['seqs'] = seqs
 
-    return [trees, recomb_sites, segsites, positions, seqs]
+    return sim
