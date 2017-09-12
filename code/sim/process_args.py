@@ -169,6 +169,14 @@ def process_args(print_args=True):
         [d['species_from1']] * d['num_samples_species_from1'] + \
         [d['species_from2']] * d['num_samples_species_from2']
 
+    species_to_indices = {}
+    for i in index_to_species:
+        species = index_to_species[i]
+        if species not in species_to_indices:
+            species_to_indices[species] = []
+        species_to_indices[species].append(i)
+    d['species_to_indices'] = species_to_indices
+
     # take first index from each population to be reference sequence
     ref_ind_species_to = 0
     ref_ind_species_from1 = num_samples_species_to
