@@ -1,5 +1,6 @@
 import sys
 import os
+import concordance_functions
 
 def seq_id(a, b, l = -1, use_gaps = False):
     assert len(a) == len(b)
@@ -24,73 +25,93 @@ def sim_stats(sim, args):
     # - average sequence identity within and between species
 
     num_species = len(args['states'])
+    ids = {}
     for i in range(num_species):
         for j in range(i, num_species):
+            ids_ij = []
             species1 = args['states'][i]
+            species2 = species1
             inds1 = args['species_to_indices'][species1]
+            # within species
             if i == j:
                 for k in range(len(inds1)):
                     for l in range(k+1, len(inds1)):
-                        seq_id(sim['seqs'][k], sim['seqs'][l], args['num_sites'])
+                        s1 = inds1[k]
+                        s2 = inds1[l]
+                        ids_ij.append(\
+                            seq_id(sim['seqs'][s1], sim['seqs'][s2], args['num_sites']))
+                        
+            # between species
             else:
                 species2 = args['states'][j]
-                inds2 = args['species_to_indices'][species2]
-            
+                inds2 = args['species_to_indices'][species2] 
+                for s1 in inds1:
+                    for s2 in inds2:
+                        ids_ij.append(\
+                            seq_id(sim['seqs'][s1], sim['seqs'][s2], args['num_sites']))
 
+            ids[(species1, species2)] = ids_ij
 
-def find_introgressed(sim, ):
+    return ids
+
+def weighted_average(values, weights):
+    assert len(values) == len(weights)
+
+    total = 0
+    for i in range(len(values)):
+        total += values[i] * weights[i]
+    total = float(total) / sum(weights)
+
+    return total
+
+def calculate_ils(sim, args):
+
+    num_trees = len(sim['trees'])
+    concordant = [0] * num_trees
+    for ti in range(num_trees):
+        t = sim['trees'][ti]
+
+        if concordance_functions.is_concordant(\
+            t, args['index_to_species'], args['species_to']):
+            concordant[ti] = 1
+
+    return weighted_average(concordant, sim['recomb_sites']), \
+        float(sum(concordant)) / num_trees
+
+def find_introgressed(sim, args):
 
     ##======
-    # figure out which sites are actually introgressed by
-    # separately looking at the tree for each stretch without
-    # recombination
+    # figure out which sites are actually introgressed by separately
+    # looking at the tree for each stretch without recombination
     ##======
 
     # sequence of states, one for each site and strain
-    actual_state_seq = [[] for i in range(num_samples_species_to)]
-    # keep track of whether each tree is concordant with the species tree
-    concordant = []
-    # and how many lineages of the to species are left when it
-    # first joins another species
-    num_lineages_at_join = []
-    # and how many bases are introgressed in total in each strain
-    num_introgressed = [0] * num_samples_species_to
+    actual_state_seq = [[] for i in range(args['num_samples_species_to'])]
+    # how many bases are introgressed in total in each strain
+    num_introgressed = [0] * args['num_samples_species_to']
     # loop through the trees for all blocks with no recombination
     # within them
-    for ti in range(len(trees)):
+    num_trees = len(sim['trees'])
+    for ti in range(num_trees):
 
         # note that species indices/labels are shifted to start at
         # 0 instead of 1
         t = trees[ti]
-            
-        # is this tree concordant with the species tree? (only
-        # checks whether the to species is monophyletic, which
-        # indicates that ILS not possible)
-        if is_concordant(t, index_to_species, species_to):
-            concordant.append(True)
-        else:
-            concordant.append(False)
 
         # identify sequences that are introgressed from the one or
         # two other species, based on coalescent tree; could clean
         # this up a little
         introgressed = None
-        num_lineages_at_join_current = None
-        # three species
-        if num_from_species == 2:
-            introgressed, num_lineages_at_join_current = \
-                find_introgressed_3(t, species_to, topology, index_to_species)
+
         # two species
+        if sim['species_from2'] == None:
+            find_introgressed_2(sim, args)
+        # three species
         else:
-            assert num_from_species == 1
-            # introgressed is a list of species (one entry for
-            # each individual in to species)
-            introgressed, num_lineages_at_join_current = \
-                find_introgressed_2(t, topology[2], species_to, index_to_species)
+            find_introgressed_3(sim_args)
+
+
         print introgressed[0]
-        # number of lineages that were present when all
-        # populations joined
-        num_lineages_at_join.append(num_lineages_at_join_current)
 
         # number of sites in the current block of sequence
         num_sites_t = recomb_sites[ti]
@@ -103,4 +124,5 @@ def find_introgressed(sim, ):
             if introgressed[i] != species_to:
                 num_introgressed[i] += num_sites_t
             actual_state_seq[i] += [introgressed[i]] * num_sites_t
+
 

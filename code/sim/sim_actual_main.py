@@ -3,6 +3,8 @@ import os
 import process_args
 import sim_process
 from sim_actual import *
+sys.path.append('..')
+import global_params as gp
 
 ##======
 # read in simulation parameters
@@ -18,7 +20,8 @@ args = process_args.process_args()
 
 gp_dir = '../'
 # for reading output from ms
-ms_f = open(gp_dir + gp.sim_out_dir + '/ms/' + gp.sim_out_prefix + tag + '.txt', 'r')
+ms_f = open(gp_dir + gp.sim_out_dir + '/ms/' + gp.sim_out_prefix + \
+                args['tag'] + '.txt', 'r')
 
 fill_symbol = '0'
 
@@ -37,15 +40,18 @@ for i in range(args['num_reps']):
     # summarize properties of sequences
     ##======
 
-    sim_stats(sim, args)
+    stats = sim_stats(sim, args)
+
+    print stats
 
     ##======
-    # calculate frequency of ILS
+    # calculate frequency of ILS (or of possible ILS...)
     ##======
 
+    concordant_site_freq, concordant_tree_frac = calculate_ils(sim, args)
 
-
-
+    print concordant_site_freq
+    
     ##======
     # find introgressed/non-introgressed tracts
     ##======
@@ -54,7 +60,7 @@ for i in range(args['num_reps']):
     sim['seqs'] = sim_process.fill_seqs(sim['seqs'], sim['positions'], \
                                             args['num_sites'], fill_symbol)
 
-
+    find_introgressed(sim, args)
 
 ##======
 # output
