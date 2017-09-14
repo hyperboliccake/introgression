@@ -1,4 +1,7 @@
 import sys
+import concordance_functions
+sys.path.append('..')
+import global_params as gp
 
 def parse_topology_helper(t, factor=1):
     if '(' not in t:
@@ -59,8 +62,8 @@ def process_args(print_args=True):
     i += 1
 
     # species names
-    d['species'] = get_labels(parse_topology(d['topology']))
-    assert len(species) == 2 or len(species) == 3, species
+    d['species'] = concordance_functions.get_labels(parse_topology(d['topology']))
+    assert len(d['species']) == 2 or len(d['species']) == 3, d['species']
 
     # expected length and number of tracts...
     expected_tract_lengths = {}
@@ -97,7 +100,7 @@ def process_args(print_args=True):
     # ...for second species introgression is coming from (optional)
     d['species_from2'] = None
     d['num_samples_species_from2'] = 0
-    d'N0_species_from2'] = d['N0_species_from1']
+    d['N0_species_from2'] = d['N0_species_from1']
     d['migration_from2'] = 0
     d['has_ref_from2'] = False
     if len(d['species']) == 3:
@@ -106,7 +109,7 @@ def process_args(print_args=True):
         assert d['species_from2'] in d['species']
         d['num_samples_species_from2'] = int(sys.argv[i])
         i += 1
-        d'[N0_species_from2'] = int(sys.argv[i])
+        d['N0_species_from2'] = int(sys.argv[i])
         i += 1
         d['migration_from2'] = float(sys.argv[i]) * 2 * d['N0_species_from2']
         i += 1
@@ -130,7 +133,7 @@ def process_args(print_args=True):
     expected_tract_lengths[d['species_to']] = float(expected_num_introgressed_bases) / \
         expected_num_tracts[d['species_to']]
 
-    assert d'N0_species_to'] == d['N0_species_from1'] and \
+    assert d['N0_species_to'] == d['N0_species_from1'] and \
         d['N0_species_to'] == d['N0_species_from2']
 
     d['topology'] = parse_topology(d['topology'], 1/float(2 * d['N0_species_to']))
@@ -145,7 +148,7 @@ def process_args(print_args=True):
     # should probably be 1/750000 + 6.1 * 10^-6 (where 750000 is average
     # chr size)
     # recombination rate
-    d['rho'] = 2 * f['N0_species_to'] * float(sys.argv[i]) * (d['num_sites'] - 1)
+    d['rho'] = 2 * d['N0_species_to'] * float(sys.argv[i]) * (d['num_sites'] - 1)
     i += 1
 
     d['outcross_rate'] = float(sys.argv[i])
@@ -165,35 +168,35 @@ def process_args(print_args=True):
         d['num_samples_species_from1'] + d['num_samples_species_from2']
 
     # species_to always comes first
-    index_to_species = [d['species_to']] * d['num_samples_species_to'] + \
+    d['index_to_species'] = [d['species_to']] * d['num_samples_species_to'] + \
         [d['species_from1']] * d['num_samples_species_from1'] + \
         [d['species_from2']] * d['num_samples_species_from2']
 
     species_to_indices = {}
-    for i in index_to_species:
-        species = index_to_species[i]
+    for ind in range(len(d['index_to_species'])):
+        species = d['index_to_species'][ind]
         if species not in species_to_indices:
             species_to_indices[species] = []
-        species_to_indices[species].append(i)
+        species_to_indices[species].append(ind)
     d['species_to_indices'] = species_to_indices
 
     # take first index from each population to be reference sequence
     ref_ind_species_to = 0
-    ref_ind_species_from1 = num_samples_species_to
-    ref_ind_species_from2 = num_samples_species_to + num_samples_species_from1
+    ref_ind_species_from1 = d['num_samples_species_to']
+    ref_ind_species_from2 = d['num_samples_species_to'] + d['num_samples_species_from1']
     ref_inds = [ref_ind_species_to]
-    states = [species_to, species_from1]
+    states = [d['species_to'], d['species_from1']]
     unknown_species = None
-    if has_ref_from1:
+    if d['has_ref_from1']:
         ref_inds.append(ref_ind_species_from1)
     else:
-        unknown_species = species_from1
-    if species_from2 != None:
-        states.append(species_from2)
-        if has_ref_from2:
+        unknown_species = d['species_from1']
+    if d['species_from2'] != None:
+        states.append(d['species_from2'])
+        if d['has_ref_from2']:
             ref_inds.append(ref_ind_species_from2)
         else:
-            unknown_species = species_from2
+            unknown_species = d['species_from2']
 
     d['unknown_species'] = unknown_species
     d['states'] = states
@@ -204,8 +207,8 @@ def process_args(print_args=True):
     # the species in states correspond to the indices of the references
     # (and the sequence codings later); ACTUALLY just force the unknown
     # species to come last
-    if species_from2 != None:
-        assert has_ref_from1
+    if d['species_from2'] != None:
+        assert d['has_ref_from1']
 
     if print_args:
         for key in d.keys():
