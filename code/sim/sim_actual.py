@@ -1,5 +1,6 @@
 import sys
 import os
+import copy
 import concordance_functions
 
 def seq_id(a, b, l = -1, use_gaps = False):
@@ -52,7 +53,9 @@ def sim_stats(sim, args):
 
             ids[(species1, species2)] = ids_ij
 
-    return ids
+    stats = {'seq_ids':ids}
+
+    return stats
 
 def weighted_average(values, weights):
     assert len(values) == len(weights)
@@ -75,8 +78,74 @@ def calculate_ils(sim, args):
             t, args['index_to_species'], args['species_to']):
             concordant[ti] = 1
 
-    return weighted_average(concordant, sim['recomb_sites']), \
-        float(sum(concordant)) / num_trees
+    stats = {'concordant_site_freq':weighted_average(concordant, sim['recomb_sites']),\
+                 'concordant_tree_frac':float(sum(concordant)) / num_trees}
+            
+    return stats
+
+
+def find_introgressed_2(t, cutoff_time, species_to, index_to_species):
+    # find species that are introgressed within a single unrecombined
+    # block, given there is one species migrating into one other
+    # species
+
+    # strategy: find all lineages that exist at the time the two
+    # populations join; then for each of those lineages, if any are
+    # mixed-species, then there's introgression
+
+    # the subtrees that exist at the time the populations join
+    lineages = concordance_functions.split(t, cutoff_time)
+    # make this a dictionary instead of just a list of the
+    # introgressed individuals because in other cases we'll want to
+    # keep track of which species introgression came from
+    introgressed = {}
+    num_lineages_species_to = 0
+    for l in lineages:
+        not_introgressed, s = \
+            concordance_functions.is_partial_clade(l, species_to, index_to_species)
+        # if this lineage has only species_to members, then add this
+        # to the number of lineages for the species
+        if not_introgressed:
+            num_lineages_species_to += 1
+        # if there's any occurence of species_from in this clade, then
+        # mark all individuals as coming from species_from (since
+        # we're only allowing migration in one direction)
+        else:
+            for label in concordance_functions.get_labels(l):
+                # note that species labels/indices start at 0 (see
+                # sim_process.parse_ms_tree_helper())
+                if index_to_species[label] == species_to:
+                    introgressed[label] = s
+
+    return introgressed, num_lineages_species_to
+
+def find_introgressed_3(t, topology, species_to, index_to_species):
+    # find species that are introgressed within a single unrecombined
+    # block, given there are two species migrating into one other
+    # species
+
+    # IMPORTANT: this function assumes migration only happens after
+    # most recent divergence
+
+    # strategy: look at lineages that exist at most recent join time;
+    # if any are not all one species, then mark all members as the
+    # species that's not the to species (there's no migration between
+    # the two from species); then look at the more distant join time;
+    # now we can't just check if the lineages are all one species
+    # because two of them have joined; so instead...figure out which
+    # species is the last to join (from the topology), then...  nvm,
+    # only allowing migration later on makes this less complicated
+    
+    join_time_species_to = topology[2]
+    subtree = topology[0]
+    last_to_join = topology[1]
+    if type(subtree) != type([]):
+        subtree = topology[1]
+        last_to_join = topology[0]
+    if last_to_join != species_to:
+        join_time_species_to = subtree[2]
+
+    return find_introgressed_2(t, join_time_species_to, species_to, index_to_species)
 
 def find_introgressed(sim, args):
 
@@ -96,33 +165,92 @@ def find_introgressed(sim, args):
 
         # note that species indices/labels are shifted to start at
         # 0 instead of 1
-        t = trees[ti]
-
+        t = sim['trees'][ti]
         # identify sequences that are introgressed from the one or
         # two other species, based on coalescent tree; could clean
         # this up a little
         introgressed = None
-
-        # two species
-        if sim['species_from2'] == None:
-            find_introgressed_2(sim, args)
-        # three species
+        # two species total
+        if args['species_from2'] == None:
+            introgressed, num_lineages = \
+                find_introgressed_2(t, args['topology'][2], args['species_to'], \
+                                        args['index_to_species'])
+        # three species total
         else:
-            find_introgressed_3(sim_args)
-
-
-        print introgressed[0]
+            introgressed, num_lineages = \
+                find_introgressed_3(t, args['topology'], args['species_to'], \
+                                        args['index_to_species'])
 
         # number of sites in the current block of sequence
-        num_sites_t = recomb_sites[ti]
-
+        num_sites_t = sim['recomb_sites'][ti]
         # for all strains that have this block introgressed, add
         # the length of the block to the total number of
         # introgressed sites across all strains; also update the
         # state sequence
-        for i in range(num_samples_species_to):
-            if introgressed[i] != species_to:
+        for i in range(args['num_samples_species_to']):
+            if introgressed.has_key(i):
                 num_introgressed[i] += num_sites_t
-            actual_state_seq[i] += [introgressed[i]] * num_sites_t
+                actual_state_seq[i] += [introgressed[i]] * num_sites_t
+            else:
+                actual_state_seq[i] += [args['species_to']] * num_sites_t
 
+    stats = {'num_introgressed':num_introgressed}
 
+    return stats, actual_state_seq
+
+def one_output_header_chunk(d, sep):
+
+    s = ''
+    for key in sorted(d.keys()):
+        value = d[key]
+        if type(value) == type({}):
+            for subkey in sorted(value.keys()):
+                s += str(key) + '_' + str(subkey) + sep
+        elif type(value) == type([]):
+            for i in range(len(value)):
+                s += str(key) + '_' + str(i) + sep
+        else:
+            s += str(key) + sep
+    return s
+
+def write_output_headers(summary_info, concordance_info, introgression_info, f, sep):
+
+    line_string = ''
+
+    line_string += one_output_header_chunk(summary_info, sep)
+    line_string += one_output_header_chunk(concordance_info, sep)
+    line_string += one_output_header_chunk(introgression_info, sep)
+    
+    f.write(line_string[:-1] + '\n')
+    
+
+def one_output_chunk(d, sep):
+
+    s = ''
+    for key in sorted(d.keys()):
+        value = d[key]
+        if type(value) == type({}):
+            for subkey in sorted(value.keys()):
+                s += str(value[subkey]) + sep
+        elif type(value) == type([]):
+            for i in range(len(value)):
+                s += str(value[i]) + sep
+        else:
+            s += str(value) + sep
+    return s
+
+def write_output_line(summary_info, concordance_info, introgression_info, f, \
+                          header = False):
+
+    sep = '\t'
+
+    if header:
+        write_output_headers(summary_info, concordance_info, introgression_info, f, sep)
+
+    line_string = ''
+
+    line_string += one_output_chunk(summary_info, sep)
+    line_string += one_output_chunk(concordance_info, sep)
+    line_string += one_output_chunk(introgression_info, sep)
+    
+    f.write(line_string[:-1] + '\n')

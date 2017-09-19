@@ -12,16 +12,20 @@ import global_params as gp
  
 args = process_args.process_args()
 
-
 ##======
-# loop all simulations and do several analyses
+# loop through all simulations and do several analyses
 ##======
-
 
 gp_dir = '../'
 # for reading output from ms
 ms_f = open(gp_dir + gp.sim_out_dir + '/ms/' + gp.sim_out_prefix + \
                 args['tag'] + '.txt', 'r')
+# summary output
+out_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
+                args['tag'] + '_summary.txt', 'w')
+# introgression output
+introgression_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
+                           args['tag'] + '_introgressed_actual.txt', 'w')
 
 fill_symbol = '0'
 
@@ -42,28 +46,31 @@ for i in range(args['num_reps']):
 
     stats = sim_stats(sim, args)
 
-    print stats
-
     ##======
     # calculate frequency of ILS (or of possible ILS...)
     ##======
 
-    concordant_site_freq, concordant_tree_frac = calculate_ils(sim, args)
+    concordance_info = calculate_ils(sim, args)
 
-    print concordant_site_freq
-    
     ##======
     # find introgressed/non-introgressed tracts
     ##======
 
-    # fill in nonpolymorphic sites
-    sim['seqs'] = sim_process.fill_seqs(sim['seqs'], sim['positions'], \
-                                            args['num_sites'], fill_symbol)
+    introgression_stats, actual_state_seq = find_introgressed(sim, args)
 
-    find_introgressed(sim, args)
+    ##======
+    # output
+    ##======
 
-##======
-# output
-##======
+    # general summary statistics about simulated sequences
+    write_output_line(stats, concordance_info, introgression_stats, out_f, i==0) 
+
+    # specific locations of introgression (for comparing predictions
+    # to)
+    #write_introgression(actual_state_seq, introgression_f)
+
+ms_f.close()
+out_f.close()
+introgression_f.close()
 
 
