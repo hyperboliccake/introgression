@@ -154,10 +154,15 @@ def find_introgressed(sim, args):
     # looking at the tree for each stretch without recombination
     ##======
 
+    # indices of all species_to individuals (the ones for which we
+    # care about introgression)
+    inds = args['species_to_indices'][args['species_to']]
     # sequence of states, one for each site and strain
-    actual_state_seq = [[] for i in range(args['num_samples_species_to'])]
+    actual_state_seq = \
+        dict(zip(inds, [[] for i in range(args['num_samples_species_to'])]))
     # how many bases are introgressed in total in each strain
-    num_introgressed = [0] * args['num_samples_species_to']
+    num_introgressed = \
+        dict(zip(inds, [0] * args['num_samples_species_to']))
     # loop through the trees for all blocks with no recombination
     # within them
     num_trees = len(sim['trees'])
@@ -187,7 +192,7 @@ def find_introgressed(sim, args):
         # the length of the block to the total number of
         # introgressed sites across all strains; also update the
         # state sequence
-        for i in range(args['num_samples_species_to']):
+        for i in inds:
             if introgressed.has_key(i):
                 num_introgressed[i] += num_sites_t
                 actual_state_seq[i] += [introgressed[i]] * num_sites_t
@@ -254,3 +259,5 @@ def write_output_line(summary_info, concordance_info, introgression_info, f, \
     line_string += one_output_chunk(introgression_info, sep)
     
     f.write(line_string[:-1] + '\n')
+
+    

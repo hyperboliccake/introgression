@@ -118,3 +118,29 @@ def read_one_sim(f, num_sites, num_samples):
     sim['seqs'] = seqs
 
     return sim
+
+def write_introgression(state_seq, f, rep, species):
+
+    d = {}
+    # loop through all individuals (in species_to)
+    for ind in state_seq.keys():
+        # loop through all positions in the sequence
+        d[ind] = {}
+        for p in range(len(state_seq[ind])):
+            current_species = state_seq[ind][p]
+            if current_species != species:
+                if not d[ind].has_key(current_species):
+                    d[ind][current_species] = []
+                d[ind][current_species].append(p)
+
+    f.write('rep ' + str(rep) + '\n')
+
+    for ind in d.keys():
+        f.write(str(ind))
+        for s in d[ind]:
+            f.write('\t' + s + ':')
+            f.write(','.join([str(x) for x in d[ind][s]]))
+        f.write('\n')
+
+                
+

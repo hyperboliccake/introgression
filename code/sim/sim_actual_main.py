@@ -67,7 +67,8 @@ for i in range(args['num_reps']):
 
     # specific locations of introgression (for comparing predictions
     # to)
-    #write_introgression(actual_state_seq, introgression_f)
+    sim_process.write_introgression(actual_state_seq, introgression_f, \
+                                        i, args['species_to'])
 
 ms_f.close()
 out_f.close()
