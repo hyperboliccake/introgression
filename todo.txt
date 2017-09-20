@@ -1,7 +1,13 @@
 1. Theory/simulations of robustness to ILS
    
    should probably run these without split populations?
-   make sure parameters are giving expected sequence divergence (~85% cer/par, x% within cer)
+   make sure parameters are giving expected sequence divergence
+   - figure out what this percentage is from 100 genomes sequences/par reference:
+     ~99.5% id w/ cer ref
+     ~89% id w/ par ref
+     (these numbers are calculated from only match/mismatch columns in alignments
+     (gaps are ignored) so it's probably a bit of an overestimate if anything...
+     unless shittiness of alignments outweighs that)
 
    goals of simulations: 
    establish tpr/fpr for reasonable parameters with HMM method
@@ -25,3 +31,27 @@
 
 5. Experimental/function
    - GWAS
+
+
+
+
+current goals for pipeline:
+- alignments for beer strains, sgrp paradoxus strains, chinese strains (?)
+- simulations for something that looks more like bayanus (for unknown category)
+- introgression into paradoxus as well
+- extract directories into separate file
+- master run.sh that goes through all the steps without problems
+- automatically read in hmm parameters, based on medians from simulations
+
+for grant:
+1. show ILS not likely to be a problem
+2. description of HMM and validation of performance
+3. application to real data
+   - strain level summaries of introgressed sequence
+   - gene level summaries
+   - distribution of introgressed sequence size
+   - bed file of coordinates for one strain
+4. inferring timing/number of introgression events based on length distribution
+
+
+figure out why in simulations we seem to be predicting introgressed sequence in cerevisiae reference

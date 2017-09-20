@@ -1,0 +1,100 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1404\cocoasubrtf460
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fnil\fcharset0 LucidaGrande;}
+{\colortbl;\red255\green255\blue255;}
+{\*\listtable{\list\listtemplateid1\listhybrid{\listlevel\levelnfc0\levelnfcn0\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{decimal\}.}{\leveltext\leveltemplateid1\'02\'00.;}{\levelnumbers\'01;}\fi-360\li720\lin720 }{\listname ;}\listid1}}
+{\*\listoverridetable{\listoverride\listid1\listoverridecount0\ls1}}
+\margl1440\margr1440\vieww18960\viewh14280\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 For each strain, we generate a three-way alignment between its sequence and the 
+\i S. cerevisiae
+\i0  and 
+\i S. paradoxus
+\i0  reference sequences. A hidden Markov model (HMM) then steps through each alignment column, with the goal of assigning one of two states\'97
+\i S. cerevisiae
+\i0  ancestry or 
+\i S. paradoxus
+\i0  ancestry\'97to each position in the non-reference strain sequence. In each alignment column, there are four possibilities:\
+\pard\tx220\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\li720\fi-720\pardirnatural\partightenfactor0
+\ls1\ilvl0\cf0 {\listtext	1.	}a match with only the 
+\i S. cerevisiae
+\i0  reference\
+{\listtext	2.	}a match with only the 
+\i S. paradoxus
+\i0  reference\
+\pard\tx220\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\li720\fi-720\pardirnatural\partightenfactor0
+\ls1\ilvl0\cf0 {\listtext	3.	}a match with both references\
+\pard\tx220\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\li720\fi-720\pardirnatural\partightenfactor0
+\ls1\ilvl0\cf0 {\listtext	4.	}a mismatch with both references\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 Then, instead of considering the specific nucleotides in the sequence, we consider these four possibilities, or 
+\i symbols
+\i0 . Each of the two ancestry states has a probability of emitting each of these symbols, known as 
+\i emission probabilities
+\i0 . The states also have 
+\i transition probabilities
+\i0 , indicating how likely a transition between the two states is to occur between two adjacent alignment columns. Given these probabilities, we use a dynamic programming strategy called the Viterbi algorithm to efficiently find the mostly probable sequence of states across all the sequence positions.\
+\
+The Viterbi algorithm calculates the probability of the most probable state sequence for the first t observed symbols, given that the sequence is in a specific state at position t. It does so recursively with the following formulas:\
+
+\i \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\i0 \cf0 V\sub t,s\up6 \sub2 c
+\i \up0 \sub  
+\i0 \nosupersub = max(P(y\sub t\nosupersub  | s\sub c\nosupersub ) 
+\f1 \uc0\u8729 
+\f0  a\sub s\up6 \sub2 c\up0 \sub ,s\up6 \sub2 c\up0 \nosupersub  
+\f1 \uc0\u8729 
+\f0  V\sub t-1,s\up6 \sub2 c\up0 \nosupersub , P(y\sub t\nosupersub  | s\sub c\nosupersub ) 
+\f1 \uc0\u8729 
+\f0  a\sub s\up6 \sub2 p\up0 \sub ,s\up6 \sub2 c\up0 \nosupersub  
+\f1 \uc0\u8729 
+\f0  V\sub t-1,s\up6 \sub2 p\up0 \nosupersub )\
+V\sub t,s\up6 \sub2 p
+\i \up0 \sub  
+\i0 \nosupersub = max(P(y\sub t\nosupersub  | s\sub p\nosupersub ) 
+\f1 \uc0\u8729 
+\f0  a\sub s\up6 \sub2 p\up0 \sub ,s\up6 \sub2 p\up0 \nosupersub  
+\f1 \uc0\u8729 
+\f0  V\sub t-1,s\up6 \sub2 p\up0 \nosupersub , P(y\sub t\nosupersub  | s\sub p\nosupersub ) 
+\f1 \uc0\u8729 
+\f0  a\sub s\up6 \sub2 c\up0 \sub ,s\up6 \sub2 p\up0 \nosupersub  
+\f1 \uc0\u8729 
+\f0  V\sub t-1,s\up6 \sub2 c\up0 \nosupersub ).\
+\
+The first equation represents the probability that at position t, the sequence is in the 
+\i S. cerevisiae
+\i0  state. The first term maximized over in that equation represents the probability of being in the 
+\i S. cerevisiae
+\i0  state at the previous position, V\sub t-1,s\up6 \sub2 c\up0 \nosupersub , then remaining in the 
+\i S. cerevisiae
+\i0  state, a\sub s\up6 \sub2 c\up0 \sub ,s\up6 \sub2 c\up0 \nosupersub , and emitting the observed symbol, y\sub t\nosupersub , at position t from the 
+\i S. cerevisiae
+\i0  state, P(y\sub t\nosupersub  | s\sub c\nosupersub ). The second term similarly represents the probability of being in the 
+\i S. paradoxus
+\i0  state at the previous position, then transitioning to the 
+\i S. cerevisiae
+\i0  state, and emitting the observed symbol. The second equation follows the same logic for describing the probability of the most probable state sequence that ends with the 
+\i S. paradoxus
+\i0  state at position t.\
+\
+Using this algorithm, we can assign probable 
+\i S. cerevisiae
+\i0  or 
+\i S. paradoxus
+\i0  ancestry to each position in the non-reference sequence. If the sequence is from a strain of 
+\i S. cerevisiae
+\i0 , then the positions that are assigned the 
+\i S. paradoxus
+\i0  state are putatively introgressed. These introgressed positions cluster together in larger regions because the HMM has a preference for not transitioning to the other state unless there is significant reason to do so. Thus, a single variant that matches 
+\i S. paradoxus 
+\i0 among many that match 
+\i S. cerevisiae
+\i0  will not be predicted to have 
+\i S. paradoxus 
+\i0 ancestry, while a group of several adjacent variants that match 
+\i S. paradoxus
+\i0  will.\
+\
+For this algorithm to generate accurate predictions of introgressed regions, the emission and transition probabilities within the HMM need to be set appropriately. We choose these parameters by running simulations of hybridization between the two yeast species within a variety of plausible demographic histories. We find the maximum-likelihood parameters for each demographic history using the Baum-Welch algorithm, then use these to inform our choice of parameters for the real data. }
