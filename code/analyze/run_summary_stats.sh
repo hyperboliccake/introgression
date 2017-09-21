@@ -1,6 +1,6 @@
 # 
 # Use the bash shell to interpret this job script 
-#$ -S /bin/bash -t 1-27 -l m_mem_free=4G
+#$ -S /bin/bash -t 1-27 
 # 
 # Send an e-mail to the address 
 # specified in .sge_request when this job ends. 
@@ -36,4 +36,4 @@ cd /net/gs/vol1/home/aclark4/projects/introgression/code/analyze
 
 ARGS=$(head -n $SGE_TASK_ID ../sim/sim_multi_model_args.txt | tail -n 1)
 
-python analyze.py $ARGS
+python summary_stats.py $ARGS

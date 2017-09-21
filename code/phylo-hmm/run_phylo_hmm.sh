@@ -1,6 +1,6 @@
 # 
 # Use the bash shell to interpret this job script 
-#$ -S /bin/bash -t 1-27 -l m_mem_free=4G
+#$ -S /bin/bash -t 1-27 -tc 27 -l m_mem_free=2G
 # 
 # Send an e-mail to the address 
 # specified in .sge_request when this job ends. 
@@ -27,13 +27,13 @@ echo "**** JOB RUNNING IN $WRKDIR"
 source /etc/profile.d/modules.sh
 module load modules modules-init modules-gs
 module load python/2.7.3
-module load numpy/latest
-module load scipy/latest
+#module load numpy/latest
+#module load scipy/latest
 
 # Script or command(s) to run via SGE
+cd /net/gs/vol1/home/aclark4/projects/introgression/code/phylo-hmm
 
-cd /net/gs/vol1/home/aclark4/projects/introgression/code/analyze
+FN=$(head -n $SGE_TASK_ID autoinputs.txt | tail -n 1)
 
-ARGS=$(head -n $SGE_TASK_ID ../sim/sim_multi_model_args.txt | tail -n 1)
+java -jar ~/software/phylo_hmm/phmm-0.1/dist/lib/phmm.jar < $FN
 
-python analyze.py $ARGS

@@ -1,5 +1,7 @@
 # TODO extract all directories into some file so they can be set separately
 
+# make sure there are no uncommitted changes so that the git sha
+# accurately reflects the code being run
 git status --porcelain > uncommitted.txt
 if [[ -s uncommitted.txt ]]
 then
@@ -11,14 +13,16 @@ git rev-parse HEAD > sha.txt
 
 # simulations and analysis
 cd sim
-fn = "run_sim_multi_model"
-qsub -N $fn run_sim_multi_model.sh
-# while grep returns something, i.e. job still running
+job_name = "run_sim_multi_model"
+args_fn = "sim_multi_model_args.txt"
+qsub -N $job_name run_sim_multi_model.sh
+# while grep returns something (i.e. job still running)
 while [qstat | grep -q $fn]
 do
 sleep 300
 done
-python sim_analyze_hmm_bw.py
+# once simulations are done, do analysis
+python sim_analyze_hmm_bw_main.py $args_fn
 python aggregate.py
 Rscript plot.R
 cp ../sha.txt ../../results/sim/
@@ -38,7 +42,6 @@ cp ../sha.txt ../../alignments/genbank/
 cd ..
 
 # predicted introgressed regions for each chromosome of each strain
-# note: this requires ~12G memory
 cd analyze
 fn = "run_analyze"
 # while grep returns something, i.e. job still running
@@ -53,7 +56,7 @@ cd ..
 # extract alignments of introgressed regions and annotate genes in
 # those regions
 cd analyze
-python process.py
+python process_main.py
 cp ../sha.txt ../../results/regions/
 cd ..
 

@@ -1,7 +1,7 @@
 import sys
 import math
 import cPickle
-import mpmath as mp
+import mpmath
 
 def F(k, a, b, c, d):
     '''returns the probability that at least one interspecific coalescence
@@ -52,12 +52,12 @@ def g(i, j, T, d):
     # note that result will only be nonzero for i >= j
     total = 0
     for k in range(j, i + 1):
-        k = mp.mpf(k)
-        total +=  mp.mpf(math.e) ** (-k * (k - 1) * T / 2.) * \
+        k = mpmath.mpf(k)
+        total +=  mpmath.mpf(math.e) ** (-k * (k - 1) * T / 2.) * \
                   (2 * k - 1) * (-1) ** (k - j) * \
                   rising_factorial(j, k - 1) * \
                   falling_factorial(i, k) / \
-                  (mp.mpf(math.factorial(j)) * \
+                  (mpmath.mpf(math.factorial(j)) * \
                        math.factorial(k - j) * \
                        rising_factorial(i, k))
 
@@ -96,18 +96,18 @@ def takahata_concordance(r, s, q, T3, T2, F_dic, g_dic, W_dic):
 
     total = 0
     for m in range(1, r + 1):
-        m = mp.mpf(m)
+        m = mpmath.mpf(m)
         for n in range(1, s + 1):
-            n = mp.mpf(n)
+            n = mpmath.mpf(n)
             for k in range(1, m + n + 1):
-                k = mp.mpf(k)
+                k = mpmath.mpf(k)
                 print m, n, k
                 xsum = 0
                 for x in range(1, k):
-                    x = mp.mpf(x)
+                    x = mpmath.mpf(x)
                     lsum = 0
                     for l in range(1, q): # MISSING +1
-                        l = mp.mpf(l)
+                        l = mpmath.mpf(l)
                         lsum += g(q, l, T3 + T2, g_dic) * F(1, x, k-x, l, F_dic)
                     xsum += W(m, n, x, k, T2, W_dic, g_dic) * lsum
 
@@ -123,18 +123,18 @@ def topological_concordance(r, s, q, T3, T2, F_dic, g_dic, W_dic):
 
     total = 0
     for m in range(1, r + 1):
-        m = mp.mpf(m)
+        m = mpmath.mpf(m)
         for n in range(1, s + 1):
-            n = mp.mpf(n)
+            n = mpmath.mpf(n)
             for k in range(1, m + n + 1):
-                k = mp.mpf(k)
+                k = mpmath.mpf(k)
                 print m, n, k
                 xsum = 0
                 for x in range(1, k):
-                    x = mp.mpf(x)
+                    x = mpmath.mpf(x)
                     lsum = 0
                     for l in range(1, q + 1):
-                        l = mp.mpf(l)
+                        l = mpmath.mpf(l)
                         lsum += g(q, l, T3 + T2, g_dic) * F(1, x, k-x, l, F_dic)
                     xsum += W(m, n, x, k, T2, W_dic, g_dic) * lsum
 
@@ -150,17 +150,17 @@ def monophyletic_concordance(r, s, q, T3, T2, F_dic, g_dic, W_dic):
 
     total = 0
     for m in range(1, r + 1):
-        m = mp.mpf(m)
+        m = mpmath.mpf(m)
         for n in range(1, s + 1):
-            n = mp.mpf(n)
+            n = mpmath.mpf(n)
             for k in range(1, m + n + 1):
-                k = mp.mpf(k)
+                k = mpmath.mpf(k)
                 print m, n, k
                 for l in range(1, q + 1):
-                    l = mp.mpf(l)
+                    l = mpmath.mpf(l)
                     xsum = 0
                     for x in range(1, k):
-                        x = mp.mpf(x)
+                        x = mpmath.mpf(x)
                         xsum += W(m, n, x, k, T2, W_dic, g_dic) * (1 - F(3, x, k - x, l, F_dic) - \
                             F(3, x, l, k - x, F_dic) - F(3, k - x, l, x, F_dic)) * 1 / 3.
 
@@ -168,6 +168,22 @@ def monophyletic_concordance(r, s, q, T3, T2, F_dic, g_dic, W_dic):
                         (delta(k, 1) * (1 - F(2, m, n, 0, F_dic)) * 2 / (l * (l + 1)) + \
                              (1 - delta(k, 1)) * (1 - F(k, m, n, 0, F_dic)) * xsum)
                         
+    return total
+
+def monophyletic_concordance_2(r, s, T3, F_dic = {}, g_dic = {}):
+    '''returns probability of monophyletic concordance for two species'''
+
+    total = 0
+    r = mpmath.mpf(r)
+    s = mpmath.mpf(s)
+    T3 = mpmath.mpf(T3)
+    for m in range(1, r + 1):
+        m = mpmath.mpf(m)
+        for n in range(1, s + 1):
+            n = mpmath.mpf(n)
+            total += g(r, m, T3, g_dic) * \
+                g(s, n, T3, g_dic) * \
+                (1 - F(2, m, n, 0, F_dic))
     return total
     
 def concordance(r, s, q, T3, T2):    
@@ -216,6 +232,13 @@ def concordance(r, s, q, T3, T2):
 
     return {'topological concordance':tc, 'monophyletic concordance':mc}
 
-results =  concordance(int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), float(sys.argv[4]), float(sys.argv[5]))
-print results['topological concordance']
-print results['monophyletic concordance']
+#results =  concordance(int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), float(sys.argv[4]), float(sys.argv[5]))
+#print results['topological concordance']
+#print results['monophyletic concordance']
+
+mpmath.mp.dps = 50
+for i in range(11, 16):
+    mpmath.nprint(monophyletic_concordance_2(10, 100, 375000000/8000000./i), 50)
+#mpmath.nprint(monophyletic_concordance_2(10, 100, 375000000/8000000.), 50)
+#for i in range(2, 11):
+#    mpmath.nprint(monophyletic_concordance_2(10, 100, 375000000/8000000.*i), 50)

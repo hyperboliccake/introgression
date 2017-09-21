@@ -1,0 +1,31 @@
+low_pop_size low_outcross low_mig
+low_pop_size low_outcross med_mig
+low_pop_size low_outcross high_mig
+low_pop_size med_outcross low_mig
+low_pop_size med_outcross med_mig
+low_pop_size med_outcross high_mig
+low_pop_size high_outcross low_mig
+low_pop_size high_outcross med_mig
+low_pop_size high_outcross high_mig
+med_pop_size low_outcross low_mig
+med_pop_size low_outcross med_mig
+med_pop_size low_outcross high_mig
+med_pop_size med_outcross low_mig
+med_pop_size med_outcross med_mig
+med_pop_size med_outcross high_mig
+med_pop_size high_outcross low_mig
+med_pop_size high_outcross med_mig
+med_pop_size high_outcross high_mig
+high_pop_size low_outcross low_mig
+high_pop_size low_outcross med_mig
+high_pop_size low_outcross high_mig
+high_pop_size med_outcross low_mig
+high_pop_size med_outcross med_mig
+high_pop_size med_outcross high_mig
+high_pop_size high_outcross low_mig
+high_pop_size high_outcross med_mig
+high_pop_size high_outcross high_mig
+med_pop_size med_outcross med_mig longer_expected_int_tracts
+med_pop_size med_outcross med_mig shorter_expected_int_tracts
+med_pop_size med_outcross med_mig more_expected_int_tracts
+med_pop_size med_outcross med_mig fewer_expected_int_tracts

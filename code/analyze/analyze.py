@@ -3,213 +3,233 @@ import sys
 import copy
 import re
 import numpy.random
-
 sys.path.insert(0, '../hmm/')
 from hmm_bw import *
+sys.path.insert(0, '../sim/')
+import sim_analyze_hmm_bw as sim
+sys.path.insert(0, '../')
+import global_params as gp
 
 resume = False
 
-def get_seqs_chrm(rc, rp, x, chrm):
+def get_seqs_chrm(x, refs, chrm, match_symbol, mismatch_symbol, \
+                      unknown_symbol, unsequenced_symbol, master_ref):
     # for now, just make each alignment block a separate sequence, but
     # maybe check at some point whether any of them should be
     # concatenated?
 
-    # what to do about columns with gaps? don't really want to count
-    # two gapped columns as matching...
-    # ignore all columns where x is gapped, count gaps in refs as mismatches
+    # what to do about columns with gaps? would need a completely
+    # separate model for predicting indels...so just ignore all
+    # columns with gaps (this would include things where not all of
+    # the references aligned)...but we don't want to throw off the
+    # locations of sites
 
-
-    # coding:
-    # 0 -> matches cer ref but not par ref
-    # 1 -> matches par ref but not cer ref
-    # 2 -> matches cer ref and par ref
-    # 3 -> doesn't match cer ref or par ref
-
-
+    mult_expected = len(refs) + 1
     seqs = []
+    seq_inds = []
     scores = []
     psx = []
-    f = open('../../alignments/genbank/' + rc + '_' + rp + '_' + x + '_chr' + chrm + '.maf', 'r')
-    f.readline()
-    n = -1
-    while True:
-        line = f.readline()
-        if line == '':
-            print scores
-            print len(scores)
-            return seqs, psx
-
+    fn = ''
+    for r in gp.alignment_ref_order:
+        if r in refs:
+            fn += r + '_'
+    fn += x + '_chr' + chrm + '.maf'
+    f = open(gp.alignments_dir + fn, 'r')
+    mult = -1
+    label = None
+    line = f.readline()
+    while line != '':
         if line[0] == '#' or line[0] == '\n':
+            line = f.readline()
             continue
 
         if line[0] == 'a':
             m = re.search('score=(?P<score>[0-9\.]+)', line)
             scores.append(float(m.group('score')))
-            m = re.search('mult=(?P<n>[0-9\.]+)', line)
-            n = int(m.group('n'))
+            m = re.search('mult=(?P<mult>[0-9\.]+)', line)
+            mult = int(m.group('mult'))
+            m = re.search('label=(?P<label>[A-Za-z0-9_]+)', line)
+            label = m.group('label')
+            line = f.readline()
             
         if line[0] == 's':
-            if n == 1:
+            # only want sections aligned to _all_ references
+            if mult < mult_expected:
+                line = f.readline()
                 continue
-            
-            seqc = ''
-            seqp = ''
+
             seqx = ''
-            srcx = ''
             startx = -1
             sizex = -1
             strandx = ''
-
-            # first sequence in alignment block
-            s, src, start, size, strand, src_size, text = line.split()
-            if rc in src:
-                seqc = text
-            elif rp in src:
-                seqp = text
-            else:
-                assert x in src, x + ' ' + src
-                srcx = src
-                seqx = text
-                # note that mugsy indexes from 0 (I think) and that
-                # for the reverse strand, it indexes from the other
-                # end
-                startx = int(start)
-                sizex = int(size)
-                strandx = strand
-
-            # second sequence in alignment block
-            line = f.readline()
-            assert line[0] == 's', line[:100]            
-            s, src, start, size, strand, src_size, text = line.split()
-            if rc in src:
-                seqc = text
-            elif rp in src:
-                seqp = text
-            else:
-                assert x in src, x + ' ' + src
-                srcx = src
-                seqx = text
-                startx = int(start)
-                sizex = int(size)
-                strandx = strand
-
-            if n == 2:
-                # don't care about cases where only the two references align
-                if seqx == '':
-                    continue
-                seq = ''
-                # if cer reference doesn't align
-                if seqc == '':
-                    for i in range(len(seqp)):
-                        if seqx[i] == '-':
-                            continue
-                        elif seqp[i] == seqx[i]:
-                            seq += '1'
-                        else:
-                            seq += '3'
-                # if par reference doesn't align
+            strand_master_ref = ''
+            ref_seqs = {}
+            current_master_ref_ind = -1
+            for i in range(mult_expected):
+                s, src, start, size, strand, src_size, text = line.split()
+                src = src[:src.index('_')]
+                if src == x:
+                    seqx = text
+                    # leave everything indexed from 1 instead of 0
+                    startx = int(start)
+                    sizex = int(size)
+                    strandx = strand
                 else:
-                    for i in range(len(seqc)):
-                        if seqx[i] == '-':
-                            continue
-                        elif seqc[i] == seqx[i]:
-                            seq += '0'
-                        else:
-                            seq += '3'
-                assert len(seq) == sizex, str(len(seq)) + ' ' + str(sizex)
+                    if src == master_ref:
+                        current_master_ref_ind = int(start)
+                        strand_master_ref = strand
+                    ref_seqs[src] = text
+                line = f.readline()
+
+            seq = []
+            inds = []
+            for i in range(len(seqx)):
+                xi = seqx[i]
+                # only keep this position in sequence if no gaps in
+                # the alignment column
+                keep = True
+                if xi == gp.gap_symbol:
+                    keep = False
+                # determine which references the sequence matches at
+                # this position
+                symbol = ''
+                for ref in refs:
+                    ri = ref_seqs[ref][i]
+                    if ri == gp.gap_symbol:
+                        keep = False
+                        break
+                    elif xi == ri:
+                        symbol += match_symbol
+                    else:
+                        symbol += mismatch_symbol
+                if keep:
+                    seq.append(symbol)
+                    inds.append(current_master_ref_ind)
+                if ref_seqs[master_ref][i] != gp.gap_symbol:
+                    current_master_ref_ind += 1
+
+            if len(seq) > 0:
                 seqs.append(seq)
-                psx.append((srcx, startx, strandx))
-                continue
+                seq_inds.append(inds)
+                psx.append((x, chrm, label, strand_master_ref))
 
-            # (optional) third sequence in alignment block
+        else:
             line = f.readline()
-            assert line[0] == 's', line[:100]            
-            s, src, start, size, strand, src_size, text = line.split()
-            if rc in src:
-                seqc = text
-            elif rp in src:
-                seqp = text
-            else:
-                assert x in src, x + ' ' + src
-                srcx = src
-                seqx = text
-                startx = int(start)
-                sizex = int(size)
-                strandx = strand
 
-            seq = ''
-            for i in range(len(seqc)):
-                if seqx[i] == '-':
-                    continue
-                elif seqc[i] == seqx[i]:
-                    if seqp[i] == seqx[i]:
-                        seq += '2'
-                    else:
-                        seq += '0'
-                else:
-                    if seqp[i] == seqx[i]:
-                        seq += '1'
-                    else:
-                        seq += '3'
-            assert len(seq) == sizex, str(len(seq)) + ' ' + str(sizex)
-            seqs.append(seq)
-            psx.append((srcx, startx, strandx))
+    f.close()
 
-def get_seqs(rc, rp, x, chrms):
+    return seqs, seq_inds, psx
+
+def get_seqs(x, refs, chrms, match_symbol, mismatch_symbol, \
+                 unknown_symbol, unsequenced_symbol, master_ref):
     all_seqs = []
+    all_seq_inds = []
     all_psx = []
     for chrm in chrms:
-        seqs, psx = get_seqs_chrm(rc, rp, x, chrm)
+        seqs, seq_inds, psx = get_seqs_chrm(x, refs, chrm, \
+                                                match_symbol, mismatch_symbol, \
+                                                unknown_symbol, unsequenced_symbol, \
+                                                master_ref)
         all_seqs += seqs
+        all_seq_inds += seq_inds
         all_psx += psx
-    return all_seqs, all_psx
 
-def predict_introgressed_hmm(seqs, training_inds = None):
+    return all_seqs, all_seq_inds, all_psx
 
-    training_seqs = []
-    if training_inds != None:
-        for i in training_inds:
-            training_seqs.append(seqs[i])
+def convert_predictions(path, states):
+    new_path = []
+    for p in path:
+        new_path.append(states[p])
+    return new_path
+
+def read_hmm_params(fn, states, sim_states, unknown_state):
+
+    # read parameters into dictionary first
+    sim_states_to_states = dict(zip(sim_states, states))
+    lines = [line.strip().split('\t') for line in open(fn, 'r').readlines()]
+    d = {'init':{}, 'emis':{}, 'trans':{}}
+    for line in lines:
+        if line[0] == 'init':
+            state = sim_states_to_states[line[1]]
+            d['init'][state] = float(line[2])
+        # this line will look like e.g. emis cer cer + par + bay - .2
+        elif line[0] == 'emis':
+            state = sim_states_to_states[line[1]]
+            if state not in d['emis']:
+                d['emis'][state] = {}
+            symbol_list = []
+            len_symbol_list = len(sim_states)
+            if unknown_state:
+                len_symbol_list -= 1
+            for i in range(len_symbol_list):
+                symbol_list.append(sim_states_to_states[line[2*i+2]])
+                symbol_list.append(line[2*i+3])
+            d['emis'][state][tuple(symbol_list)] = float(line[-1])
+        else:
+            assert line[0] == 'trans'
+            from_state = sim_states_to_states[line[1]]
+            to_state = sim_states_to_states[line[2]]
+            if from_state not in d['trans']:
+                d['trans'][from_state] = {}
+            d['trans'][from_state][to_state] = float(line[3])
+
+    # init
+    init = []
+    for state in states:
+        init.append(d['init'][state])
+
+    # emis
+    refs = copy.deepcopy(states)
+    if unknown_state:
+        refs = refs[:-1]
+    emis = []
+    for state in states:
+        emis_state = {}
+        for symbol_list in d['emis'][state]:
+            symbol = ''
+            for ref in refs:
+                x = symbol_list.index(ref) + 1
+                symbol += symbol_list[x]
+            emis_state[symbol] = d['emis'][state][symbol_list]
+        emis.append(emis_state)
+
+    # trans
+    trans = []
+    for state_from in states:
+        row = []
+        for state_to in states:
+            row.append(d['trans'][state_from][state_to])
+        trans.append(row)
+
+    return init, emis, trans
+
+def predict_introgressed_hmm(seqs, states, sim_states, unknown_state, init, emis, trans):
 
     # create a hidden markov model and determine which reference genome we
     # are most likely to be in at each variant site
     hmm = HMM()
 
-    if training_inds != None:
-        hmm.set_obs(training_seqs)
-    else:
-        hmm.set_obs(seqs)
-    hmm.set_init([.85,.15])
 
-    # 0,1 would also work here
-    hmm.set_states(['cer', 'par'])
+    hmm.set_states(states)
 
-    hmm.set_trans([[.9997,.0003],[.05,.95]])
-
-    # combined error in parent sequences and observed sequence -
-    # in this case 'error' comes from amout of difference
-    # reasonable to see between reference and other strains of
-    # same species; remember we've coded 0 for cer (non
-    # introgressed) and 1 for par (introgressed)
-    # hmm.set_emis({'cer':{0:.95, 1:.05},'par':{0:.05, 1:.95}}) 
-    #hmm.set_emis([{'0':.5, '1':.0001, '2':.4998, '3':.0001},{'0':.0001, '1':.5, '2':.4998, '3':.0001}])
-    hmm.set_emis([{'0':.1, '1':.001, '2':.88, '3':.019},{'0':.0017, '1':.06, '2':.93, '3':.0083}])
-
-
-    # Baum-Welch parameter estimation
-    hmm.go()
+    hmm.set_init(init)
+    hmm.set_emis(emis)
+    hmm.set_trans(trans)
 
     predicted = []
+
+    sys.stdout.flush()
+
     for i in range(len(seqs)):
         if i % 100 == 0:
             print 'viterbi on seq', i
-        obs_seq = seqs[i]
-        hmm.set_obs(obs_seq)
-        # this returns a list of state indices, so 0 and 1 for not introgressed and introgressed
-        predicted.append(hmm.viterbi())
+            sys.stdout.flush()
+        hmm.set_obs(seqs[i])
+        predicted.append(convert_predictions(hmm.viterbi(), states))
 
     return predicted, hmm
 
+'''
 def predict_introgressed_id(seqs):
     # ok so the aligned sequences can have gaps
     window_size = 1000
@@ -235,63 +255,127 @@ def predict_introgressed_id(seqs):
         predicted.append(p[:len(seq)])
 
     return predicted
- 
+'''
 
-ref_cer = 'S288c'
-ref_par = 'CBS432'
+def get_predicted_tracts(predicted, all_ps, master_ref, seq_inds):
 
-c = ['Sigma1278b.fa', 'SK1.fa', 'yjm1078.fa', 'yjm1083.fa', 'yjm1129.fa', 'yjm1133.fa', 'yjm1190.fa', 'yjm1199.fa', 'yjm1202.fa', 'yjm1208.fa', 'yjm1242.fa', 'yjm1244.fa', 'yjm1248.fa', 'yjm1250.fa', 'yjm1252.fa', 'yjm1273.fa', 'yjm1304.fa', 'yjm1307.fa', 'yjm1311.fa', 'yjm1326.fa', 'yjm1332.fa', 'yjm1336.fa', 'yjm1338.fa', 'yjm1341.fa', 'yjm1342.fa', 'yjm1355.fa', 'yjm1356.fa', 'yjm1381.fa', 'yjm1383.fa', 'yjm1385.fa', 'yjm1386.fa', 'yjm1387.fa', 'yjm1388.fa', 'yjm1389.fa', 'yjm1399.fa', 'yjm1400.fa', 'yjm1401.fa', 'yjm1402.fa', 'yjm1415.fa', 'yjm1417.fa', 'yjm1418.fa', 'yjm1419.fa', 'yjm1433.fa', 'yjm1434.fa', 'yjm1439.fa', 'yjm1443.fa', 'yjm1444.fa', 'yjm1447.fa', 'yjm1450.fa', 'yjm1460.fa', 'yjm1463.fa', 'yjm1477.fa', 'yjm1478.fa', 'yjm1479.fa', 'yjm1526.fa', 'yjm1527.fa', 'yjm1549.fa', 'yjm1573.fa', 'yjm1574.fa', 'yjm1592.fa', 'yjm1615.fa', 'yjm189.fa', 'yjm193.fa', 'yjm195.fa', 'yjm244.fa', 'yjm248.fa', 'yjm270.fa', 'yjm271.fa', 'yjm320.fa', 'yjm326.fa', 'yjm428.fa', 'yjm450.fa', 'yjm451.fa', 'yjm453.fa', 'yjm456.fa', 'yjm470.fa', 'yjm541.fa', 'yjm554.fa', 'yjm555.fa', 'yjm681.fa', 'yjm682.fa', 'yjm683.fa', 'yjm689.fa', 'yjm693.fa', 'yjm969.fa', 'yjm972.fa', 'yjm975.fa', 'yjm978.fa', 'yjm981.fa', 'yjm984.fa', 'yjm987.fa', 'yjm990.fa', 'yjm993.fa', 'yjm996.fa']
-c = [x[:-3] for x in c]
-
-#wine/european should be 41
-group1 = ['yjm1244', 'yjm189', 'yjm1356', 'yjm1242', 'yjm1477', 'yjm1332', 'yjm453', 'yjm244', 'yjm1526', 'yjm1129', 'yjm1336', 'yjm1417', 'yjm1415', 'yjm1341', 'yjm969', 'yjm993', 'yjm984', 'yjm990', 'yjm972', 'yjm987', 'yjm975', 'yjm978', 'yjm981', 'yjm996', \
-              'yjm248', 'yjm1078', 'yjm1252', 'yjm270', 'yjm1574', 'yjm271', 'yjm193', 'yjm1387', 'yjm1463', 'yjm1383', 'yjm1250', 'yjm1355', 'yjm1450', 'yjm1386', 'yjm1326', 'yjm1385', 'yjm1549']
-
-# other should be 53, or actually 52 because leaving out s228c
-group2 = ['yjm693', 'yjm1478', 'yjm1433', 'yjm689', 'yjm1399', 'yjm1190', 'yjm1381', 'yjm1338', 'yjm682', \
-              'yjm683', 'yjm326', 'yjm450', 'yjm1527', 'yjm1202', 'yjm1199', 'yjm1311', 'yjm428', 'yjm1419', 'yjm451', \
-              'yjm1615', 'yjm1208', 'yjm1083', 'yjm681', 'yjm554', 'yjm541', 'yjm320', 'yjm555', 'yjm1304', 'yjm1133', \
-              'yjm456', 'yjm470', 'yjm1307', 'yjm1444', 'yjm627', 'yjm195', 'yjm1439', 'yjm1248', 'yjm1418', 'yjm1447', \
-              'yjm1342', 'yjm1479', 'yjm1400', 'yjm1401', 'yjm1460', 'yjm1592', 'yjm1389', 'yjm1388', 'yjm1443', 'yjm1573', \
-              'yjm1402', 'yjm1434', 'yjm1273']
-
-
-group_all = group1 + group2
-
-all_seqs = []
-all_ps = []
-
-chrms_roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XIV']
-
-for x in group_all:
-    print x
-    seqs, psx = get_seqs(ref_cer, ref_par, x, chrms_roman)
-    all_seqs += seqs
-    all_ps += psx
-
-fi = open('../../results/introgressed_id.txt', 'w')
-predicted = predict_introgressed_id(all_seqs)
-assert len(predicted) == len(all_seqs)
-for s in xrange(len(predicted)):
-    print '====', all_ps[s]
-    in_int = False
-    start_int = 0
-    end_int = 0
-    for i in xrange(len(predicted[s])):
-        if predicted[s][i] == 1:
-            if in_int:
+    blocks = []
+    # loop through all sequences
+    for s in xrange(len(predicted)):
+        print 'alignment block: ', all_ps[s]
+        alignment_block = all_ps[s]
+        # loop through all sites in that sequence, keeping track of
+        # introgressed blocks
+        prev_species = None
+        start_int = 0
+        end_int = 0
+        predicted[s] = predicted[s] + ['END']
+        for i in xrange(len(predicted[s])):
+            # staying in same species
+            if predicted[s][i] == prev_species:
                 end_int = i
+            # ending previous block
             else:
-                in_int = True
+                if prev_species != None and prev_species != master_ref:
+                    blocks.append(list(alignment_block) + \
+                                      [prev_species, \
+                                           seq_inds[s][start_int], seq_inds[s][end_int], \
+                                           end_int - start_int + 1])
                 start_int = i
                 end_int = i
-        elif in_int:
-            # 
-            fi.write(all_ps[s][0] + ', ' + all_ps[s][2] + ' strand, ' + str(all_ps[s][1] + start_int) + '-' + str(all_ps[s][1] + end_int) + ', ' + str(all_ps[s][1]) + ', ' + str(len(all_seqs[s])) + '\n')
-            assert all_ps[s][1] + start_int >= all_ps[s][1] and all_ps[s][1] + end_int
-            in_int = False
-    if in_int:
-        fi.write(all_ps[s][0] + ', ' + all_ps[s][2] + ' strand, ' + str(all_ps[s][1] + start_int) + '-' + str(all_ps[s][1] + end_int) + ', ' + str(all_ps[s][1]) + ', ' + str(len(all_seqs[s])) + '\n')
-fi.close()
+                prev_species = predicted[s][i]
+                
+    return blocks
+
+def write_predicted_tracts(blocks, f):
+    for block in blocks:
+        block = [str(x) for x in block]
+        f.write('\t'.join(block) + '\n')
+
+#####
+# main
+#####
+        
+tag, topology, species_to, species_from1, species_from2, \
+    num_samples_species_to, num_samples_species_from1, num_samples_species_from2, \
+    N0_species_to, N0_species_from1, N0_species_from2, \
+    migration_from1, migration_from2, \
+    expected_tract_lengths, \
+    expected_num_tracts, \
+    has_ref_from1, has_ref_from2, \
+    rho, outcross_rate, theta, num_sites, num_reps = \
+    sim.process_args(sys.argv)
+
+# reference names for actual species
+states = []
+i = -1
+if species_from2 != None:
+    states = [sys.argv[i]]
+    i -= 1
+states = [sys.argv[i]] + states
+i -= 1
+states = [sys.argv[i]] + states
+
+# reference names for sim species (in same order)
+sim_states = [species_to, species_from1]
+if species_from2 != None:
+    sim_states.append(species_from2)
+
+# is one of the states actually unknown (and thus not a reference)?
+unknown_state = False
+if species_from2 != None:
+    if not has_ref_from2:
+        unknown_state = True
+elif not has_ref_from1:
+    unknown_state = True
+
+refs = copy.deepcopy(states)
+if unknown_state:
+    refs = refs[:-1]
+master_ref = refs[0]
+
+gp_dir = '../'
+
+# get the filenames of all the strains we're going to predict; this is
+# probably not the simplest way to set this up but whatever
+strain_names = []
+for d in gp.non_ref_dirs[states[0]]:
+    fns = os.listdir(d)
+    fns = filter(lambda x: x[-3:] == '.fa', fns)
+    strain_names += [x[:x.find('_')] for x in fns]
+strain_names = list(set(strain_names))
+f_strain_list = open(gp.analysis_out_dir_absolute + '/' + tag + '/strain_list.txt', 'w')
+f_strain_list.write('\n'.join(strain_names) + '\n')
+f_strain_list.close()
+
+fn_hmm = gp_dir + gp.sim_out_dir + 'hmm_parameters_' + tag + '.txt'
+init, emis, trans = read_hmm_params(fn_hmm, states, sim_states, unknown_state)
+
+fn_out = gp.analysis_out_dir_absolute + 'introgressed_hmm_' + tag + '.txt'
+f_out = open(fn_out, 'w')
+f_out.write('strain\tchromosome\talignment_block_label\tstrand\tpredicted_reference\tregion_start\tregion_end\tnumber_non_gap_sites\n')
 
 
+# one at a time because memory
+for x in strain_names:
+    print x    
+    seqs, seq_inds, psx = get_seqs(x, refs, gp.chrms, \
+                                       gp.match_symbol, gp.mismatch_symbol, \
+                                       gp.unknown_symbol, gp.unsequenced_symbol, \
+                                       master_ref)
+    print len(seqs), 'seqs'
+    sys.stdout.flush()
+    print states
+    print init
+    print emis
+    print trans
+    predicted, hmm = predict_introgressed_hmm(seqs, states, \
+                                                  sim_states, unknown_state, \
+                                                  init, emis, trans)
+
+    blocks = get_predicted_tracts(predicted, psx, master_ref, seq_inds)
+    write_predicted_tracts(blocks, f_out)
+    
+    sys.stdout.flush()
+
+f_out.close()

@@ -1,13 +1,24 @@
 import os
 import sys
 import copy
-
+import itertools
+from concordance_functions import *
 sys.path.append('../hmm')
-
 from hmm_bw import *
+sys.path.append('..')
+import global_params as gp
+
 
 theory = False
 theory_done = True
+
+# to use instead of d[key] = value, so we can ensure we're not
+# accidentally creating new keys
+def update_value(d, key, value):
+    assert key in d, key + ' not in ' + str(d.keys())
+    d[key] = value
+    return d
+        
 
 def mean(a):
     try: 
@@ -24,331 +35,594 @@ def match_percent(a, b, n):
             match += 1
     return (float(match + n - len(a))) / n
 
-def parse_tree_helper(t):
-    if '(' not in t:
-        colon_ind = t.find(':')
-        # index from 0 instead of 1
-        return [int(t[:colon_ind]) - 1, float(t[colon_ind+1:])]
-        #return [int(t[:colon_ind]) - 1, Decimal(t[colon_ind+1:])]
-    left = ''
-    right = ''
-    i = -1
-    if t[1] != '(':
-        comma_ind = t.find(',') 
-        left = t[1:comma_ind]
-        right = t[comma_ind+1:t.rfind(')')]
-    else:
-        open_count = 1
-        i = 2
-        while open_count > 0:
-            if t[i] == '(':
-                open_count += 1
-            elif t[i] == ')':
-                open_count -= 1
-            i += 1
-        i = t[i:].find(',')+i
-        left = t[1:i]
-        right = t[i+1:t.rfind(')')]
+# actual introgressed with 2 species total, within a single unrecombined block
+def find_introgressed_2(t, cutoff_time, species_to, index_to_species):
 
-    time = float(t[t.rfind(':')+1:])
-    #time = Decimal(t[t.rfind(':')+1:])
-    return [parse_tree_helper(left), parse_tree_helper(right), time]
-
-# converts newick tree string to nested list format
-def parse_tree(t):
-    return parse_tree_helper(t[:-1] + ':0')
-
-# converts branch lengths to represent total time rather than just
-# that length
-def make_times_additive(t):
-    if len(t) == 2:
-        return t
-    left = make_times_additive(t[0])
-    right = make_times_additive(t[1])
-
-    # do this slightly weird thing with the max to deal with rounding
-    # (make sure times are increasing)
-    prev = None
-    if len(left) == 2:
-        if len(right) == 2:
-            prev = max(left[1], right[1])
-        else:
-            prev = max(left[1], right[2])
-    else:
-        if len(right) == 2:
-            prev = max(left[2], right[1])
-        else:
-            prev = max(left[2], right[2])
-
-    return [left, right, t[2] + prev]
-
-# finds the lineages that exist at a given time
-def split(t, cutoff_time):
-    t = make_times_additive(t)
-    current_lineages = [t]
-    final_lineages = []
-    while len(current_lineages) > 0:
-        l = current_lineages.pop()
-        if len(l) == 2 or l[2] < cutoff_time:
-            final_lineages.append(l)
-        else:
-            left = l[0]
-            right = l[1]
-            prev_time = -1
-            if len(left) == 2:
-                prev_time = left[1]
-            else:
-                prev_time = left[2]
-            if prev_time < cutoff_time:
-                final_lineages.append(l)
-            else:
-                current_lineages.append(left)
-                current_lineages.append(right)
-    return final_lineages
-
-# return list of lineages that exist at given time
-def get_labels(t):
-    if len(t) == 2:
-        return [t[0]]
-    return get_labels(t[0]) + get_labels(t[1])
-
-# checks whether t consists _only_ of labels in A (but does not
-# necessarily include all of them)
-def is_partial_clade(t, A):
-    labels = get_labels(t)
-    for l in labels:
-        if l not in A:
-            return False
-    return True
-
-# checks whether t consists _only_ of labels in A or _only_ of
-# labels not in A
-def is_one_species(t, A):
-    labels = get_labels(t)
-    is_A = False
-    if labels[0] in A:
-        is_A = True
-    for l in labels:
-        if (l in A) != is_A:
-            return False
-    return True
-
-# checks whether t contains all labels in A _and_ only labels in A
-def is_whole_species(t, A):
-    labels = get_labels(t)
-    if len(labels) != len(A):
-        return False
-    for l in labels:
-        if l not in A:
-            return False
-    return True
-
-# actual introgressed from set A according to coalescent tree
-def find_introgressed(t, cutoff_time, A, B = []):
+    # the subtrees that exist at the time the populations join
     lineages = split(t, cutoff_time)
-    non_introgressed = []
-    introgressed = []
+    introgressed = copy.deepcopy(index_to_species)
+    num_lineages_species_to = 0
     for l in lineages:
-        if is_partial_clade(l, A + B):
-            non_introgressed += get_labels(l)
+        not_introgressed, s = is_partial_clade(l, species_to, index_to_species)
+        # if this lineage has only species_to members, then add this
+        # to the number of lineages for the species
+        if not_introgressed:
+            num_lineages_species_to += 1
+        # if there's any occurence of species_from in this clade, then
+        # mark all individuals as coming from species_from (since
+        # we're only allowing migration in one direction)
         else:
-            labels = get_labels(l)
-            for label in labels:
-                if label in A:
-                    introgressed.append(label)
-    return introgressed, len(lineages)
+            for label in get_labels(l):
+                introgressed[label] = s
 
-def get_internal_nodes(t):
-    assert(type(t) == type([]))
-    assert(len(t) == 3)
-
-    nodes = [t]
-    if len(t[0]) == 3:
-        nodes += get_internal_nodes(t[0])
-    if len(t[1]) == 3:
-        nodes += get_internal_nodes(t[1])
-    return nodes
-
-def get_species(t, label_to_species):
-    labels = get_labels(t)
-    species = []
-    for l in labels:
-        s = label_to_species[l]
-        if s not in species:
-            species.append(s)
-    return species
-
-def collapse_tree(t, label_to_species):
-
-    # collapse gene tree by proceeding backwards in time until a
-    # coalescence occurs between two different species. group the two
-    # species into a clade. continue backwards until a coalescence has
-    # occurred between two clades. if both clades involve have already
-    # experienced inter-clade coalescences, ignore the
-    # event. otherwise, group the two clades into a larger
-    # clade. proceed backwards until all species have experience inter
-    # clade coalescences.
-
-    t = make_times_additive(t)
-    # get all coalescent events
-    internal_nodes = get_internal_nodes(t)
-    assert(len(internal_nodes) == len(label_to_species) - 1)
-    # sort by time that they occurred (most recent at beginning of list)
-    # note that we have to go down one level to get the time of the node
-    def key_function(x):
-        left = None
-        if len(x[0]) == 2:
-            left = x[0][1]
+    # only return the results for the to species
+    introgressed_species_to = []
+    for i in range(len(index_to_species)):
+        if index_to_species[i] == species_to:
+            introgressed_species_to.append(introgressed[i])
         else:
-            left = x[0][2]
-        right = None
-        if len(x[1]) == 2:
-            right = x[1][1]
-        else:
-            right = x[1][2]
-        return max(left, right)
-    internal_nodes.sort(key = key_function)
+            assert introgressed[i] == index_to_species[i], \
+                str(introgressed[i]) + ' '  + str(index_to_species[i])
 
-    for it in internal_nodes:
-        s = get_species(it, label_to_species)
-        if len(s) == 2:
-            for l in label_to_species:
-                if label_to_species[l] in s:
-                    label_to_species[l] = s
-        else:
-            assert(len(s) == 1)
-    return label_to_species.values()[0]
+    return introgressed_species_to, num_lineages_species_to
 
-def sort_recursively(a):
-    if type(a) != type([]):
-        return a
-    left = sort_recursively(a[0])
-    right = sort_recursively(a[1])
-    if left < right:
-        return [left, right]
-    else:
-        return [right, left]
-
-def equivalent_topologies(a, b):
-    return sort_recursively(a) == sort_recursively(b)
-
-def is_concordant(t, A, B):
-
-    return (is_whole_species(t[0], A) and is_whole_species(t[1], B)) or \
-        (is_whole_species(t[1], A) and is_whole_species(t[0], B))
-
-def is_monophyletically_concordant(t, A, B, C, split, label_to_species = None, species_topology = None):
-    if split:
-        if not is_split_concordant(t, B, C):
-            return False
-    else: 
-        if not is_topologically_concordant(t, label_to_species, species_topology):
-            return False
-    nodes = get_internal_nodes(t)
-    clade_A = False
-    clade_B = False
-    clade_C = False
-    for node in nodes:
-        if is_whole_species(node, A):
-            clade_A = True
-        elif is_whole_species(node, B):
-            clade_B = True
-        elif is_whole_species(node, C):
-            clade_C = True
-    return clade_A and clade_B and clade_C
-
-def is_topologically_concordant(t, label_to_species, species_topology):
-
-    gene_topology = collapse_tree(t, label_to_species)
-    if equivalent_topologies(species_topology, gene_topology):
-        return True
-    return False
-
-# can do this simpler thing for the special case of 3 species
-def is_split_concordant(t, A, B = []):
-
-    return (is_one_species(t[0], A + B) and is_one_species(t[1], A + B))
-
-# predict which sequences are introgressed based on sequence id;
-# results returned in order of indices in p1 + p2; returns predicted bases introgressed for 
-def predict_introgressed(seqs_filled, window_size, window_shift, thresholds = [.7, .95, .96]):
+# actual introgressed with 3 species total, within a single unrecombined block
+# THIS FUNCTION ASSUMES MIGRATION ONLY HAPPENS AFTER MOST RECENT DIVERGENCE
+def find_introgressed_3(t, species_to, topology, index_to_species):
+    # strategy is to look at lineages that exist at most recent join
+    # time; if any are not all one species, then mark all members as
+    # the species that's not the to species (there's no migration
+    # between the two from species); then look at the more distant
+    # join time; now we can't just check if the lineages are all one
+    # species because two of them have joined; so instead...figure out
+    # which species is the last to join (from the topology), then...
+    # nvm, only allowing migration later on makes this less complicated
     
-    predicted = []
+    join_time_species_to = topology[2]
+    subtree = topology[0]
+    last_to_join = topology[1]
+    if type(subtree) != type([]):
+        subtree = topology[1]
+        last_to_join = topology[0]
+    if last_to_join != species_to:
+        join_time_species_to = subtree[2]
+
+    return find_introgressed_2(t, join_time_species_to, species_to, index_to_species)
+
+def initial_probabilities(states, weighted_match_freqs, match_symbol, \
+                              expected_tract_lengths, expected_num_tracts, n):
+
+    # a small value to add so that no frequencies are actually 0
+    epsilon = .001
+
+    # initial probabilities are proportional to number of match
+    # symbols for the state, but also factor in how often we expect to
+    # be in each state
+    init = []
+    for state in states:
+        # add these two things because we want to average them instead
+        # of letting one of them bring the total to zero [should we
+        # really give them equal weight though?]
+        init.append(weighted_match_freqs[state] + \
+                        float(expected_tract_lengths[state] * \
+                                  expected_num_tracts[state]) / n + \
+                        epsilon)
+    scale = float(sum(init))
+    for i in range(len(states)):
+        init[i] /= scale
+        assert init[i] > 0, 'my HMM methods break down with zero probabilities (just get rid of the state if you don\'t want it!)'
+    return init
+
+# unlike for other parameters, calculate probabilities from the
+# appropriate species sequences instead of just the one being
+# predicted
+def emission_probabilities(states, unknown_species, d_freqs, match_symbol, mismatch_symbol, own_bias):
+
+    # a small value to add so that no frequencies are actually 0
+    epsilon = .001
+
+    # idea is to assign emission probabilities dependant on frequency
+    # of symbols; so if we want to get prob of par emitting ++- (cer
+    # par bay), then we take frequency of ++-, multiplied by own_bias
+    # (because + for par); if it's +?- then we have to do some more
+    # complicated guessing; also note the frequencies we're looking at
+    # are just from the sequences for the current species, not the ones
+    # we're trying to predict
+    emis = []
+    for i in range(len(states)):
+        emis_species = {}
+        individual_symbol_freqs, symbol_freqs, weighted_match_freqs = d_freqs[states[i]]
+        for symbol in symbol_freqs.keys():
+            p = symbol_freqs[symbol] + epsilon
+            if states[i] == unknown_species:
+                # treat ? as - for now
+                if match_symbol in symbol:
+                    p *= (1 - own_bias)
+                else:
+                    p *= own_bias
+            elif symbol[i] == match_symbol:
+                p *= own_bias
+            else: #symbol[i] == mismatch_symbol:
+                p *= (1 - own_bias)
+            # maybe this kind of guessing for '?' is worth doing? but
+            # should probably also do it for the initial/transition
+            # probabilities as well if doing it here
+            #else:
+            #    p *= ((own_bias) * individual_symbol_freqs[i][match_symbol] + \
+            #              (1 - own_bias) * individual_symbol_freqs[i][mismatch_symbol])
+            emis_species[symbol] = p
+        norm = float(sum(emis_species.values()))
+        for symbol in emis_species:
+            emis_species[symbol] /= norm
+            assert emis_species[symbol] > 0, 'my HMM methods break down with zero probabilities (just get rid of the state if you don\'t want it!)'
+        emis.append(emis_species)
+    return emis
+
+def transition_probabilities(expected_length_introgressed, \
+                                 expected_num_introgressed_tracts, \
+                                 predict_species, num_bases, \
+                                 weighted_match_freqs):
+
+    # a small value to add so that no frequencies are actually 0
+    epsilon = 1./1000000
+
+    ##states_not_predict = states
+    ##states_not_predict.remove(predict_species)
     
-    for seq in seqs_filled:
-        p = [0 for b in xrange(len(seq))]
-        for i in range(0, len(seq) - window_size, window_shift):
-            region = seq[i:i+window_size]
-            count0 = region.count('0')
-            count1 = region.count('1')
-            count2 = region.count('2')
-            #count3 = window_size - count0 - count1 - count2
-            cer_match = float(count0 + count2) / len(region) 
-            par_match = float(count1 + count2) / len(region) 
-            if cer_match > thresholds[0]:
-                if cer_match < thresholds[1] and par_match > thresholds[2]:
-                    p[i:i+window_size] = [1] * window_size
-        predicted.append(p)
+    # if a is the species with introgression in it
+    
+    # transition a->b 1/length not int a * frac to b
+    # transition a->c 1/length not int a * frac to c
 
-    return predicted
+    # frac to b - num match only b / num match only b or match only c
+    # frac to c - num match only c / num match only b or match only c
 
-def predict_introgressed_hmm(seqs_filled):
+    # b->a 1/length int b
+    # b->c basically 0
 
-    # create a hidden markov model and determine which reference genome we
-    # are most likely to be in at each variant site
+    # frac to a - 
+    # frac to c - num int c / num int c + num not int
+
+    # num int c = bases int c / length int c
+
+    # bases int c = [(+c-b) + (+c+b) * 1/2] * some fraction accounting for randomness
+
+    # c->a 1/length int c
+    # c->b basically 0
+
+    assert expected_length_introgressed >= 0, expected_length_introgressed
+    assert expected_num_introgressed_tracts >= 0, expected_num_introgressed_tracts
+
+    states = expected_length_introgressed.keys()
+
+    # TODO should be able to calculate expected length based on expected time?
+    #expected_length_introgressed = {}
+    expected_num_introgressed_bases = {}
+    for species in states:
+        expected_num_introgressed_bases[species] = \
+            expected_num_introgressed_tracts[species] * \
+            expected_length_introgressed[species]
+    # TODO should be able to calculate expected length based on expected amount of migration?
+    #expected_num_introgressed_tracts = {}
+
+    expected_num_not_introgressed_tracts = \
+        sum(expected_num_introgressed_tracts.values()) + 1
+    expected_num_not_introgressed_bases = \
+        num_bases - sum(expected_num_introgressed_bases.values())
+    expected_length_not_introgressed = float(expected_num_not_introgressed_bases) / \
+        expected_num_not_introgressed_tracts
+    
+    assert expected_num_not_introgressed_tracts >= 0, \
+        expected_num_not_introgressed_tracts
+    assert expected_num_not_introgressed_bases >= 0, \
+        expected_num_not_introgressed_bases
+    assert expected_length_not_introgressed >= 0, \
+        expected_length_not_introgressed
+
+    # fraction of time we should choose given species state over
+    # others based on number of sites that match it
+    fracs = {}
+    frac_den = 0
+    for state in states:
+        fracs[state] = weighted_match_freqs[state]
+        frac_den += fracs[state]
+    # TODO: question: if A:10 and B:12 and all of those matches
+    # overlap, then should B get it 12/22 of the time or all the time?
+    # i.e. is it just the sites that uniquely match that are relevant?
+    # i think yes, the unique ones BUT want to make sure we don't set
+    # any probabilities to 0
+    for state in fracs:
+        fracs[state] /= float(frac_den)
+
+    trans = []
+    for state_from in states:
+        trans_current = {}
+        total = 0
+
+        for state_to in states:
+            val = 0
+            # staying within same species, deal with this later by
+            # figuring out what's left
+            if state_to == state_from:
+                pass
+            # moving from non-introgressed (cer) to introgressed
+            elif state_from == predict_species:
+                if expected_length_not_introgressed > 0:
+                    val = 1 / float(expected_length_not_introgressed) * \
+                        fracs[state_to]
+                else:
+                    # we should definitely transition if we expect
+                    # entire sequence to be introgressed
+                    val = 1
+            # moving from introgressed to non-introgressed
+            elif state_to == predict_species:
+                if expected_length_introgressed[state_from] > 0:
+                    val = 1 / float(expected_length_introgressed[state_from])
+                else:
+                    # we should definitely transition if we don't
+                    # expect any introgression
+                    val = 1
+            else:
+                # from one state to another, where neither is the one
+                # we're trying to predict TODO
+                val = 0
+            total += val
+            trans_current[state_to] = val
+
+        trans_current[state_from] = 1 - total
+
+        # add epsilon and normalize to avoid 0 probabilities
+        total = 1 + len(states) * epsilon
+        for state_to in states:
+            trans_current[state_to] += epsilon
+            trans_current[state_to] /= total
+
+        assert trans_current[state_from] > 0, 'my HMM methods break down with zero probabilities (just get rid of the state if you don\'t want it!)'
+        trans_row = []
+        for state_to in states:
+            assert trans_current[state_to] > 0, 'my HMM methods break down with zero probabilities (just get rid of the state if you don\'t want it!)'
+            trans_row.append(trans_current[state_to])
+        trans.append(trans_row)
+
+    return trans
+
+def get_symbol_freqs(states, index_to_species, seqs, unknown_species, \
+                         match_symbol, mismatch_symbol, unknown_symbol):
+
+    # for each species/state set of sequences calculate: the
+    # frequencies of individuals symbols for each species, the
+    # frequencies of combined symbols, and weighted match frequencies
+
+    d = {}
+    for state in states:
+        seqs_current = []
+        for i in range(len(seqs)):
+            if index_to_species[i] == state:
+                seqs_current.append(seqs[i])
+        d[state] = get_symbol_freqs_one(states, seqs_current, unknown_species, \
+                                            match_symbol, mismatch_symbol, \
+                                            unknown_symbol)
+    return d
+
+def get_symbol_freqs_one(states, seqs, unknown_species, \
+                             match_symbol, mismatch_symbol, unknown_symbol):
+
+    known_states = copy.deepcopy(states)
+    if unknown_species != None:
+        known_states.remove(unknown_species)
+
+    # for a single species
+
+    known_symbols = [match_symbol, mismatch_symbol]
+    symbols = known_symbols + [unknown_symbol]
+
+    # for species a(0): +, -; species b(1): +, -...etc
+    individual_symbol_freqs = []
+    print known_states
+    print seqs[0]
+    for i in range(len(known_states)):
+        d_species = {}
+        for symbol in known_symbols:
+            num = 0
+            den = 0
+            for seq in seqs:
+                seq_species = [x[i] for x in seq]
+                num += seq_species.count(symbol)
+                den += len(seq_species) - seq_species.count(unknown_symbol)
+            d_species[symbol] = float(num) / den
+        individual_symbol_freqs.append(d_species)
+
+    # for +++, ++-, +-+, etc
+    symbol_combinations = [''.join(x) for x in list(itertools.product(symbols, repeat=len(known_states)))]
+    symbol_freqs = dict(zip(symbol_combinations, [0]*len(symbol_combinations)))
+    for symbol in symbol_freqs.keys():
+        num = 0
+        den = 0
+        for seq in seqs:
+            num += seq.count(symbol)
+            den += len(seq)
+        symbol_freqs[symbol] = float(num) / den
+
+    # weighted matches; for first species +-- gets 1 pt, +-+ and ++-
+    # each get 1/2 pt, +++ gets 1/3 pt [treat ? like -] etc
+    weighted_match_freqs = {}
+    total = 0
+    for i in range(len(known_states)):
+        current = 0
+        keep_symbols = [] # for first species +**
+        weights = []
+        for s in symbol_combinations:
+            if s[i] == match_symbol:
+                keep_symbols.append(s)
+                weights.append(1./s.count(match_symbol))
+        for seq in seqs:
+            for j in range(len(keep_symbols)):
+                current += seq.count(keep_symbols[j]) * weights[j]
+        weighted_match_freqs[known_states[i]] = current
+        total += current
+
+    # for unknown species 1 pt for --- only (or ?)
+    if unknown_species != None:
+        current = 0
+        keep_symbols = []
+        for s in symbol_combinations:
+            if match_symbol not in s:
+                keep_symbols.append(s)
+        for seq in seqs:
+            for j in range(len(keep_symbols)):
+                current += seq.count(keep_symbols[j])
+        weighted_match_freqs[unknown_species] = current
+        total += current
+
+    for state in weighted_match_freqs:
+        # total can only be zero if no species has matches
+        weighted_match_freqs[state] /= float(total)
+    
+    return individual_symbol_freqs, symbol_freqs, weighted_match_freqs
+
+def convert_predictions(path, states):
+    new_path = []
+    for p in path:
+        new_path.append(states[p])
+    return new_path
+
+def initial_hmm_parameters(seqs, predict_species, index_to_species, states, \
+                               unknown_species, \
+                               match_symbol, mismatch_symbol, unknown_symbol, \
+                               expected_length_introgressed, \
+                               expected_num_introgressed_tracts):
+
+    d_freqs = get_symbol_freqs(\
+        states, index_to_species, seqs, unknown_species, \
+            match_symbol, mismatch_symbol, unknown_symbol)
+
+    individual_symbol_freqs, symbol_freqs, weighted_match_freqs = \
+        d_freqs[predict_species]
+
+    for s in symbol_freqs:
+        print s, symbol_freqs[s]
+
+    p = {}
+
+    p['init'] = initial_probabilities(states, weighted_match_freqs, match_symbol, \
+                                          expected_length_introgressed, \
+                                          expected_num_introgressed_tracts, \
+                                          len(seqs[0]))
+
+    p['emis'] = emission_probabilities(states, unknown_species, d_freqs, \
+                                            match_symbol, mismatch_symbol, .99)
+
+    p['trans'] = transition_probabilities(expected_length_introgressed, \
+                                              expected_num_introgressed_tracts, \
+                                              predict_species, len(seqs[0]), \
+                                              weighted_match_freqs)
+
+    return p['init'], p['emis'], p['trans']
+
+def predict_introgressed_hmm(seqs, predict_species, index_to_species, states, \
+                                 unknown_species, ref_ind_species_to, \
+                                 match_symbol, mismatch_symbol, unknown_symbol, \
+                                 init, emis, trans, train=True):
+    if unknown_species != None:
+        assert len(seqs[0][0]) == len(states) - 1
+        assert set(index_to_species) == set(states), str(set(index_to_species)) + ' ' + str(states)
+        assert unknown_species == states[-1]
+
+    seqs_to_predict = []
+    seqs_to_predict_inds = []
+    predict_inds = []
+
+    for i in range(len(seqs)):
+        if index_to_species[i] == predict_species and i != ref_ind_species_to:
+            predict_inds.append(i)
+            seqs_to_predict.append(seqs[i])
+            seqs_to_predict_inds.append(i)
+
     hmm = HMM()
-        
-    hmm.set_obs(seqs_filled)
-    #hmm.set_obs([seqs_filled[0], seqs_filled[1]])
-    #hmm.set_obs(['0000001000000000010000000','000011111111111111122222'])
-    #hmm.set_obs(['012', '000'])
-    #hmm.set_obs(['00', '01'])
-    hmm.set_init([.5,.5])
-    """
-    fo = open('obs.txt', 'w')
-    for os in seqs_filled:
-        for o in os:
-            fo.write(o)
-        fo.write('\n')
-    fo.close()
-    
-    fo = open('int.txt', 'w')
-    for os in seqs_filled:
-        for o in os:
-            fo.write(o)
-        fo.write('\n')
-    fo.close()
-    """
-    # 0,1 would also work here
-    hmm.set_states(['cer', 'par'])
-    # a little weird because we know recombination rate we used
-    hmm_trans = .0005
-    
-    # hmm.set_trans({'cer':{'cer':1-hmm_trans, 'par':hmm_trans},
-    # 'par':{'cer':hmm_trans, 'par':1-hmm_trans}})
-    hmm.set_trans([[1-hmm_trans,hmm_trans],[hmm_trans,1-hmm_trans]])
 
-    # combined error in parent sequences and observed sequence -
-    # in this case 'error' comes from amout of difference
-    # reasonable to see between reference and other strains of
-    # same species; remember we've coded 0 for cer (non
-    # introgressed) and 1 for par (introgressed)
-    # hmm.set_emis({'cer':{0:.95, 1:.05},'par':{0:.05, 1:.95}}) 
-    hmm.set_emis([{'0':.5, '1':.0001, '2':.4998, '3':.0001},{'0':.0001, '1':.5, '2':.4998, '3':.0001}])
+    # set obs
+    hmm.set_obs(seqs_to_predict)
 
-    # Baum-Welch parameter estimation
-    hmm.go()
+    # set states
+    hmm.set_states(states)
+
+    hmm.set_init(init)
+    hmm.set_emis(emis)
+    hmm.set_trans(trans)
+
+    if train:
+        # Baum-Welch parameter estimation
+        hmm.go()
 
     predicted = []
-    for i in range(len(seqs_filled)):
-        obs_seq = seqs_filled[i]
-        hmm.set_obs(obs_seq)
-        predicted.append(hmm.viterbi())
+    for i in range(len(seqs)):
+        if i in predict_inds:
+            hmm.set_obs(seqs[i])
+            predicted.append(convert_predictions(hmm.viterbi(), states))
 
     return predicted, hmm
 
-def evaluate_predicted(predicted, actual):
+def group_actual_predicted_bases(actual, predicted, states):
+    # number of bases that fit into every category of actual x
+    # predicted y for all x,y in states
 
+    # returns dictionary of lists (one entry per strain)
+
+    d = {}
+    for state_actual in states:
+        for state_predicted in states:
+            d[(state_actual,state_predicted)] = [0] * len(actual)
+
+    for i in range(len(actual)):
+        for j in range(len(actual[i])):
+            d[(actual[i][j], predicted[i][j])][i] += 1
+
+    return d
+
+def group_actual_predicted_blocks(blocks_actual, blocks_predicted, states, inds_to_predict):
+    # each block entry is a list with four items: the species it was
+    # predicted to be from, (dictionary of) the number of bases within
+    # it that are actually from each species, the total block length,
+    # and the index of the strain
+
+    # returns dictionaries of lists (one entry per strain)
+    
+    num_samples = len(inds_to_predict)
+
+    # first loop through actual blocks
+    d_actual_predicted = {}
+    d_actual_counts = {}
+    for state_actual in states:
+        # this is legit because species_to samples always come first 
+        d_actual_counts[state_actual] = dict(zip(inds_to_predict, [0] * num_samples))
+        for state_predicted in states:
+            d_actual_predicted[(state_actual,state_predicted)] = dict(zip(inds_to_predict, [0] * num_samples))
+
+    for b in range(len(blocks_actual)):
+        state_actual = blocks_actual[b][0]
+        sample_ind = blocks_actual[b][3]
+        d_actual_counts[state_actual][sample_ind] += 1
+        for state_predicted in states:
+            add = 0
+            if blocks_actual[b][1][state_predicted] > 0:
+                add = 1
+            d_actual_predicted[(state_actual, state_predicted)][sample_ind] += add
+
+    # then loop through predicted blocks
+    d_predicted_actual = {}
+    d_predicted_counts = {}
+    for state_predicted in states:
+        d_predicted_counts[state_predicted] = dict(zip(inds_to_predict, [0] * num_samples))
+        for state_actual in states:
+            d_predicted_actual[(state_predicted,state_actual)] = dict(zip(inds_to_predict, [0] * num_samples))
+
+    for b in range(len(blocks_predicted)):
+        state_predicted = blocks_predicted[b][0]
+        sample_ind = blocks_predicted[b][3]
+        d_predicted_counts[state_predicted][sample_ind] += 1
+        for state_actual in states:
+            add = 0
+            if blocks_predicted[b][1][state_actual] > 0:
+                add = 1
+            d_predicted_actual[(state_predicted, state_actual)][sample_ind] += add
+
+    '''
+    # convert dictionaries to lists
+    for state in states:
+        d_actual_counts[state] = [d_actual_counts[state][x] for x in sorted(d_actual_counts[state].keys())]
+        d_predicted_counts[state] = [d_predicted_counts[state][x] for x in sorted(d_predicted_counts[state].keys())]
+    for key in d_actual_predicted.keys():
+        d_actual_predicted[key] = [d_actual_predicted[key][x] for x in sorted(d_actual_predicted[key].keys())]
+        d_predicted_actual[key] = [d_predicted_actual[key][x] for x in sorted(d_predicted_actual[key].keys())]
+    '''
+
+    # convert to dictionaries containing lists for each individual
+
+    for state_actual in states:
+        d_actual_counts[state_actual] = [d_actual_counts[state_actual][i] for i in inds_to_predict]
+        # looks dumb but correct
+        d_predicted_counts[state_actual] = [d_predicted_counts[state_actual][i] for i in inds_to_predict]
+        for state_predicted in states:
+            d_actual_predicted[(state_actual, state_predicted)] = \
+                [d_actual_predicted[(state_actual, state_predicted)][i] for i in inds_to_predict]
+            d_predicted_actual[(state_predicted, state_actual)] = \
+                [d_predicted_actual[(state_predicted, state_actual)][i] for i in inds_to_predict]
+
+    return d_actual_predicted, d_predicted_actual, d_actual_counts, d_predicted_counts
+
+def evaluate_predicted_blocks(predicted, actual, species_to, all_species, inds_to_predict):
+
+    # each block entry is a list with four items: the species it was
+    # predicted to be from, (dictionary of) the number of bases within
+    # it that are actually from each species, the total block length,
+    # and the index of the strain
+    blocks_predicted = []
+    # the same as above except for true blocks (the second entry being
+    # the number of bases that are predicted for that species)
+    blocks_actual = []
+
+    for i in range(len(inds_to_predict)):
+        strain_id = inds_to_predict[i]
+        
+        assert len(predicted[i]) == len(actual[i]), \
+            str(len(predicted[i])) + ' ' + str(len(actual[i]))
+
+        seq_predicted = predicted[i] + ['END']
+        seq_actual = actual[i] + ['END']
+
+        current_species_predicted = seq_predicted[0]
+        current_species_actual = seq_actual[0]
+
+        # in the current predicted block, the true sequence of species states
+        predicted_block_actual_sequence = []
+        # in the current true block, the predicted sequence of species states
+        actual_block_predicted_sequence = []
+
+        for j in range(len(seq_predicted)):
+            # === first take care of predicted block ====
+            # not changing to a new block
+            if seq_predicted[j] == current_species_predicted:
+                predicted_block_actual_sequence.append(seq_actual[j])
+            # changing to a new block (or END)
+            else:
+                count_species = {}
+                for sp in all_species:
+                    count_species[sp] = predicted_block_actual_sequence.count(sp)
+                current_block = \
+                    [current_species_predicted,\
+                         count_species,\
+                         len(predicted_block_actual_sequence),\
+                         strain_id]
+                blocks_predicted.append(current_block)
+                current_species_predicted = seq_predicted[j]
+                predicted_block_actual_sequence = [seq_actual[j]]
+
+            # === then take care of actual block ====
+            # not changing to a new block
+            if seq_actual[j] == current_species_actual:
+                actual_block_predicted_sequence.append(seq_predicted[j])
+            # changing to a new block (or END)
+            else:
+                count_species = {}
+                for sp in all_species:
+                    count_species[sp] = actual_block_predicted_sequence.count(sp)
+                current_block = \
+                    [current_species_actual,\
+                         count_species,\
+                         len(actual_block_predicted_sequence),\
+                         strain_id]
+                blocks_actual.append(current_block)
+                current_species_actual = seq_actual[j]
+                actual_block_predicted_sequence = [seq_predicted[j]]
+
+    return blocks_predicted, blocks_actual
+
+def evaluate_predicted(predicted, actual, species_to):
+
+    # predicted is a list; for each index that wasn't the species we
+    # wanted to predict introgression, the entry is None; for other
+    # indices, the entry is a list of predicted species at each
+    # position (actual is the same deal)
     assert len(predicted) == len(actual), str(len(predicted)) + ' ' + str(len(actual))
 
     # make predictions for every cer sequence
@@ -372,7 +646,8 @@ def evaluate_predicted(predicted, actual):
     # loop through all individuals
     for i in range(len(predicted)):
 
-        assert len(predicted[i]) == len(actual[i]), str(len(predicted[i])) + ' ' + str(len(actual[i]))
+        assert len(predicted[i]) == len(actual[i]), \
+            str(len(predicted[i])) + ' ' + str(len(actual[i]))
 
         in_ai = False # in actual introgressed region
         in_pi = False # in predicted introgressed region
@@ -382,8 +657,12 @@ def evaluate_predicted(predicted, actual):
         pi_count = 0 # length of current predicted introgressed tract
         nai = 0 # number of actual introgressed tracts
         npi = 0 # number of predicted introgressed tracts
-        hit_actual = 0 # whether we've hit an actual introgressed base in the current predicted introgressed tract (0 no, 1 yes)
-        hit_predicted = 0 # whether we've hit a predicted introgressed base in the current actual introgressed tract (0 no, 1 yes)
+        hit_actual = 0 # whether we've hit an actual introgressed base
+                       # in the current predicted introgressed tract
+                       # (0 no, 1 yes)
+        hit_predicted = 0 # whether we've hit a predicted introgressed
+                          # base in the current actual introgressed
+                          # tract (0 no, 1 yes)
         ap = 0
         pa = 0
 
@@ -395,7 +674,7 @@ def evaluate_predicted(predicted, actual):
                 # add one to correct sites count
                 c += 1
                 # if introgressed, add one to correct introgressed sites count
-                if actual[i][b] == 1:
+                if actual[i][b] != species_to:
                     ci += 1
                     # if actual and predicted both introgressed, then we've found
                     # each for the current tracts
@@ -403,7 +682,7 @@ def evaluate_predicted(predicted, actual):
                     hit_predicted = 1
 
             # if the current position is actually introgressed
-            if actual[i][b] == 1:
+            if actual[i][b] != species_to:
                 # and we were already in an introgressed region
                 if in_ai:
                     ai_count += 1
@@ -423,7 +702,7 @@ def evaluate_predicted(predicted, actual):
                     ai_count = 0
 
             # if the current position is predicted to be introgressed
-            if predicted[i][b] == 1:
+            if predicted[i][b] != species_to:
                 if in_pi:
                     pi_count += 1
                 else:
@@ -450,7 +729,8 @@ def evaluate_predicted(predicted, actual):
             npi += 1
             pa += hit_actual
 
-        # count up total number of actual and predicted introgressed and not introgressed tracts
+        # count up total number of actual and predicted introgressed
+        # and not introgressed tracts
         num_introgressed_tracts.append(nai)
         num_predicted_introgressed_tracts.append(npi)
 
@@ -459,14 +739,14 @@ def evaluate_predicted(predicted, actual):
 
         # for *not introgressed*, check ends
         nnotai = nai - 1
-        if actual[i][0] == 0:
+        if actual[i][0] == species_to:
             nnotai += 1
-        if actual[i][-1] == 0:
+        if actual[i][-1] == species_to:
             nnotai += 1
         nnotpi = npi - 1
-        if predicted[i][0] == 0:
+        if predicted[i][0] == species_to:
             nnotpi += 1
-        if predicted[i][-1] == 0:
+        if predicted[i][-1] == species_to:
             nnotpi += 1
         num_not_introgressed_tracts.append(nnotai)
         num_predicted_not_introgressed_tracts.append(nnotpi)
@@ -483,432 +763,460 @@ def evaluate_predicted(predicted, actual):
         num_introgressed_tracts, num_not_introgressed_tracts, \
         num_predicted_introgressed_tracts, num_predicted_not_introgressed_tracts
 
-# given fractional positions for snvs and length of sequence l,
-# determine integer positions; if allow_multi_hit is true, easy but if
-# not, shift them around to include all the snvs
-def integer_positions(positions, l, allow_multi_hit = False):
+def count_blocks(blocks, negative_label, kind):
+    # negative label is species to predict - i.e. if it matches
+    # species to predict, then not introgressed and vice versa
+    x = 0
 
-    int_positions = [int(x * l) for x in positions]
-    if allow_multi_hit:
-        return int_positions
+    for block in blocks:
+        if ('positive' in kind and block[0] != negative_label) or \
+                ('negative' in kind and block[0] == negative_label):
+            if 'true' in kind:
+                if block[1] > 0:
+                    x += 1
+            elif 'false' in kind:
+                if block[1] == 0:
+                    x += 1
+            else:
+                x += 1
+    return x
+
+def get_positives(blocks, negative):
+    x = 0
+    for block in blocks:
+        if block[0] != negative:
+            x += 1
+    return x
+
+# seqs are NOT coded, and the order in each symbol is the order to return them in
+def seq_id(seqs, index_to_species, species_order):
+    # [[within 1, between 1 & 2, between 1 & 3], [within 2...]...]
+
+    d = {} 
+    for i in range(len(species_order)):
+        d[species_order[i]] = i
+
+    all_nums = []
+    all_dens = []
+    for i in range(len(species_order)):
+        all_nums.append([0 for j in range(len(species_order))])
+        all_dens.append([0 for j in range(len(species_order))])
+
+    # loop through all pairs of sequences, and count fraction of
+    # non-gap sites that match
+    for i in range(len(seqs)):
+        for j in range(i + 1, len(seqs)):
+            seq1 = seqs[i]
+            seq2 = seqs[j]
+            ind1 = d[index_to_species[i]]
+            ind2 = d[index_to_species[j]]
+            num = 0
+            den = 0
+            for k in range(len(seq1)):
+                if seq1[k] != '-' and seq2[k]!= '-':
+                    den += 1
+                    if seq1[k] == seq2[k]:
+                        num += 1
+            all_nums[ind1][ind2] += num
+            all_nums[ind2][ind1] += num
+            all_dens[ind1][ind2] += den
+            all_dens[ind2][ind1] += den
+
+    # when we're counting above, either one of the species may come
+    # first; here we're averaging those two possibilities
+    s = []
+    for i in range(len(species_order)):
+        row = []
+        for j in range(len(species_order)):
+            if all_dens[i][j] != 0:
+                row.append(all_nums[i][j]/float(all_dens[i][j]))
+            else:
+                row.append(-1)
+        s.append(row)
+    return s
+
+
+# convert sequences from bases to symbols indicating which references they match
+def code_seqs(seqs, nsites, ref_seqs, match_symbol, mismatch_symbol, unknown_symbol, unsequenced_symbol):
+
+    nrefs = len(ref_seqs)
+    seqs_coded = []
+    for seq in seqs:
+        s = []
+        for i in range(nsites):
+            si = ''
+            for r in range(nrefs):
+                if ref_seqs[r][i] == unsequenced_symbol:
+                    si += unknown_symbol
+                elif ref_seqs[r][i] == seq[i]:
+                    si += match_symbol
+                else:
+                    si += mismatch_symbol
+            s.append(si)
+        seqs_coded.append(s)
+    return seqs_coded
+
+# TODO change stuff to account for multiple donor species better
+def make_output_dic(species, species_to, unknown_state = None):
+
+    d = {}
+
+    for species_from in species:
+        # can skip all of these because we can get them from summing
+        # different things in the categories below (i.e. to get number
+        # of bases actually introgressed from par to cer, take sum of
+        # num_bases_actual_par_predicted_*
+        """
+        if species_from != species_to:
+            # introgressed bases, actual and predicted
+            d['num_introgressed_bases_actual_from_' + species_from + '_to_' + species_to] = None
+            d['num_introgressed_bases_predicted_from_' + species_to + '_to_' + species_to] = None
+
+            # introgressed tracts, actual and predicted
+            d['num_introgressed_tracts_actual_from_' + species_to + '_to_' + species_to] = None
+            d['num_introgressed_tracts_predicted_from_' + species_to + '_to_' + species_to] = None
+        """
+        # introgressed tract lengths, actual and predicted
+        d['tract_lengths_actual_' + species_from] = None
+        d['tract_lengths_predicted_' + species_from] = None
+
+        # number of tracts, actual and predicted
+        d['num_tracts_actual_' + species_from] = None
+        d['num_tracts_predicted_' + species_from] = None
+
+        # so now we need a category for each combination of
+        # predicted and actual species so that we can calculate
+        # accuracy and stuff (this includes both introgressed on
+        # not introgressed bases/tracts)
+        for species_other in species:
+            d['num_bases_actual_' + species_from + '_predicted_' + species_other] = None
+            # need both of these because math
+            d['num_tracts_actual_' + species_from + '_predicted_' + species_other] = None
+            d['num_tracts_predicted_' + species_from + '_actual_' + species_other] = None
     
-    assert(len(positions) <= l)
+    #d['num_bases_correct_' + species_to] = None
+    #d['num_tracts_correct_' + species_to] = None
+    d['prob_topological_concordance'] = None
+    d['prob_monophyletic_concordance'] = None
+    d['fraction_concordant'] = None
 
-    # keep first position
-    a = int_positions[:1]
-    # go through all other positions and move them left or right if
-    # they're already taken
-    for p in int_positions[1:]:
-        new_p = p
-        n = 1
-        add = True # adding or substracting (right or left)
-        while new_p in a or new_p < 0 or new_p >= l:
-            if add:
-                new_p = p + n
-                add = False
-            else:
-                new_p = p - n
-                add = True
-                n += 1
-        a.append(new_p)
-    return a
+    for i in range(len(species)):
+        for j in range(i, len(species)):
+            d['avg_identity_' + species[i] + '_' + species[j]] = None
 
 
-tag = sys.argv[1]
-outdir = '../../results/sim/'
-outfilename = 'sim_out_' + tag + '.txt'
-results_filename = 'sim_out_' + tag + '_summary.txt'
+    # HMM parameters
+    for i in range(len(species)):
+        d['init_' + species[i]] = None
+                   
+    for i in range(len(species)):
+        for j in range(len(species)):
+            d['trans_' + species[i] + '_' + species[j]] = None
 
-model = sys.argv[2]
+    for i in range(len(species)):
+        to_states = species
+        if unknown_state != None:
+            to_states.append(unknown_state)
+        for j in range(len(to_states)):
+            d['emis_' + species[i] + '_' + species[j]] = None
 
-N0 = int(sys.argv[3])
+    return d
 
-num_samples_par = int(sys.argv[4])
-num_samples_cer = int(sys.argv[5])
-num_samples = num_samples_par + num_samples_cer
+def write_output_line(f, d, header_line):
 
-# migration parameter is 2 * N0 * m, where mij is fraction of i made
-# up of j each generation; need to figure out how to make migration
-# rates equivalent for different models
-par_cer_migration = 2 * N0 * float(sys.argv[6])
+    items = sorted(d.keys())
+    if not header_line:
+        items = [str(d[x]) for x in items]
 
-# in generations
-t_par_cer = float(sys.argv[7]) / (2 * N0)
+    keys = sorted(d.keys())
+    i = 0
+    for item in items[:-1]:
+        f.write(item + '\t')
+        print keys[i]
+        print item
+        i += 1
+    f.write(items[-1] + '\n')
 
-# 13,500 sites to get about 10% with one recombination event, .3% with
-# more than one (based on poisson(.1), 1 recombination per chromosome
-# of average length 750,000)
-num_sites = int(sys.argv[8])
+def average_hmm_params(init, emis, trans):
+    n = len(init)
+    num_states = len(init[0])
 
-# parameter is recombination rate between adjacent bp per generation
-# should probably be 1/750000 + 6.1 * 10^-6 (where 750000 is average
-# chr size)
-rho = 2 * N0 * float(sys.argv[9]) * (num_sites - 1)
+    # init
+    init_avg = [0 for state in range(num_states)]
+    for i in range(n):
+        for state in range(num_states):
+            init_avg[state] += init[i][state]
+    for state in range(num_states):
+        init_avg[state] /= float(n)
 
-outcross_rate = float(sys.argv[10])
-
-rho *= outcross_rate
-
-# estimate from humans
-mu = 1.84 * 10 ** -10
-theta = mu * 2 * num_sites * N0
-
-num_reps = int(sys.argv[11])
-
-# take first index from each population to be reference sequence
-# [s288c is part of 41-strain group, which we're saying has migration happen]
-ref_ind_par = 0
-ref_ind_cer = num_samples_par 
-
-#####
-# stats to keep track of
-#####
-
-# for each sim, number of introgressed bases in each strain
-num_introgressed_cer = [[0 for i in range(num_samples_cer)] for n in range(num_reps)]
-
-# success of HMM predictions
-fraction_correct_all = [[] for i in range(num_reps)]
-
-fraction_introgressed_correct_all = [[] for i in range(num_reps)]
-
-predicted_lens_all = [[] for i in range(num_reps)]
-
-# success of windowed id predictions
-fraction_correct_all_window = [[] for i in range(num_reps)]
-
-fraction_introgressed_correct_all_window = [[] for i in range(num_reps)]
-
-predicted_lens_all_window = [[] for i in range(num_reps)]
-
-# actual lengths don't depend on prediction strategy
-actual_lens_all = [[] for i in range(num_reps)]
-
-fpr_cer = [0] * num_reps
-fpr_cer_only_par = [0] * num_reps
-
-# id between all cer and cer ref
-avg_id_cer = [0] * num_reps
-
-# id between all cer and par ref 
-avg_id_cer_par = [0] * num_reps
-
-num_lineages_at_join = [[] for n in range(num_reps)]
-
-concordant = [[] for n in range(num_reps)]
-
-prob_topological_concordance = 0
-
-# windows for looking for introgressed sequence
-window_size = 1000
-window_shift = 500
-
-#####
-# loop through all reps
-#####
-
-# write results
-fout = open(outdir + results_filename, 'w')
-print 'writing to', outdir + results_filename
-fout.write('num_introgressed_cer\t' + \
-               'num_introgressed_tracts_cer\t' + \
-               'num_not_introgressed_tracts_cer\t' + \
-               'num_predicted_introgressed_cer\t' + \
-               'num_predicted_introgressed_tracts_cer\t' + \
-               'num_predicted_not_introgressed_tracts_cer\t' + \
-               'num_predicted_introgressed_cer_window\t' + \
-               'num_predicted_introgressed_tracts_cer_window\t' + \
-               'num_predicted_not_introgressed_tracts_cer_window\t' + \
-               'num_correct\t' + \
-               'num_introgressed_correct\t' + \
-               'num_predicted_tracts_actual\t' + \
-               'num_actual_tracts_predicted\t' + \
-               'num_correct_window\t' + \
-               'num_introgressed_correct_window\t' + \
-               'num_predicted_tracts_actual_window\t' + \
-               'num_actual_tracts_predicted_window\t' + \
-               'actual_lens\t' + \
-               'predicted_lens\t' + \
-               'predicted_lens_window\t' + \
-               'avg_id_cer\t' + \
-               'avg_id_cer_par\t' + \
-               'num_lineages\t' + \
-               'fraction_concordant\t' + \
-               'init_cer\t' + \
-               'init_par\t' + \
-               'trans_cer_cer\t' + \
-               'trans_cer_par\t' + \
-               'trans_par_cer\t' + \
-               'trans_par_par\t' + \
-               'emis_cer_cer\t' + \
-               'emis_cer_par\t' + \
-               'emis_cer_np\t' + \
-               'emis_par_cer\t' + \
-               'emis_par_par\t' + \
-               'emis_par_np\n')
-
-prob_topological_concordance = -1
-prob_monophyletic_concordance = -1
-
-assert not theory, 'theory calculations not yet implemented for single cer population'
-if theory:
-    if theory_done:
-        print 'reading theory results from file'
-        f = open('out/' + results_filename, 'r')
-        line = f.readline().split()
-        assert(line[12] == 'prob_topological_concordance')
-        assert(line[13] == 'prob_monophyletic_concordance')
-        line = f.readline().split()
-        prob_topological_concordance = float(line[12])
-        prob_monophyletic_concordance = float(line[13])
-        f.close()
-
-
-f = open(outdir + outfilename, 'r')
-line = f.readline()
-n = 0
-while line != '' and n < num_reps:
-    if line == '//\n':
-        print n
-
-        # the main difference in adding in recombination is that we
-        # now have to consider multiple trees, one for each block that
-        # has not experienced recombination within it
-        trees = []
-        recomb_sites = []
-        t_string = f.readline()
-        # read in all the trees for blocks with no recombination within them
-        while t_string[0] == '[':
-            t_start = t_string.find(']') + 1
-            recomb_sites.append(int(t_string[1:t_start-1]))
-            t_string = t_string[t_start:-1]
-            t = parse_tree(t_string)
-            trees.append(t)
-            t_string = f.readline()
-        # read next couple of lines before sequences begin
-        segsites = int(t_string[len('segsites: '):-1])
-        #print 'segsites:', segsites
-        positions = [float(x) for x in f.readline()[len('positions: '):].split()]
-        #print 'positions:', positions
-        print recomb_sites
-        # convert positions to integers
-        positions = integer_positions(positions, num_sites)
-        print positions
-        # read in sequences (at this point only sites that are polymorphic)
-        seqs = []
-        for i in range(num_samples):
-            seqs.append(f.readline()[:-1])
-            #print(seqs[-1])
-            assert(len(seqs[-1]) > 0)
-
-        # coding:
-        # 0 -> matches cer ref but not par ref
-        # 1 -> matches par ref but not cer ref
-        # 2 -> matches cer ref and par ref
-        # 3 -> doesn't match cer ref or par ref
-        seqs_filled = []
-        for seq in seqs:
-            # nonpolymorphic sites will match both references
-            s = ['2'] * num_sites
-            # polymorphic sites
-            for i in range(segsites):
-                if seq[i] == seqs[ref_ind_cer][i]:
-                    if seq[i] == seqs[ref_ind_par][i]:
-                        s[positions[i]] = '2'
-                    else:
-                        s[positions[i]] = '0'
-                elif seq[i] == seqs[ref_ind_par][i]:
-                        s[positions[i]] = '1'
-                else:
-                        s[positions[i]] = '3'
-                
-            seqs_filled.append(s)
+    # emis
+    emis_avg = [{} for state in range(num_states)]
+    for i in range(n):
+        for state in range(num_states):
+            for symbol in emis[i][state]:
+                if symbol not in emis_avg[state]:
+                    emis_avg[state][symbol] = 0
+                emis_avg[state][symbol] += emis[i][state][symbol]
+    for state in range(num_states):
+        for symbol in emis_avg[state]:
+            emis_avg[state][symbol] /= float(n)
+    
+    # trans
+    trans_avg = [[0 for state_to in range(num_states)] \
+                     for state_from in range(num_states)]
+    for i in range(n):
+        for state_from in range(num_states):
+            for state_to in range(num_states):
+                trans_avg[state_from][state_to] += trans[i][state_from][state_to]
+    for state_from in range(num_states):
+        for state_to in range(num_states):
+            trans_avg[state_from][state_to] /= float(n)
         
-        ########
-        # figure out which sites are actually introgressed by looking at trees for
-        # all regions without recombination
-        ########
+    return init_avg, emis_avg, trans_avg
 
-        # store the sites that are introgressed for each cer strain
-        introgressed_actual = [[] for i in range(num_samples_cer)]
+def write_hmm_params(init, emis, trans, states, unknown_state, fn):
+    f = open(fn, 'w')
+    # init
+    for i in range(len(states)):
+        f.write('init\t' + states[i] + '\t' + str(init[i]) + '\n')
 
-        # sequence of states (cer or par), one for each site and strain (mostly like above)
-        actual_state_seq = [[] for i in range(num_samples)]
+    # emis
+    refs = copy.deepcopy(states)
+    if unknown_state != None:
+        assert unknown_state == refs[-1]
+        refs = refs[:-1]
+    for i in range(len(states)):
+        for symbol in emis[i]:
+            f.write('emis\t' + states[i])
+            for j in range(len(refs)):
+                f.write('\t' + refs[j] + '\t' + symbol[j])
+            f.write('\t' + str(emis[i][symbol]) + '\n')
+    
+    # trans
+    for i in range(len(states)):
+        for j in range(len(states)):
+            f.write('trans\t' + states[i] + '\t' + states[j] + '\t' + \
+                        str(trans[i][j]) + '\n')
 
-        site_ind = 0
-        # loop through the trees for all blocks with no recombination within them
-        for ti in range(len(trees)):
-            t = trees[ti]
-            #print 'tree', ti, 'out of', len(trees)
-            #print t
-            
-            # should this be 0 or 1 indexed??
-            if is_concordant(t, range(1, num_samples_par), range(num_samples_par + 1, num_samples + 1)):
-                concordant[n].append(1)
-            else:
-                concordant[n].append(0)
-            
-            # identify cerevisiae sequences that are actually introgressed from
-            # paradoxus (based on coalescent tree); indexed from 0
-            # only return for cer strains, not par
-            introgressed = find_introgressed(t, t_par_cer, range(num_samples_par, num_samples))
-
-            # number of lineages that were present when cerevisiae and paradoxus populations joined
-            num_lineages_at_join[n].append(introgressed[1])
-
-            # number of sites in the current block of sequence
-            num_sites_t = recomb_sites[ti]
-
-            # for all strains that have this block introgressed, at
-            # the length of the block to the total number of
-            # introgressed sites across all strains
-            for i in introgressed[0]:
-                num_introgressed_cer[n][i - num_samples_par] += num_sites_t
-                introgressed_actual[i - num_samples_par] += range(site_ind, site_ind + num_sites_t)
-            site_ind += num_sites_t
-
-            for s in range(num_samples_par, num_samples):
-                if s in introgressed[0]:
-                    # 1 for par (introgressed)
-                    actual_state_seq[s] += [1] * num_sites_t
-                else:
-                    # 0 for cer (not introgressed)
-                    actual_state_seq[s] += [0] * num_sites_t
-        
-        ########
-        # predict whether each site in each cer strain is
-        # introgressed with a hidden markov model
-        ########
-
-        print 'HMM'
-
-        predicted, hmm = predict_introgressed_hmm(seqs_filled[num_samples_par:])
-        num_predicted_introgressed = [sum(x) for x in predicted]
-        num_correct, num_introgressed_correct, actual_lens, predicted_lens, \
-            num_predicted_tracts_actual, num_actual_tracts_predicted, \
-            num_introgressed_tracts, num_not_introgressed_tracts, \
-            num_predicted_introgressed_tracts, num_predicted_not_introgressed_tracts = \
-            evaluate_predicted(predicted, actual_state_seq[num_samples_par:])
+    f.close()
 
 
-        ########
-        # predict whether each site in each cer strain is
-        # introgressed by windowing (each window is in each strain
-        # is either completely introgressed or not introgressed)
-        ########
-
-        print 'windowing'
-
-        predicted = predict_introgressed(seqs_filled[num_samples_par:], window_size, window_shift)
-        num_predicted_introgressed_window = [sum(x) for x in predicted]
-        num_correct_window, num_introgressed_correct_window, actual_lens_window, predicted_lens_window, \
-            num_predicted_tracts_actual_window, num_actual_tracts_predicted_window, \
-            num_introgressed_tracts_window, num_not_introgressed_tracts_window, \
-            num_predicted_introgressed_tracts_window, num_predicted_not_introgressed_tracts_window = \
-            evaluate_predicted(predicted, actual_state_seq[num_samples_par:])
-
-        ########
-        # sequence identities
-        ########
-
-        total_len = 0
-
-        for seq in seqs_filled[num_samples_par:]:
-
-            count0 = seq.count('0')
-            count1 = seq.count('1')
-            count2 = seq.count('2')
-            count3 = len(seq) - count0 - count1 - count2
-
-            avg_id_cer[n] += count0 + count2
-            avg_id_cer_par[n] += count1 + count2
-            total_len += len(seq)
- 
-        avg_id_cer[n] /= float(total_len)
-        avg_id_cer_par[n] /= float(total_len)
-
-        #####
-        # write results to file
-        #####
-
-        # LIST, one for each individual
-        fout.write(str(num_introgressed_cer[n][:num_samples_cer]) + '\t')
-
-        # LIST, one for each individual
-        # introgressed tracts (positives) - just take an arbitrary one
-        # for each reference because they're the same
-        fout.write(str(num_introgressed_tracts) + '\t')
-
-        # LIST, one for each individual
-        # not introgressed tracts (negatives)
-        fout.write(str(num_not_introgressed_tracts) + '\t')
-
-        # LIST, one for each individual
-        fout.write(str(num_predicted_introgressed) + '\t')
-
-        # LIST, one for each individual
-        fout.write(str(num_predicted_introgressed_tracts) + '\t')
-
-        # LIST, one for each individual
-        fout.write(str(num_predicted_not_introgressed_tracts) + '\t')
-
-        # LIST, one for each individual
-        fout.write(str(num_predicted_introgressed_window) + '\t')
-
-        # LIST, one for each individual
-        fout.write(str(num_predicted_introgressed_tracts_window) + '\t')
-
-        # LIST, one for each individual
-        fout.write(str(num_predicted_not_introgressed_tracts_window) + '\t')
-
-        # LIST, one for each individual
-        fout.write(str(num_correct) + '\t')
-        fout.write(str(num_introgressed_correct) + '\t')
-        fout.write(str(num_predicted_tracts_actual) + '\t')
-        fout.write(str(num_actual_tracts_predicted) + '\t')
-        fout.write(str(num_correct_window) + '\t')
-        fout.write(str(num_introgressed_correct_window) + '\t')
-        fout.write(str(num_predicted_tracts_actual_window) + '\t')
-        fout.write(str(num_actual_tracts_predicted_window) + '\t')
-
-        # LIST, one for each tract across all individuals
-        fout.write(str(actual_lens) + '\t')
-        fout.write(str(predicted_lens) + '\t')
-        fout.write(str(predicted_lens_window) + '\t')
-
-        fout.write(str(avg_id_cer[n]) + '\t')
-        fout.write(str(avg_id_cer_par[n]) + '\t')
-
-        fout.write(str(mean(num_lineages_at_join[n])) + '\t')
-
-        fout.write(str(mean(concordant[n])) + '\t')
-
-        fout.write(str(hmm.init[0]) + '\t')
-        fout.write(str(hmm.init[1]) + '\t')
-
-        fout.write(str(hmm.trans[0][0]) + '\t')
-        fout.write(str(hmm.trans[0][1]) + '\t')
-        fout.write(str(hmm.trans[1][0]) + '\t')
-        fout.write(str(hmm.trans[1][1]) + '\t')
-
-        fout.write(str(hmm.emis[0]['0']) + '\t')
-        fout.write(str(hmm.emis[0]['1']) + '\t')
-        fout.write(str(hmm.emis[0]['2']) + '\t')
-        fout.write(str(hmm.emis[1]['0']) + '\t')
-        fout.write(str(hmm.emis[1]['1']) + '\t')
-        fout.write(str(hmm.emis[1]['2']) + '\n')
-
-        fout.flush()
-
-        sys.stdout.flush()
-
-        n += 1
-
+def read_fasta(fn):
+    # for seq-gen sequences
+    f = open(fn, 'r')
+    f.readline() # header
     line = f.readline()
+    seqs = []
+    while line != '':
+        seqs.append(line[:-1])
+        f.readline() # header
+        line = f.readline()
+    f.close()
+    return seqs
+
+def analyze_one(sim, seqs_coded, \
+                    init, emis, trans, num_sites, fill_symbol, ref_inds, ref_seqs, \
+                    num_samples_species_to, species_to, index_to_species, \
+                    topology, states, unknown_species, num_from_species, \
+                    output_dic, fout, f_tracts_predicted, f_tracts_actual, \
+                    rep, train=True):
+
+    trees, recomb_sites, segsites, positions, seqs = sim
 
 
-f.close()
-fout.close()
+    ########
+    # figure out which sites are actually introgressed by
+    # separately looking at the tree for each stretch without
+    # recombination
+    ########
+
+    # sequence of states, one for each site and strain
+    actual_state_seq = [[] for i in range(num_samples_species_to)]
+    # keep track of whether each tree is concordant with the species tree
+    concordant = []
+    # and how many lineages of the to species are left when it
+    # first joins another species
+    num_lineages_at_join = []
+    # and how many bases are introgressed in total in each strain
+    num_introgressed = [0] * num_samples_species_to
+    # loop through the trees for all blocks with no recombination
+    # within them
+    for ti in range(len(trees)):
+
+        # note that species indices/labels are shifted to start at
+        # 0 instead of 1
+        t = trees[ti]
+            
+        # is this tree concordant with the species tree? (only
+        # checks whether the to species is monophyletic, which
+        # indicates that ILS not possible)
+        if is_concordant(t, index_to_species, species_to):
+            concordant.append(True)
+        else:
+            concordant.append(False)
+
+        # identify sequences that are introgressed from the one or
+        # two other species, based on coalescent tree; could clean
+        # this up a little
+        introgressed = None
+        num_lineages_at_join_current = None
+        # three species
+        if num_from_species == 2:
+            introgressed, num_lineages_at_join_current = \
+                find_introgressed_3(t, species_to, topology, index_to_species)
+        # two species
+        else:
+            assert num_from_species == 1
+            # introgressed is a list of species (one entry for
+            # each individual in to species)
+            introgressed, num_lineages_at_join_current = \
+                find_introgressed_2(t, topology[2], species_to, index_to_species)
+        print introgressed[0]
+        # number of lineages that were present when all
+        # populations joined
+        num_lineages_at_join.append(num_lineages_at_join_current)
+
+        # number of sites in the current block of sequence
+        num_sites_t = recomb_sites[ti]
+
+        # for all strains that have this block introgressed, add
+        # the length of the block to the total number of
+        # introgressed sites across all strains; also update the
+        # state sequence
+        for i in range(num_samples_species_to):
+            if introgressed[i] != species_to:
+                num_introgressed[i] += num_sites_t
+            actual_state_seq[i] += [introgressed[i]] * num_sites_t
+
+    ########
+    # predict whether each site in each cer strain is
+    # introgressed with a hidden markov model
+    ########
+
+    print 'HMM'
+    
+    # predicted is a list with one entry for each individual of
+    # species_to (expected for reference individual); each entry gives
+    # predicted species for each position
+    predicted, hmm = predict_introgressed_hmm(seqs_coded, species_to, \
+                                                  index_to_species, \
+                                                  states, \
+                                                  unknown_species, ref_inds[0], \
+                                                  gp.match_symbol, \
+                                                  gp.mismatch_symbol, \
+                                                  gp.unknown_symbol, \
+                                                  init, emis, trans, \
+                                                  train)
+
+    # remove reference individual
+    assert min(ref_inds) == ref_inds[0], ref_inds
+    actual_state_seq_without_ref = actual_state_seq[0:ref_inds[0]] + actual_state_seq[ref_inds[0]+1:]
+    
+    num_correct, num_introgressed_correct, actual_lens, predicted_lens, \
+        num_predicted_tracts_actual, num_actual_tracts_predicted, \
+        num_introgressed_tracts, num_not_introgressed_tracts, \
+        num_predicted_introgressed_tracts, num_predicted_not_introgressed_tracts = \
+        evaluate_predicted(predicted, actual_state_seq_without_ref, species_to)
+
+    
+    groups = group_actual_predicted_bases(actual_state_seq_without_ref, predicted, states)
+    for group in groups:
+        output_dic = update_value(output_dic, 'num_bases_actual_' + group[0] + \
+                                      '_predicted_' + group[1], \
+                                      groups[group])
+
+    ### tracts
+    inds_to_predict = range(num_samples_species_to)
+    inds_to_predict.remove(ref_inds[0])
+    blocks_predicted, blocks_actual = \
+        evaluate_predicted_blocks(predicted, actual_state_seq_without_ref, \
+                                      species_to, states, inds_to_predict)
+    # remove blocks in reference individual
+    blocks_actual = filter(lambda b: b[3] != ref_inds[0], blocks_actual)
+    d_actual_predicted, d_predicted_actual, d_actual_counts, d_predicted_counts = \
+        group_actual_predicted_blocks(blocks_actual, blocks_predicted, states, \
+                                          inds_to_predict)
+    for group in d_actual_predicted:
+        output_dic = update_value(output_dic, 'num_tracts_actual_' + group[0] + \
+                                          '_predicted_' + group[1], \
+                                          d_actual_predicted[group])
+    for group in d_predicted_actual:
+        output_dic = update_value(output_dic, 'num_tracts_predicted_' + group[0] + \
+                                      '_actual_' + group[1], \
+                                      d_predicted_actual[group])
+    for state in states:
+        output_dic = update_value(output_dic, 'num_tracts_actual_' + state, \
+                                      d_actual_counts[state])
+        output_dic = update_value(output_dic, 'num_tracts_predicted_' + state, \
+                                      d_predicted_counts[state])
+
+    # tract lengths, actual and predicted; list, not average
+    for state in states:
+        tract_lengths = [b[2] for b in filter(lambda x: x[0] == state, blocks_actual)]
+        output_dic = update_value(output_dic, 'tract_lengths_actual_' + state, tract_lengths)
+
+        tract_lengths = [b[2] for b in filter(lambda x: x[0] == state, blocks_predicted)]
+        output_dic = update_value(output_dic, 'tract_lengths_predicted_' + state, tract_lengths)
 
 
+    # HMM parameters
+    for i in range(len(states)):
+        output_dic = update_value(output_dic, 'init_' + states[i], hmm.init[i])
+            
+    for i in range(len(states)):
+        for j in range(len(states)):
+            output_dic = update_value(output_dic, \
+                                          'trans_' + states[i] + '_' + states[j], \
+                                          hmm.trans[i][j])
 
+    # so here emis_cer_par is going to be the probability that cer
+    # state emits symbol that matches par, so *+; note that these
+    # don't have to add to 1 (states includes unknown if
+    # appropriate)
+    for i in range(len(states)):
+        to_states = states
+        for j in range(len(states)):
+            total = 0
+            for s in hmm.emis[i].keys():
+                # for unknown state, include --- (as well as '?')
+                if states[j] == unknown_species:
+                    if gp.match_symbol not in s:
+                        total += hmm.emis[i][s]
+                elif s[j] == gp.match_symbol:
+                    total += hmm.emis[i][s]
+            output_dic = update_value(output_dic, 'emis_'  + states[i] + '_' + \
+                                          to_states[j], total)
+
+    ########
+    # sequence identities
+    ########
+
+    s = seq_id(seqs, index_to_species, states)
+    for i in range(len(states)):
+        for j in range(i, len(states)):
+            output_dic = update_value(output_dic, \
+                                          'avg_identity_' + states[i] + \
+                                          '_' + states[j], \
+                                          s[i][j])
+
+    #####
+    # write results to file
+    #####
+
+    write_output_line(fout, output_dic, False)
+    fout.flush()
+    sys.stdout.flush()
+
+    for b in blocks_predicted:
+        f_tracts_predicted.write(str(rep) + ' ' +  ' '.join([str(x) for x in b]) + '\n')
+    for b in blocks_actual:
+        f_tracts_actual.write(str(rep) + ' ' + ' '.join([str(x) for x in b]) + '\n')
+
+    f_tracts_predicted.flush()
+    f_tracts_actual.flush()
+
+
+    #####
+    # return hmm parameters
+    #####
+    return hmm.init, hmm.emis, hmm.trans

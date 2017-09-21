@@ -1,89 +1,84 @@
 # Run ms coalescent simulations under a variety of demographic models
+# (actually, just continuous migration, after the last divergence, for
+# now) 
 
-# aiming for ~89% sequence id b/t cer and par and ~99.5% within cer
+# aiming for ~89% sequence id b/t cer and par and ~99.5% within cer,
+# and ~70% between cer and bay (?)
 
 import os
 import sys
-
-tag = sys.argv[1]
-model = sys.argv[2]
-outdir = '../../results/sim/'
-
-# parameters specific to all of the models
-
-# all population sizes are the same
-N0 = int(sys.argv[3])
-
-num_samples_par = int(sys.argv[4])
-num_samples_cer = int(sys.argv[5])
-num_samples = num_samples_par + num_samples_cer
-
-# migration parameter is 2 * N0 * m, where mij is fraction of i made
-# up of j each generation; need to figure out how to make migration
-# rates equivalent for different models
-par_cer_migration = 2 * N0 * float(sys.argv[6])
-
-# in generations
-t_par_cer = float(sys.argv[7]) / (2 * N0)
-
-# 13,500 sites to get about 10% with one recombination event, .3% with
-# more than one (based on poisson(.1), 1 recombination per chromosome
-# of average length 750,000)
-num_sites = float(sys.argv[8])
-
-# parameter is recombination rate between adjacent bp per generation
-# should probably be 1/750000 + 6.1 * 10^-6 (where 750000 is average
-# chr size)
-rho = 2 * N0 * float(sys.argv[9]) * (num_sites - 1)
-
-outcross_rate = float(sys.argv[10])
-
-rho *= outcross_rate
+import sim_analyze_hmm_bw
+sys.path.insert(0, '..')
+import global_params as gp
 
 
-mu = 1.84 * 10 ** -10
-theta = mu * 2 * num_sites * N0
+tag, topology, species_to, species_from1, species_from2, \
+    num_samples_species_to, num_samples_species_from1, num_samples_species_from2, \
+    N0_species_to, N0_species_from1, N0_species_from2, \
+    migration_from1, migration_from2, \
+    expected_length_introgressed, \
+    expected_num_introgressed_tracts, \
+    has_ref_from1, has_ref_from2, \
+    rho, outcross_rate, theta, num_sites, num_reps = \
+    sim_analyze_hmm_bw.process_args(sys.argv)
 
-num_reps = int(sys.argv[11])
+num_samples = num_samples_species_to + num_samples_species_from1 + num_samples_species_from2
 
-outfilename = 'sim_out_' + tag + '.txt'
+gp_dir = '../'
+outfilename = gp.sim_out_prefix + tag + gp.sim_out_suffix
 
 # start of ms command
 # (in case you were thinking about it, DON'T subtract 1 from nsites for
 # the -r option)
 ms_command = \
-    '/net/gs/vol1/home/aclark4/software/msdir/ms ' + str(num_samples) + ' ' + str(num_reps) + \
+    gp.ms_install_path + '/ms ' + str(num_samples) + ' ' + str(num_reps) + \
     ' -t ' + str(theta) + \
-    ' -r ' + str(rho) + ' ' + str(num_sites) + \
-    ' -I 2 ' + str(num_samples_par) + ' ' + str(num_samples_cer)
+    ' -r ' + str(rho) + ' ' + str(num_sites)
 
-
-# introgression happens continuously from par to cer between the
-# present and t_par_cer (joining of par and cer lineages)
-if model == 'C':
+# 2 species
+if species_from2 == None:
+    join_time = topology[2]
     ms_command += \
-        ' -m 2 1 ' + str(par_cer_migration) + \
-        ' -em ' + str(t_par_cer) + ' 2 1 0' # this is probably implied
-
-# introgression happens in one pulse, at some time before t_par_cer
-# specified by the number after D
-elif model[0] == 'I':
-    # time of pulse of migration
-    t_mig = float(model[1:])
-    # pulse of migration for 1 generation of time
-    par_cer_migration *= t_par_cer * 2 * N0 # need to scale by 2 N0
+        ' -I 2 ' + str(num_samples_species_to) + ' ' + str(num_samples_species_from1)
     ms_command += \
-        ' -em ' + str(t_mig / (2.0 * N0)) + ' 2 1 ' + str(par_cer_migration) + \
-        ' -em ' + str((t_mig + 1) / (2.0 * N0)) + ' 2 1 0'
+        ' -m 1 2 ' + str(migration_from1) + \
+        ' -em ' + str(join_time) + ' 1 2 0' # this is probably implied
+    ms_command += \
+        ' -ej ' + str(join_time) + ' 1 2'
 
-# fail
+# 3 species
 else:
-    print 'incorrect model selection'
-    sys.exit()
+    if type(topology[0]) != type([]):
+        left = topology[0]
+        topology[0] = topology[1]
+        topology[1] = left
+    most_recent_join_time = topology[0][2]
+    least_recent_join_time = topology[2]
+    last_to_join = topology[1]
+    first_to_join1 = topology[0][0]
+    first_to_join2 = topology[0][1]
 
-ms_command += \
-    ' -ej ' + str(t_par_cer) + ' 2 1' + \
-    ' -T > ' + outdir + outfilename
+    label = {species_to:'1', species_from1:'2', species_from2:'3'}
+
+    # note that we need to keep the species in the order to, from1,
+    # from2 (because we're assuming this is true in the analysis)
+    ms_command += ' -I 3 ' + str(num_samples_species_to) + ' ' + \
+        str(num_samples_species_from1) + ' ' + str(num_samples_species_from2)
+
+    ms_command += \
+        ' -m 1 2 ' + str(migration_from1) + \
+        ' -m 1 3 ' + str(migration_from2) + \
+        ' -em ' + str(most_recent_join_time) + ' 1 2 0' + \
+        ' -em ' + str(most_recent_join_time) + ' 1 3 0'
+
+    ms_command += \
+        ' -ej ' + str(most_recent_join_time) + ' ' + \
+        label[first_to_join2] + ' ' + label[first_to_join1]
+    ms_command += \
+        ' -ej ' + str(least_recent_join_time) + ' ' + \
+        label[last_to_join] + ' ' + label[first_to_join1]
+
+ms_command += ' -T > ' + gp_dir + gp.sim_out_dir + '/ms/' + outfilename
 
 print(ms_command)
 os.system(ms_command)

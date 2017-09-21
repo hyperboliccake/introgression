@@ -1,6 +1,9 @@
 import os
 import math
 import numpy.random
+import sys
+sys.path.insert(0, '../misc/')
+import mystats
 
 def parse_list(l):
     assert len(l) >= 2, l
@@ -8,50 +11,24 @@ def parse_list(l):
         return []
     return [float(x) for x in l[1:-1].split(',')]
     
-def mean(l):
-    if len(l) == 0:
-        return 'NA'
-    return float(sum(l)) / len(l)
-
-def std_dev(l):
-    if len(l) == 0:
-        return 'NA'
-    if len(l) == 1:
-        return 0
-    m = mean(l)
-    return math.sqrt(sum([(x - m)**2 for x in l]) / (len(l) - 1))
-
-def std_err(l):
-    if len(l) == 0:
-        return 'NA'
-    return std_dev(l) / math.sqrt(len(l))
-
-def bootstrap(l, n = 100, alpha = .05):
-    x = len(l)
-    if x == 0:
-        return 'NA', 'NA'
-    a = []
-    for i in range(n):
-        a.append(mean(numpy.random.choice(l, size = x, replace = True)))
-    a.sort()
-    print len(a), a.count(0)
-    print mean(a)
-    return a[int(alpha * n * .5)], a[int((1 - alpha * .5) * n)]
-
-
-params = [line.strip().split(' ') for line in open('sim_multi_model_args.txt', 'r').readlines()]
-param_names = ['tag', 'model', 'N0', 'num_samples_par', 'num_samples_cer', 'par_cer_migration', 't_par_cer', 'num_sites', 'rho', 'outcross_rate', 'num_reps']
+params = [line.strip().split(' ') for line in open('sim_compare_args.txt', 'r').readlines()]
+param_names = ['tag', 'topology', \
+                   'species_cer', 'num_samples_cer', 'N0_cer', 'to', \
+                   'species_par', 'num_samples_par', 'N0_par', 'mig_par', 'expected_tract_length_par', 'expected_num_tracts_par', 'ref_par', \
+                   'species_bay', 'num_samples_bay', 'N0_bay', 'mig_bay', 'expected_tract_length_bay', 'expected_num_tracts_bay', 'ref_bay', \
+                   'num_sites', 'rho', 'outcross_rate', 'num_reps', \
+                   'cer_name', 'par_name', 'bay_name']
 assert len(param_names) == len(params[0]), str(len(param_names)) + ' != ' + str(len(params[0]))
-out_dir = '../../results/sim/run_3/'
+out_dir = '../../results/sim/analyze/'
 prefix = 'sim_out_'
 suffix = '_summary.txt'
-ids = range(1, len(params) + 1)
+ids = [row[0] for row in params]
 f_all = open(out_dir + prefix + 'all' + suffix, 'w')
-for i in ids:
+for i in range(len(ids)):
     print i
-    f = open(out_dir + prefix + str(i) + suffix, 'r')
+    f = open(out_dir + prefix + ids[i] + suffix, 'r')
     col_names = f.readline().strip().split('\t') # header
-    if i == ids[0]:
+    if i == 0:
         for p in param_names:
             f_all.write(p + '\t')
         f_all.write('row_type\t')
@@ -61,10 +38,13 @@ for i in ids:
     line = f.readline()
     agg = [[] for item in range(len(col_names))]
     while line != '':
+        print '******',line
         line = line.strip().split('\t')
         for x in range(len(line)):
             item = line[x]
-            if item[0] == '[':
+            if item == 'None':
+                agg[x].append(None)
+            elif item[0] == '[':
                 item = parse_list(item)
                 agg[x] += item
             else:
@@ -75,7 +55,8 @@ for i in ids:
         f_all.write(p + '\t')
     f_all.write('mean')
     for item in agg:
-        m = mean(item)
+        item = filter(lambda x: x != None, item)
+        m = mystats.mean(item)
         f_all.write('\t' + str(m))
     f_all.write('\n')
     # standard error row
@@ -83,14 +64,16 @@ for i in ids:
         f_all.write(p + '\t')
     f_all.write('std_err')
     for item in agg:
-        se = std_err(item)
+        item = filter(lambda x: x != None, item)
+        se = mystats.std_err(item)
         f_all.write('\t' + str(se))
     f_all.write('\n')
     # bootstrap
     bls = []
     bus = []
     for item in agg:
-        bl, bu = bootstrap(item)
+        item = filter(lambda x: x != None, item)
+        bl, bu = mystats.bootstrap(item)
         print bl, bu
         bls.append(bl)
         bus.append(bu)

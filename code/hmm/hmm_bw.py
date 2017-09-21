@@ -57,8 +57,8 @@ class HMM:
           for x in self.trans:
                t = 0
                for i in x:
-                    t += 1
-               assert isclose(t, 1)
+                    t += i
+               assert isclose(t, 1), str(x) + ' ' + str(t)
 
      def set_emis(self, emis):
          
@@ -67,18 +67,18 @@ class HMM:
                t = 0
                for i in x:
                     t += x[i]
-               assert isclose(t, 1)
+               assert isclose(t, 1), str(x) + ' ' + str(t)
 
      def set_obs(self, obs):
          
           # one sequence for Viterbi, or list of observed sequences
-          # for Baum-Welch
+          # for Baum-Welch; TODO maybe change this weirdness?
           self.obs = obs
 
      def set_init(self, init):
           
           self.init = init
-          assert isclose(sum(self.init), 1)
+          assert isclose(sum(self.init), 1), str(self.init) + ' ' + str(sum(self.init))
 
      def print_results(self, num_its, LL):
 
@@ -180,6 +180,8 @@ class HMM:
                               # add the current sequence contribution to total
                               num = elogsum(num, num_seq)
                               den = elogsum(den, den_seq)
+                         assert den != LOGZERO, \
+                             'probably something wrong with initial parameter values'
                          row.append(eexp(elogproduct(num, -den)))
                     a.append(row)
      
@@ -206,6 +208,8 @@ class HMM:
                               # add the current sequence contribution to total
                               num = elogsum(num, num_seq)
                               den = elogsum(den, den_seq)
+                         assert den != LOGZERO, \
+                             'probably something wrong with initial parameter values'
                          d[symbol] = eexp(elogproduct(num, -den))
                     b.append(d)
           
@@ -302,7 +306,7 @@ class HMM:
           # Markov process was at state j at time t
           alpha = []
           for seq in range(len(self.obs)):
-               print seq
+
                alpha_current = [[]]
                for s in xrange(len(self.states)):
                     emis = elog(self.emis[s][self.obs[seq][0]])

@@ -14,7 +14,7 @@
 
 import sys
 
-lines = [x.split(',') for x in open('../../data/Table_S5_introgressed_genes.csv', 'r').readlines()]
+lines = [x.split(',') for x in open('/net/akey/vol2/aclark4/nobackup/introgression/data/Table_S5_introgressed_genes.csv', 'r').readlines()]
 genes = []
 genes_verified = []
 for i in range(2, len(lines)):

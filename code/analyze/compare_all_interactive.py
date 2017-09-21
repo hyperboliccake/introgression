@@ -40,14 +40,10 @@ gene_to_fns = {}
 for line in lines:
     gene_to_fns[line[0]] = line[1:]
 
-while True:
-    gene = raw_input('=========================================\nwhich gene? ')
-    try:
-        gene_to_fns[gene]
-    except:
-        print 'that gene wasn\'t one i found'
-        continue
+raw_input('any key to start\n')
+for gene in gene_to_fns:
     for fn in gene_to_fns[gene]:
+        print '*****', gene, '*****'
         f = open(fn)
 
         f.readline()

@@ -1,452 +1,494 @@
-# given a list of introgressed regions in this format:
-# Sigma1278b.chrX, + strand, 9910-10909
-#
-# generate a set of annotations in the ../../results/ folder:
-#
-# for each region called introgressed, generate a file in
-# results/regions/ that is the alignment for the two references and
-# the strain with the introgressed region,
-# S288c_CBS432_strain_chr_start-end.fasta. In this file, the aligned
-# bases within coding sequence are lower case. In addition, there is a
-# corresponding file S288c_CBS432_strain_chr_start-end.genes.txt
-# listing the genes that overlap with this region, and the indices of
-# the bases they overlap, in this format: 
-# gene_name, 0-149, 25236-25385 
-# gene_name, 200-600, ....
-# 
-# also generate a file in results/gene_alignments/ for each
-# introgressed gene, which contains one threeway alignment for each
-# strain in which the gene was called introgressed
-#
-# todo in future:
-# for each gene that is called introgressed in at least one strain,
-# create folder gene/ containing the alignment
-# of cerevisiae and paradoxus references to all the introgressed
-# versions (gene_introgressed.fasta), and also to all of the versions
-# (gene_all.fasta).
-
-
 import re
+import sys
+import os
+import copy
+sys.path.insert(0, '..')
+import global_params as gp
+sys.path.insert(0, '../sim/')
+import sim_analyze_hmm_bw as sim
+sys.path.insert(0, '../misc/')
+import read_maf
 
-def reverse_complement(s):
-    t = ''
-    for i in s:
-        if i == 'A':
-            t += 'T'
-        elif i == 'T':
-            t += 'A'
-        elif i == 'G':
-            t += 'C'
-        elif i == 'C':
-            t += 'G'
-        else:
-            t += i
-    return t[::-1]
+def read_regions(fn):
+    regions = {} 
+    f = open(fn, 'r')
+    f.readline() # header
+    line = f.readline()
+    i = 0
+    while line != '':
+        line = line.strip().split('\t')
+        if len(line) < 8:
+            break
+        strain = line[0]
+        chrm = line[1]
+        # alignment block label, strand, predicted reference, region
+        # start, region end, number non gap sites
+        alignment_block_label, strand, predicted_reference, \
+            region_start, region_end, number_non_gap_sites = line[2:]
+        entry = {}
+        entry['block_label'] = alignment_block_label
+        entry['strand'] = strand
+        entry['predicted_reference'] = predicted_reference
+        entry['region_start'] = int(region_start)
+        entry['region_end'] = int(region_end)
+        entry['number_non_gap'] = int(number_non_gap_sites)
+        entry['region_id'] = 'region_' + str(i)
+        #entry = alignment_block_label, strand, predicted_reference, \
+        #    int(region_start), int(region_end), int(number_non_gap_sites)
+        if strain not in regions:
+            regions[strain] = {}
+        if chrm not in regions[strain]:
+            regions[strain][chrm] = []
+        regions[strain][chrm].append(entry)
+        line = f.readline()
+        i += 1
+    f.close()
+    return regions
 
-translate = {"TTT":"F", "TTC":"F", "TTA":"L", "TTG":"L",
-       "TCT":"S", "TCC":"S", "TCA":"S", "TCG":"S",
-       "TAT":"Y", "TAC":"Y", "TAA":"*", "TAG":"*",
-       "TGT":"C", "TGC":"C", "TGA":"*", "TGG":"W",
-       "CTT":"L", "CTC":"L", "CTA":"L", "CTG":"L",
-       "CCT":"P", "CCC":"P", "CCA":"P", "CCG":"P",
-       "CAT":"H", "CAC":"H", "CAA":"Q", "CAG":"Q",
-       "CGT":"R", "CGC":"R", "CGA":"R", "CGG":"R",
-       "ATT":"I", "ATC":"I", "ATA":"I", "ATG":"M",
-       "ACT":"T", "ACC":"T", "ACA":"T", "ACG":"T",
-       "AAT":"N", "AAC":"N", "AAA":"K", "AAG":"K",
-       "AGT":"S", "AGC":"S", "AGA":"R", "AGG":"R",
-       "GTT":"V", "GTC":"V", "GTA":"V", "GTG":"V",
-       "GCT":"A", "GCC":"A", "GCA":"A", "GCG":"A",
-       "GAT":"D", "GAC":"D", "GAA":"E", "GAG":"E",
-       "GGT":"G", "GGC":"G", "GGA":"G", "GGG":"G",}
+def index_ignoring_gaps(s, i, s_start):
+    '''returns the index of the ith non-gap character in s, given that
+    the start index of s is s_start (instead of needing to be 0)'''
 
-ref_cer = 'S288c'
-ref_par = 'CBS432'
+    assert s_start >= 0
 
+    x = 0
+    non_gap_count = 0
+    i -= s_start
+    if i < 0:
+        return -1
+    while x < len(s):
+        if s[x] != gp.gap_symbol and non_gap_count >= i:
+            return x
+        if s[x] != gp.gap_symbol:
+            non_gap_count += 1
+        x += 1
+    return x
 
-##### 
-# For each introgressed region, extract relevant part of alignment to a separate file
-#####
+def mark_gene(block, start, end, genes):
+    # start is 
+    # end is
+    
+    seq = block['sequence']
+    block_start = block['start']
+    block_end = block_start + block['length'] - 1 # subtract 1 so index of end
 
-suffix = 'id'
+    # pull out just region of interest from sequence
+    #region_relative_start = index_ignoring_gaps(seq, start, block_start)
+    #region_relative_end = index_ignoring_gaps(seq, end, block_start)
+    #seq_region = seq[region_relative_start:region_relative_end+1]
+    seq_region = seq[start:end+1]
+    #seq_region_start_ind = block_start + start #WRONG
+    seq_region_start_ind = block_start + start - seq[:start].count(gp.gap_symbol)
 
-# read in introgressed regions
-lines = [x.split(',') for x in open('../../results/introgressed_' + suffix + '.txt', 'r').readlines()]
-regions = {} # introgressed regions keyed by strain and then chromosome
-for line in lines:
-    strain = line[0][:line[0].find('_')].lower()
-    chrm = re.search(r'chr(?P<chrm>[IVXM]+)', line[0]).group('chrm')
-    i = line[2].find('-')
-    # +/-, start, end
-    entry = [line[1][1], int(line[2][:i]), int(line[2][i+1:]), int(line[3]), int(line[4])]
-    if strain in regions:
-        if chrm in regions[strain]:
-            regions[strain][chrm].append(entry)
-        else:
-            regions[strain][chrm] = [entry]
-    else:
-        regions[strain] = {}
-        regions[strain][chrm] = [entry]
+    a = [''] * len(seq_region)
+    len_a = len(a)
 
-# pull out alignment blocks
-for strain in regions.keys():
-    for chrm in regions[strain]:
-        for entry in regions[strain][chrm]:
-            print strain, chrm, entry
-            f = open('../../alignments/genbank/S288c_CBS432_' + strain + '_chr' + chrm + '.maf', 'r')
-            line = f.readline()        
-            block = []
-            relative_start = -1
-            relative_end = -1
-            while line != '':
-                if line[0] == 'a':
-                    block = [line]
+    for gene_name in genes:
+        gene_start, gene_end = genes[gene_name]
+
+        gene_relative_start = index_ignoring_gaps(seq_region, gene_start, \
+                                                      seq_region_start_ind)
+        gene_relative_end = index_ignoring_gaps(seq_region, gene_end, \
+                                                    seq_region_start_ind)
+
+        # if gene start and end are both before the block, they will
+        # both be -1; if gene start and end are both after the block,
+        # they will both be len_a
+        if (gene_relative_start == -1 and gene_relative_end == -1) or \
+                (gene_relative_start == len_a and gene_relative_end == len_a):
+            continue
+        if gene_relative_start == -1:
+            gene_relative_start = 0
+        if gene_relative_end == -1:
+            gene_relative_end = 0
+        if gene_relative_start == len_a:
+            gene_relative_start = len_a - 1
+        if gene_relative_end == len_a:
+            gene_relative_end = len_a - 1
+
+        l = gene_relative_end - gene_relative_start + 1
+        a[gene_relative_start:gene_relative_end + 1] = [gene_name] * l
+        a = a[:len_a] # because the above can actually append
+
+        assert len(a) == len_a, str(len(a)) + ' ' + str(len_a) + \
+            ' ' + str(gene_relative_start) + ' ' + str(gene_relative_end)
+
+    return a
+
+def write_nonannotated(fn, refs, strain, block, i_start, i_end):
+
+    # non-annotated file (and no context)
+    f = open(fn, 'w')
+    # start with references
+    for ref in gp.alignment_ref_order:
+        if ref in refs:
+            f.write('>' + ref + '\n')
+            seq = block['strains'][ref]['sequence'][i_start:i_end+1]
+            f.write(seq.lower() + '\n')
+    # then the current strain
+    f.write('>' + strain + '\n')
+    seq = block['strains'][strain]['sequence'][i_start:i_end+1]
+    f.write(seq.lower() + '\n')
+    f.close()
+
+def write_annotated(block, refs, master_ref, strain, \
+                        ref_to, ref_from, genes, \
+                        ref_to_code, \
+                        i_start_with_context, i_end_with_context, \
+                        i_start, i_end, \
+                        fn_annotated):
+
+    # annotated file (with context)
+    # mark each site as being in gene or not
+    annotation = mark_gene(block['strains'][master_ref],
+                           i_start_with_context, 
+                           i_end_with_context,
+                           genes)
+
+    start_offset = i_start - i_start_with_context
+    end_offset = i_end - i_start_with_context
+
+    gene_set = [] # needs to be a list to preserve ordering
+    gene_set_region = [] # not including context
+    gene_introgressed_bases_count = {}
+    gene_lengths = {}
+    # corresponding sequence (just so we know where gaps are)
+    annotation_seq = block['strains'][master_ref]['sequence'][i_start_with_context:i_end_with_context+1]
+    # loop through all positions and keep track of all unique genes
+    # seen within the introgressed region, and also separately within
+    # the region including surrounding context
+    for i in range(len(annotation)):
+        g = annotation[i]
+        if g != '':
+            if g not in gene_set:
+                gene_set.append(g)
+            # within introgressed region, rather than surrounding context
+            if i >= start_offset and i <= end_offset:
+                if g not in gene_set_region:
+                    gene_set_region.append(g)
+                    gene_lengths[g] = genes[g][1] - genes[g][0] + 1
+                    gene_introgressed_bases_count[g] = 0
+                # keep track of fraction of each gene that is
+                # introgressed; this isn't perfect, but numerator is
+                # number of (non-gap) sites within gene in
+                # introgressed block (relative to master reference)
+                # and denominator is gene length
+                if annotation_seq[i] != gp.gap_symbol:
+                    gene_introgressed_bases_count[g] += 1
+        
+    gene_set = filter(lambda x: x != '', gene_set)
+
+    # now write to file
+    f = open(fn_annotated, 'w')
+    # first list the genes that are contained
+    f.write('# ' + ' '.join(gene_set) + '\n\n')
+    # start with references
+    region_start_symbol = '<'
+    region_end_symbol = '>'
+
+    row_width = 80
+    x = 0
+    n = i_end_with_context - i_start_with_context + 1
+    all_strains = refs + [strain]
+
+    # first write order of strains
+    for current_strain in all_strains:
+        f.write(current_strain + '\n')
+    f.write('match\n')
+    f.write('introgressed\n\n')
+    
+    # get seqs
+    seqs = {}
+    for current_strain in all_strains:
+        seqs[current_strain] = block['strains'][current_strain]['sequence']\
+            [i_start_with_context:i_end_with_context+1]
+
+    match_both = ' '
+    match_neither = 'x'
+
+    introgressed_code = ref_to_code[ref_from]
+
+    introgressed = ' ' * (i_start - i_start_with_context) + \
+        introgressed_code * (i_end - i_start + 1) + \
+        ' ' * (i_end_with_context - i_end)
+
+    # number of sites that match only species from and not species to
+    # within the introgressed region (indication of how well-supported
+    # the region is)
+    ref_from_count = 0
+
+    while x <= n:
+        m = min(x + row_width, n)
+        for strain in all_strains:
+            seq = seqs[strain]
+            for i in range(x, m):
+                if annotation[i] != '':
+                    f.write(seq[i].upper())
                 else:
-                    block.append(line)
-                # matches from beginning of line
-         
-                if re.match('s ' + strain + '_chr' + chrm + '.', line) != None:
-                    line = line.split()
-                    # subtract one to index by zero; also add in some extra context
-                    #context = 500
-                    start = int(line[2]) - 1
-                    #start_with_context = max(0, start - context)
-                    # for end, need to ignore gaps in the
-                    # non-reference sequence, and subtract one to make
-                    # inclusive; note that using the given length in
-                    # the alignment file only counts non-gaps (i.e. is
-                    # the actual sequence coordinates)
-                    end = start + int(line[3]) - 1
-                    #end_with_context = min(len(block[0].split()[6]), end + context)
-                    # okay, so alignment blocks can be overlapping
-                    # which is unexpected, except I _think_ this only
-                    # happens when they're on opposite strands? still
-                    # weird though...anyway we'll just directly pull the
-                    # same alignment block we've notated
-                    #print entry[3]-1, entry[4]-1, entry[0], start, int(line[3])-1
-                    if entry[3]-1 == start and entry[4]-1 == int(line[3])-1 and entry[0] == line[4]:
-                    #if entry[1] >= start and entry[1] <= end:
-                        #assert entry[2] >= start and entry[2] <= end, strain + ' ' + chrm + ' ' + str(entry) + ' ' + str(start) + ' ' + str(end) + ', ' + str(entry[1]) + ' ' + str(entry[2]) + '\n' + str(line)
-                        assert entry[1] >= start and entry[1] <= end and entry[2] >= start and entry[2] <= end
-                        # relative in alignment block, factoring in gaps
-                        relative_start = entry[1] - start
-                        i = 0
-                        a = 0
-                        while i + a < len(line[6]) and i < relative_start:
-                            if line[6][i+a] == '-':
-                                a += 1
-                            else:
-                                i += 1
-                        relative_start += a
+                    f.write(seq[i].lower())
+            f.write('\n')
 
-                        relative_end = entry[2] - start
-                        i = 0
-                        a = 0
-                        while i + a < len(line[6]) and i < relative_end:
-                            if line[6][i+a] == '-':
-                                a += 1
-                            else:
-                                i += 1
-                        relative_end += a
+        # row for which reference strain matches (only accounts for 2
+        # references - the reference for the species the strain is in
+        # and the reference that the region is predicted to be
+        # introgressed from)
+        for i in range(x, m):
+            base_x = seqs[strain][i]
+            base_from = seqs[ref_from][i]
+            base_to = seqs[ref_to][i]
+            if base_x == gp.gap_symbol or \
+                    base_from == gp.gap_symbol or \
+                    base_to == gp.gap_symbol:
+                f.write(' ')
+            elif base_x == base_to:
+                if base_x == base_from:
+                    # matches both refs
+                    f.write(match_both)
+                else:
+                    # matches ref 0 only 
+                    f.write(ref_to_code[ref_to])
+            else:
+                if base_x == base_from:
+                    # matches ref 1 only
+                    f.write(ref_to_code[ref_from])
+                    # increment number of matches to reference from,
+                    # but only if we're in the introgressed region and
+                    # not just surrounding context
+                    if introgressed[i] == introgressed_code:
+                        ref_from_count += 1
+                else:
+                    # matches neither ref
+                    f.write(match_neither)
+        f.write('\n')
 
-                        break
-                line = f.readline()
-            f.close()
+        # row for which sites called introgressed
+        for i in range(x, m):
+            f.write(introgressed[i])
+        f.write('\n\n')        
 
-            assert relative_start != -1, strain + ' ' + chrm + ' ' + str(entry)
-            fout = open('../../results/regions/S288c_CBS432_' + strain + '_chr' + chrm + '_' + str(entry[1]) + '-' + str(entry[2]) + '.maf', 'w')
-            assert block[0][0] == 'a'
-            block = block[1:]
-            # use the same coordinates for all of them because we just
-            # want to pull out the parts of the references that align
-            # to the same part of the current strain
+        # next set of rows
+        x += row_width
 
-            # add some extra positions onto either end for context
-            # might end up being less than 500 if the alignment block isn't that long
-            context = 500
-            #relative_start_with_context = max(0, relative_start - context)
-            #relative_end_with_context = min(len(block[0].split()[6]), relative_end + context)
-            relative_start_with_context = relative_start
-            r1 = 0
-            sx = block[-1].split()[6]
-            while r1 < context and relative_start_with_context > 0:
-                if sx[relative_start_with_context] != '-':
-                    r1 += 1
-                relative_start_with_context -= 1
+    return gene_set_region, gene_introgressed_bases_count, gene_lengths, ref_from_count
 
-            relative_end_with_context = relative_end
-            r2 = 0
-            while r2 < context and relative_end_with_context < len(sx):
-                if sx[relative_end_with_context] != '-':
-                    r2 += 1
-                relative_end_with_context += 1
-            print '*****', relative_start_with_context, relative_start, relative_end, relative_end_with_context
-            if len(block) == 3:
-                b = block[0].split()
-                s = b[6]
-                fout.write('>' + ref_cer + ' ' + chrm + ' ' + str(int(b[2]) + relative_start_with_context - s[:relative_start_with_context].count('-')) + ' ' + str(int(b[2]) + relative_end_with_context - s[:relative_end_with_context].count('-')) + '\n')# + ' ' + str(r1) + ' ' + str(r2) + '\n')
-                fout.write(s[relative_start_with_context:relative_start] + '|')
-                fout.write(s[relative_start:relative_end+1])
-                fout.write('|' + s[relative_end+1:relative_end_with_context] + '\n')
-                block = block[1:]
+def write_region_alignment(block, entry, genes, \
+                               strain, master_ref, refs, \
+                               ref_to_code, \
+                               ref_to, ref_from, \
+                               fn, fn_annotated, context = 0):
+    '''write relevant portion of alignment block'''
 
-            b = block[0].split()
-            s = b[6]
-            fout.write('>' + ref_par + ' ' + chrm + ' ' + str(int(b[2]) + relative_start_with_context - s[:relative_start_with_context].count('-')) + ' ' + str(int(b[2]) + relative_end_with_context - s[:relative_end_with_context].count('-')) + '\n')
-            fout.write(s[relative_start_with_context:relative_start] + '|')
-            fout.write(s[relative_start:relative_end+1])
-            fout.write('|' + s[relative_end+1:relative_end_with_context] + '\n')
-            block = block[1:]
+    # entry is for one introgressed region, and will get its own file
+    # containing the alignment in the introgressed region, as well as
+    # a similar file annotated with gene info
 
-            b = block[0].split()
-            s = b[6]
-            fout.write('>' + strain + ' ' + chrm + ' ' + str(int(b[2]) + relative_start_with_context - s[:relative_start_with_context].count('-')) + ' ' + str(int(b[2]) + relative_end_with_context - s[:relative_end_with_context].count('-')) + '\n')
-            fout.write(s[relative_start_with_context:relative_start] + '|')
-            fout.write(s[relative_start:relative_end+1])
-            fout.write('|' + s[relative_end+1:relative_end_with_context] + '\n')
-            fout.close()
+    seq_master_ref = block['strains'][master_ref]['sequence']
+    length_master_ref = block['strains'][master_ref]['length']
 
-#####
-# Identify genes (if any) that overlap each alignment block
-#####
-print regions
-f = open('/net/akey/vol2/aclark4/nobackup/100_genomes/sequence.gb', 'r')
-line = f.readline()
-strain = ''
-chrm = ''
-in_gene = False
-gene_inds = []
-all_genes = {}
-strand = '+'
-while line != '':
-    # starting with a new species x chromosome
-    if line[:10] == 'DEFINITION':
-        print line
-        m = re.search('Saccharomyces cerevisiae (?P<strain>[a-zA-Z0-9]+) chromosome (?P<chrm>[IVXM]+)', line)
-        strain = m.group('strain').lower()
-        chrm = m.group('chrm')
-    # found a gene block
-    elif len(line.split()) > 1 and line.split()[0] == 'gene':
-        # if we never found a gene name for the previous one, forget about it
-        in_gene = False
-        gene_inds = []
-        # extract start and end coordinates, and check whether they
-        # fall within any of the introgressed regions
+    # start index of alignment block
+    alignment_block_start = block['strains'][master_ref]['start']
+
+    # relative indices into that block to pull out correct region:
+    # - with context before
+    i_start_with_context = index_ignoring_gaps(seq_master_ref, \
+                                                   entry['region_start'] - context, \
+                                                   alignment_block_start)
+    # - without context before
+    i_start = index_ignoring_gaps(seq_master_ref, \
+                                      entry['region_start'], \
+                                      alignment_block_start)
+    # - without context after
+    i_end = index_ignoring_gaps(seq_master_ref, \
+                                    entry['region_end'], \
+                                    alignment_block_start)
+    # - with context after
+    i_end_with_context = index_ignoring_gaps(seq_master_ref, \
+                                                 entry['region_end'] + context, \
+                                                 alignment_block_start)
+
+    # TODO maybe make this less stupid
+    if i_start_with_context == -1:
+        i_start_with_context = 0
+    if i_end_with_context == len(seq_master_ref):
+        i_end_with_context = len(seq_master_ref) - 1
+        
+
+    # write alignment just for region without context
+    write_nonannotated(fn, refs, strain, block, i_start, i_end)
+
+    # write annotated alignment
+    gene_set_region, gene_introgressed_bases_count, gene_lengths, ref_from_count = \
+        write_annotated(block, refs, master_ref, strain, \
+                            ref_to, ref_from, genes, \
+                            ref_to_code, \
+                            i_start_with_context, i_end_with_context, \
+                            i_start, i_end, \
+                            fn_annotated)
+        
+
+    # store the genes we found in this region (NOT including stuff
+    # only in context)
+    entry['genes'] = gene_set_region
+
+    # introgressed fractions of genes
+    x = {}
+    for gene in gene_lengths:
+        x[gene] = float(gene_introgressed_bases_count[gene]) / gene_lengths[gene]
+    entry['genes_introgressed_fractions'] = x
+
+    entry['ref_from_count'] = ref_from_count
+
+def read_gene_file(fn):
+    f = open(fn, 'r')
+    genes = {}
+    line = f.readline()
+    while line != '':
+        line = line.split('\t')
+        genes[line[0]] = (int(line[1]), int(line[2]))
+        line = f.readline()
+    f.close()
+    return genes
+
+def write_gene_file(genes, fn):
+    f = open(fn, 'w')
+    for gene in genes:
+        start, end = genes[gene]
+        f.write(gene + '\t' + str(start) + '\t' + str(end) + '\n')
+    f.close()
+
+def read_genes(fn, fn_genes):
+
+    if os.path.isfile(fn_genes):
+        return read_gene_file(fn_genes)
+
+    f = open(fn, 'r')
+    genes = {}
+    line = f.readline()
+    eof = False
+    while line != '' and 'ORIGIN' not in line:
+        # why yes i am relying on this probably arbitrary number of 5
+        # spaces because fuck this file format (random other text can
+        # start with 'gene')
+        while not line.startswith('     gene'):
+            if line == '':
+                eof = True
+                break
+            line = f.readline()
+        if eof:
+            break
+
+        # starting with new gene
+        #assert line.strip().startswith('gene'), line
+        skip_this_gene = False
+
+        # regex for finding coordinates
         m = re.search(r'[><]?(?P<start>[0-9]+)[.><,0-9]*\.\.[><]?(?P<end>[0-9]+)', line)
-        # subtract one to index from zero
+        # subtract one to index from zero TODO is this correct? end is
+        # inclusive
+
         start = int(m.group('start')) - 1
         end = int(m.group('end')) - 1
-        if strain in regions and chrm in regions[strain]:
-            for i in range(len(regions[strain][chrm])):
-                l = regions[strain][chrm][i]
-                if (l[1] > start and l[1] < end) or (l[2] > start and l[2] < end):
-                    in_gene = True
-                    # this is a list just in case the gene happens to
-                    # overlap multiple introgressed regions
-                    gene_inds.append(i)
-                    if 'complement' in line:
-                        strand = '-'
-                    else:
-                        strand = '+'
-    # found name line for the gene
-    elif in_gene and '/gene' in line:
-        gene_name = line[line.find('/gene="')+7:-2]        
-        if gene_name in all_genes:
-            all_genes[gene_name].append(strain)
-        else:
-            all_genes[gene_name] = [strain]
-        for i in gene_inds:
-            regions[strain][chrm][i].append([strand, start, end, gene_name])
-        in_gene = False
-        gene_inds = []
-    # put gene sequences into entry
-    elif line[:6] == 'ORIGIN' and strain in regions and chrm in regions[strain]:
-        seq = ''
+
+        # look for the name of the gene in the lines following the
+        # start of the entry
         line = f.readline()
-        while line != '//\n':
-            for x in line.split()[1:]:
-                seq += x
+        while not line.strip().startswith('/gene="'):
+            # sometimes we never run into a gene name for whatever
+            # reason, and in that case, we'll just skip over this
+            # entry that we found coordinates for
+            if line == '':
+                eof = True
+                break
+            if line.startswith('     gene'):
+                skip_this_gene = True
+                break
             line = f.readline()
-        # for this strain and chrm, given region r
-        for r in range(len(regions[strain][chrm])):
-            # each gene overlapping that region (possibly none)
-            for i in range(5, len(regions[strain][chrm][r])):
-                regions[strain][chrm][r][i].append(seq[regions[strain][chrm][r][i][1]:regions[strain][chrm][r][i][2]+1])
 
-    line = f.readline()
-f.close()
+        if not skip_this_gene:
+            gene_name = line[line.find('/gene="')+7:-2]
+            if gene_name != '':
+                genes[gene_name] = (start, end)
+            else:
+                print 'gene name not found: ' + line
+    f.close()
+    write_gene_file(genes, fn_genes)
 
-#print regions
-#print all_genes
+    return genes
 
-
-#####
-# Create a modified version of each introgressed alignment file that
-# has lowercase letters for positions within genes; also create a file
-# for each introgressed region that lists the genes within it
-#####
-
-startf = ['atg']
-stopf = ['taa', 'tag', 'tga']
-startr = ['cat']
-stopr = ['tta', 'cta', 'tca']
-
-all_genes_fns = {}
-
-for strain in regions.keys():
-    for chrm in regions[strain]:
-        print regions[strain][chrm]
-        for entry in regions[strain][chrm]:
-            
-            f = open('../../results/regions/S288c_CBS432_' + strain + '_chr' + chrm + '_' +  str(entry[1]) + '-' + str(entry[2]) + '.maf', 'r')
-            lines = f.readlines()
-            headers = lines[::2]
-            h = headers[0].split()
-            #context_before = int(h[-2])
-            #context_after = int(h[-1])
-            #relative_start_with_context = int(h[-4])
-            #relative_start = int(h[-3])
-            #relative_end = int(h[-2])
-            #relative_end_with_context = int(h[-1])
-            seqs_with_context = [s[:-1].upper() for s in lines[1::2]]
-            context_before_ind = seqs_with_context[0].find('|')
-            context_before = context_before_ind - seqs_with_context[-1][:context_before_ind].count('-')
-            context_after_ind = seqs_with_context[0].rfind('|')
-            context_after = len(seqs_with_context[-1]) - 1 - context_after_ind - seqs_with_context[-1][context_after_ind:].count('-')
-            seqs = [x.replace('|', '') for x in seqs_with_context]
-            #seqs_context_before = []
-            #seqs_context_after = []
-            #for s in seqs_with_context:
-            #    seqs.append(s[s.find('|')+1:s.rfind('|')])
-            #    seqs_context_before.append(s[:s.find('|')])
-            #    seqs_context_after.append(s[s.rfind('|')+1:])
-
-            f.close()
-            fn = '../../results/regions/S288c_CBS432_' + strain + '_chr' + chrm + '_' + str(entry[1]) + '-' + str(entry[2]) + '_annotated.maf'
-            f_mod = open(fn, 'w')
-            f_genes = open('../../results/regions/S288c_CBS432_' + strain + '_chr' + chrm + '_' + str(entry[1]) + '-' + str(entry[2]) + '_genes.maf', 'w')
-            #seqs_annotated = []
-            for gene in entry[5:]:
-                if gene[3] in all_genes_fns:
-                    all_genes_fns[gene[3]].append(fn)
-                else:
-                    all_genes_fns[gene[3]] = [fn]
-                print '============'
-                # gene is position of gene in genome
-                # entry is position of introgressed region
-                # gene[1&2] are 1-indexed, entry[1&2] are 0-indexed
-                relative_start = max(0, gene[1] - entry[1] + context_before - 1)
-                i = 0
-                a = 0
-                while i + a < len(seqs[-1]) and i < relative_start:
-                    if seqs[-1][i+a] == '-':
-                        a += 1
-                    else:
-                        i += 1
-                # advance by number of gaps because those aren't
-                # included in position
-                relative_start += a
-                relative_start = min(relative_start, len(seqs[-1])-1)
-                print a
-                # inclusive end
-                relative_end = min(len(seqs[-1])-1, gene[2] - entry[1] + context_before)
-                i = 0
-                a = 0
-                while i + a < len(seqs[-1]) and i < relative_end:
-                    if seqs[-1][i+a] == '-':
-                        a += 1
-                    else:
-                        i += 1
-                relative_end += a
-                relative_end = min(relative_end, len(seqs[-1])-1)
-                print a
-
-                # TODO finish context stuff; especially figure out how to index gene within context, taking gaps into account
-                for s in range(len(seqs)):
-                    seqs[s] = seqs[s][:relative_start] + seqs[s][relative_start:relative_end].lower() + seqs[s][relative_end:]
-                    try:
-                        if s == len(seqs) - 1 and relative_start != 0:
-                            if gene[0] != entry[0]:
-                                assert seqs[s][relative_start:relative_start+3] in stopr, seqs[s] + '\n' + seqs[s][relative_start:relative_start+3] + ' ' + \
-                                    str(entry[1]) + ' ' +  str(entry[2]) + ' ' + str(gene[1]) + ' ' + str(gene[2]) + ' ' + str(relative_start) + ' ' + str(relative_end)
-                            else:
-                                assert seqs[s][relative_start:relative_start+3] in startf, seqs[s] + '\n' +  seqs[s][relative_start:relative_start+3] + ' ' + \
-                                    str(entry[1]) + ' ' +  str(entry[2]) + ' ' + str(gene[1]) + ' ' + str(gene[2]) + ' ' + str(relative_start) + ' ' + str(relative_end)
-                        if s == len(seqs) - 1 and relative_end != len(seqs[0]) - 1:
-                            if gene[0] != entry[0]:
-                                assert seqs[s][relative_end-3:relative_end] in startr, seqs[s] + '\n' + seqs[s][relative_end-3:relative_end] + ' ' + \
-                                    str(entry[1]) + ' ' +  str(entry[2]) + ' ' + str(gene[1]) + ' ' + str(gene[2]) + ' ' + str(relative_start) + ' ' + str(relative_end)
-                            else:
-                                assert seqs[s][relative_end-3:relative_end] in stopf, seqs[s] + '\n' + seqs[s][relative_end-3:relative_end] + ' ' + \
-                                    str(entry[1]) + ' ' +  str(entry[2]) + ' ' + str(gene[1]) + ' ' + str(gene[2]) + ' ' + str(relative_start) + ' ' + str(relative_end)
-                    except Exception, e:
-                        print e
-                        print strain, chrm
-                        print gene
-                        print gene[0], entry[0]
-                        print gene[-1][:3], gene[-1][-3:]
-                        continue
-                f_genes.write(gene[3] + ', ')
-                # complement?
-                if gene[0]:
-                    f_genes.write('-')
-                else:
-                    f_genes.write('+')
-                # the gene start and end here are 1-indexed
-                f_genes.write(', ' + str(relative_start) + '-' + str(relative_end) + ', ' + str(gene[1]) + '-' + str(gene[2]) + '\n')
-            f_genes.close()
-            for i in range(len(headers)):
-                f_mod.write(headers[i][:-1])
-                # name, start
-                g = [(x[3], x[1]) for x in entry[5:]]
-                g.sort(key = lambda x: x[1])
-                for gi in g:
-                    f_mod.write(' ' + gi[0])
-                f_mod.write('\n')
-                f_mod.write(seqs[i][:context_before_ind] + '|' + \
-                                seqs[i][context_before_ind:context_after_ind-1] + '|' + \
-                                seqs[i][context_after_ind-1:] + '\n')
-            f_mod.close()
-            
-#####
-# gene x strain and strain x gene files
-#####
-
-f = open('../../results/introgressed_id_genes.txt', 'w')
-for gene in all_genes:
-    f.write(gene)
-    for strain in all_genes[gene]:
-        f.write(' ' + strain)
-    f.write('\n')
-f.close()
-
-f = open('../../results/introgressed_id_genes_fns.txt', 'w')
-for gene in all_genes_fns:
-    f.write(gene)
-    for fn in all_genes_fns[gene]:
-        f.write(' ' + fn)
-    f.write('\n')
-f.close()
-
-f = open('../../results/introgressed_id_strains.txt', 'w')
-for strain in regions:
-    num_regions = 0
-    num_bp = 0
-    f.write(strain + ' ')
-    for chrm in regions[strain]:
-        for entry in regions[strain][chrm]:
-            num_regions += 1
-            num_bp += entry[2] - entry[1] + 1
-            for gene in entry[5:]:
-                f.write(gene[3] + ' ')
-            
-    # total number of introgressed regions
-    f.write(str(num_regions) + ' ')
-    # total number of introgressed bases
-    f.write(str(num_bp) + '\n')
-f.close()
+def summarize_gene_info(fn_all, fn_strains, fn_strains_g, \
+                            introgressed_genes, gene_info, tag, threshold=0):
     
+    f_all = open(fn_all, 'w')
+    f_all.write('gene\tchromosome\tstart\tend\tnumber_strains\taverage_introgressed_fraction\taverage_number_non_gap\taverage_ref_from_count\n')
 
+    f_gene_heading = 'region_id\tstrain\tstart\tend\tintrogressed_fraction\tnumber_non_gap\tref_from_count\n'
 
+    strain_genes = {}
 
+    for gene in introgressed_genes:
+        # keyed by strain, because gene can be broken across multiple
+        # alignment blocks/regions for the same strain
+        sum_introgressed_fraction = {}
+        sum_number_non_gap = {}
+        sum_ref_from_count = {}
+        fn_gene = gp.analysis_out_dir_absolute + tag + '/genes/' + gene + '.txt'
+        if not os.path.exists(os.path.dirname(fn_gene)):
+            os.makedirs(os.path.dirname(fn_gene))
+        f_gene = open(fn_gene, 'w')
+        f_gene.write(f_gene_heading)
+        for entry in introgressed_genes[gene]:
+            strain = entry['strain']
+            if entry['ref_from_count'] >= threshold:
+                if strain not in sum_introgressed_fraction:
+                    sum_introgressed_fraction[strain] = 0
+                    sum_number_non_gap[strain] = 0
+                    sum_ref_from_count[strain] = 0
+                sum_introgressed_fraction[strain] += entry['introgressed_fraction']
+                sum_number_non_gap[strain] += entry['number_non_gap']
+                sum_ref_from_count[strain] += entry['ref_from_count']
+                if strain not in strain_genes:
+                    strain_genes[strain] = []
+                strain_genes[strain].append(gene)
 
+            f_gene.write(entry['region_id'] + '\t' + \
+                             strain + '\t' + \
+                             str(entry['start']) + '\t' + \
+                             str(entry['end']) + '\t' + \
+                             str(entry['introgressed_fraction']) + '\t' + \
+                             str(entry['number_non_gap']) + '\t' + \
+                             str(entry['ref_from_count']) + '\n')
+
+        f_gene.close()
+
+        # now do averaging over strains
+        num_strains = len(sum_introgressed_fraction)
+        if num_strains == 0:
+            continue
+
+        avg_introgressed_fraction = sum(sum_introgressed_fraction.values()) / \
+            float(num_strains)
+        avg_number_non_gap = sum(sum_number_non_gap.values()) / \
+            float(num_strains)
+        avg_ref_from_count = sum(sum_ref_from_count.values()) / \
+            float(num_strains)
+
+        f_all.write(gene + '\t' + \
+                        gene_info[gene][0] + '\t' + \
+                        str(gene_info[gene][1]) + '\t' + \
+                        str(gene_info[gene][2]) + '\t' + \
+                        str(num_strains) + '\t' + \
+                        str(avg_introgressed_fraction) + '\t' + \
+                        str(avg_number_non_gap) + '\t' + \
+                        str(avg_ref_from_count) + '\n')
+
+    f_all.close()
+
+    f_strains = open(fn_strains, 'w')
+    f_strains_g = open(fn_strains_g, 'w')
+    for strain in strain_genes:
+        line = strain + '\t' + str(len(strain_genes[strain]))
+        f_strains.write(line + '\n')
+        line += '\t' + '\t'.join(strain_genes[strain])
+        f_strains_g.write(line + '\n')
+    f_strains.close()
+    f_strains_g.close()
