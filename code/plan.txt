@@ -1,0 +1,67 @@
+figure out expectations:
+- polymorphism rate (overlapping 100-bp bins starting starting at every nucleotide position; for each bin with completely aligned sequence data, calculate fraction of variable sites. (eliminate bins with very high rates, > 10 variable sites)) -> do this for within cer and between cer/par
+- linkage disequilibrium (kilobases...be more specific?)
+
+
+try to get better alignment
+- MAVID
+- the thing josh suggested
+also do some summary statistics on alignment
+- how much of genome aligned
+- typical size of chunks
+
+assess regions of the genome we expect to be able to find intogression in
+- map of polymorphism or something
+
+
+
+tuesday
+1. calculate polymorphism across genome and overall
+2. evaluate alignments
+3. try other alignment programs and evaluate
+
+
+///
+just on chromosome I for now:
+- map of polymorphism across genome to see how well we expect to be able to detect introgression
+  - calculate at every site based on 100-bp window
+  - average across all strains (?)
+    - actually though, specifically just want to know where the two reference genomes differ
+- plot other things along genome at same time:
+  - recombination rates
+  - gene locations
+- one for each strain:
+  - plot above things but also
+    - where 1,2,3 genomes aligned
+    - sites called introgressed
+///
+
+
+chromosome plot, one per strain:
+- chromosome block along bottom, gray out columns where <3 genomes aligned (places we wouldn't see introgression)
+- then either plot polymorphism rate, or also gray out regions below threshold polymorphism rate (this will be the same across all strains)
+- plot introgressed sequence blocks, probably by just coloring the chromosome bar
+
+chromosome plot, one overall:
+- chromosome block along bottom
+- plot where introgressed sequence blocks found, either line plot or colored blocks by how many strains found introgressed in, or just binary
+- plot or gray out polymorhism rate
+- ? plot fraction of strains where 3 genomes aligned
+
+- recombination rate?
+- genes?
+
+notes for josh meeting:
+- working on a few different things
+  - getting better alignments so I can get more of a sense where we'd be able to see introgression
+  - correlating introgressed regions with some other quantities across genome: polymorphism, recombination, other things
+  - being systematic about choosing simulation parameters: have specific targets for sequence identity and amount/length of introgression
+- plots i'll make after that:
+  1. a) ILS
+     b) graphical model
+     c) power/comparison between methods
+     d) breakpoints/length
+  2. chromosome maps of introgression
+  3. high frequency sequences
+  4. summaries of region size and total amounts of introgression: amount/size introgressed sequence vs strain, amount of introgressed sequence vs. median size
+

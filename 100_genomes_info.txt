@@ -1,0 +1,100 @@
+YJM189	YJM180	NCYC 431	Unknown	Distillery	wine/European
+YJM193	YJM184	NCYC 914	Unknown	Distillery	wine/European
+YJM195	YJM182	NCYC 762	Nigeria	Palm wine	West African
+YJM244	YJM210	CBS 1227	Romania	Clinical	wine/European
+YJM248	YJM218	CBS 2910	Unknown	Clinical (feces)	wine/European
+YJM270	YJM215	CBS 2807	Slovenia	Wine	wine/European
+YJM271	YJM214	CBS 1782	Unknown	Brewery	wine/European
+YJM320 	YJM309	CBS 7837	"CA, USA"	Clinical	mosaic
+YJM326	YJM310	CBS 7838	"CA, USA"	Clinical	mosaic
+YJM428	YJM308	CBS 7836	"CA, USA"	Clinical	mosaic
+YJM450	YJM440	92-123	"CA, USA"	Clinical	mosaic
+YJM451	YJM436	B70302(b)	Unknown	Clinical	mosaic
+YJM453	YJM434	B68019c	Unknown	Clinical	wine/European
+YJM456	YJM454	89-156	"CA, USA"	Clinical	mosaic
+YJM470	YJM455	SUH	"CA, USA"	Clinical	mosaic
+YJM541	YJM522	SUH	"CA, USA"	Clinical	mosaic
+YJM554	YJM521	SUH	"CA, USA"	Clinical	mosaic
+YJM555	YJM523	SUH	"CA, USA"	Clinical	mosaic
+YJM627	Y55	J.E. Haber	Unknown	Laboratory	West African
+YJM681	YJM653	SUH	"CA, USA"	Clinical	mosaic
+YJM682	YJM668	R87-91	"TX, USA"	Clinical	mosaic
+YJM683	YJM678	R93-1871	"TX, USA"	Clinical	mosaic
+YJM689	YJM675	R93-1017	"TX, USA"	Clinical	mosaic
+YJM693	YJM669	R91-48	"YX, USA"	Clinical	mosaic
+YJM969	YJM967	96-98	Italy	Clinical	wine/European
+YJM972	YJM947	96-100	Italy	Clinical	wine/European
+YJM975	YJM948	96-101	Italy	Clinical	wine/European
+YJM978	YJM954	96-109	Italy	Clinical	wine/European
+YJM981	YJM955	96-110	Italy	Clinical	wine/European
+YJM984	YJM956	96-112	Italy	Clinical	wine/European
+YJM987	YJM957	96-113	Italy	Clinical	wine/European
+YJM990	YJM963	96-119	Italy	Clinical	wine/European
+YJM993	YJM964	96-120	Italy	Clinical	wine/European
+YJM996	YJM965	96-121	Italy	Clinical	wine/European
+YJM1077	YJM1076	ATCC 204722	ND	Laboratory	West African
+YJM1078	YJM1075	NRRL YB-4348	Portugal	Clinical	wine/European
+YJM1083	YJM1073	"NRRL Y-10,988"	"NC, USA"	Clinical	mosaic
+YJM1129	YJM1123	NCMH 125	"OH, USA"	Distillery	wine/European
+YJM1133	YJM1125	MMRL 125	"NC, USA"	Clinical	mosaic
+YJM1190	YJM1107	C. Kaufman	"MI, USA"	Clinical	mosaic
+YJM1199	YJM1115	C. Kaufman	"MI, USA"	Clinical	mosaic
+YJM1202	YJM1116	C. Kaufman	"MI, USA"	Clinical	mosaic
+YJM1208	YJM1119	1882	"MI, USA"	Clinical	mosaic
+YJM1242	YJM1213	NRRL Y-35	"IL, USA"	Fruit	wine/European
+YJM1244	YJM1215	NRRL Y-1532	Indonesia	Fruit	wine/European
+YJM1248	YJM1219	NRRL Y-1546	W. Africa	Wine	West African
+YJM1250	YJM1223	NRRL Y-6673	Unknown	Sugar cane	wine/European
+YJM1252	YJM1224 	NRRL Y-6679	Spain	Alpechin	wine/European
+YJM1273	YPS134	P. Sniegowski	"PA, USA"	Oak tree	North American
+YJM1281	YPS163	P. Sniegowski	"PA, USA"	Oak	North American
+YJM1290	Sigma1278b		Unknown	Laboratory	mosaic
+YJM1293	isogenic with RM11	L. Hartwell	"CA, USA"	Vineyard	wine/European
+YJM1304	YJM676	R93-1092	"TX, USA"	Clinical	mosaic
+YJM1307	YJM1071	NRRL Y-961	"DC, USA"	Clinical	mosaic
+YJM1311	YJM1101	C. Kaufman	"MI, USA"	Clinical	mosaic
+YJM1326	YJM1289	J. Bakken	"MN, USA"	Clinical	mosaic
+YJM1332	YJM1284	M1-2	Italy	Wine	wine/European
+YJM1336	YJM1285 	M28s2	Italy	Wine	wine/European
+YJM1338	YJM1315	NRRL Y-963	"MD, USA"	Sour fig	mosaic
+YJM1341	YJM1323	NRRL Y-12637	South Africa	Wine	wine/European
+YJM1342	YJM1324	NRRL Y-12638	South Africa	Soil	mosaic
+YJM1355	YJM1344	NRRL Y-234	"IL, USA"	Molasses	wine/European
+YJM1356	YJM1349	NRRL Y-747	Unknown	Cider	wine/European
+YJM1381	YJM1357	NRRL YB-427	Trinidad	Rum fermentation	mosaic
+YJM1383	YJM1359	NRRL Y-5511	Philippines	Coconut	wine/European
+YJM1385	YJM1363	NRRL Y-11857	"MD, USA"	Sugar refinery	mosaic
+YJM1386	YJM1365	NRRL Y-11878	Jamaica	Sugar cane	mosaic
+YJM1387	YJM1366	NRRL Y-12758	Japan	Wine	wine/European
+YJM1388	YJM1367	NRRL Y-12769	Malaya	Fermented tapioca	sake
+YJM1389	YJM1368	NRRL Y-17447	Thailand	Sewage	sake
+YJM1399	YJM1393	NRRL YB-908	Unknown	Wild cherry tree gum	mosaic
+YJM1400	YJM1394	NRRL YB-4081	Philippines	Guava	mosaic
+YJM1401	YJM1395	NRRL YB-4082	Philippines	Papaya	mosaic
+YJM1402	YJM1396	NRRL YB-4449	Unknown	Grape vine	mosaic
+YJM1415	YJM1407	NRRL Y-268	France	Wine	wine/European
+YJM1417	YJM1411	NRRL YB-2541	"HI, USA"	ND	wine/European
+YJM1418	YJM1413	NRRL YB-4506	Japan	Oak tree	mosaic
+YJM1419	YJM1412	NRRL YB-2625	Unknown	Bagasse	mosaic
+YJM1433	Yllc17_E5	Ed Louis	France	Wine	wine/European
+YJM1434	YPS606	P. Sniegowski	"PA, USA"	Oak	North American
+YJM1439	NCYC110	Ed Louis	W. Africa	Ginger beer	West African
+YJM1443	UWOPS83-787.3	Ed Louis	Bahamas	Fruit	mosaic
+YJM1444	UWOPS87-2421	Ed Louis	"HI, USA"	Cladode	mosaic
+YJM1447	UWOPS05-227.2	Ed Louis	Malaysia	Bertam Palm	Malaysian
+YJM145 	YJM128	CBS 7833	"KS, USA"	Clinical	mosaic
+YJM1450	273614N	Ed Louis	"Newcastle, UK"	Clinical	wine/European
+YJM1460	Y12	Ed Louis	Africa	Palm Wine	sake
+YJM1463	DBVPG1853	Ed Louis	Ethiopia	White Tecc	wine/European
+YJM1477	YJM1468	NRRL Y-581	"MO, USA"	Blatz beer	wine/European
+YJM1478	YJM1470	NRRL Y-1890	Unknown	Kefir	wine/European
+YJM1479	YJM1474	NRRL Y-6297	Phillipines	Coconut tuba	mosaic
+YJM1526	YJM1506	Phaff 74-29	Unknown	Clinical (throat)	wine/European
+YJM1527	YJM1510	Phaff 05-780	"Winters, CA"	Prune	mosaic
+YJM1529	M22	J. Fay	Unknown	Wine	wine/European
+YJM1549	DBVPG6040	Ed Louis	Netherlands	Fermenting fruit juice	mosaic
+YJM1552	S1	S288c	"CA, USA"	Rotten fig	mosaic
+YJM1573	YJM1566	NRRL Y-12603	India	Fermented food	mosaic
+YJM1574	N96 (=AWRI1775)	Unknown	Wine	wine/European	
+YJM1592	YJM1585	NRRL Y-17448	Thailand	Sewage	sake
+YJM1628	YJM312	91-213	"CA, USA"	Clinical	mosaic

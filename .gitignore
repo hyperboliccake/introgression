@@ -8,8 +8,12 @@
 *.fasta
 *.fa
 !todo.txt
+!100_genomes_info.txt
+!code/*txt
 !code/sim/sim_multi_model_args.txt
 !code/sim/sim_multi_model_args.readme.txt
 results/*
 !results/track.txt
+alignments/*
+!alignments/track.txt
 code/sim/seedms

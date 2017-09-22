@@ -1,0 +1,11 @@
+best estimates of variety of demographic parameters of yeast
+
+theta = 5.8 x 10^-3
+mu = 1.84 x 10^-10
+average recombination rate r = 3.5 x 10^-6, set R = 2.2 x 10^-3 to account for outcrossing
+average pairwise sequence divergence among cerevisiae = 5.8 x 10^-3 (~0.6%)
+
+paradoxus-cerevisiae divergence time? -> to match divergence given theta
+
+theta = 2 * G_T * mu
+most recent common ancestor between any pair of strains G_T = 1.58 x 10^7
