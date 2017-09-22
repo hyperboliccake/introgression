@@ -16,4 +16,5 @@ results/*
 !results/track.txt
 alignments/*
 !alignments/track.txt
+.DS_Store
 code/sim/seedms
