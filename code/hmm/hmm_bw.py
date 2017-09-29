@@ -243,7 +243,8 @@ class HMM:
                # print results for every iteration
                self.print_results(num_its, LL)
 
-               assert(LL > prev_LL or isclose(LL, prev_LL))
+               assert LL > prev_LL or isclose(LL, prev_LL), \
+                    str(LL) + ' ' + str(prev_LL)
 
                
           print "finished in", num_its, 'iterations'
