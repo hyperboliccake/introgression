@@ -1,19 +1,3 @@
-# add in the nonpolymorphic sites
-def fill_seqs(polymorphic_seqs, polymorphic_sites, nsites, fill):
-    
-    seqs_filled = []
-    for seq in polymorphic_seqs:
-        s = ''
-        poly_ind = 0
-        for i in range(nsites):
-            if i in polymorphic_sites:
-                s += seq[poly_ind]
-                poly_ind += 1
-            else:
-                s += fill
-        seqs_filled.append(s)
-    return seqs_filled
-
 # given fractional positions for snvs and length of sequence l,
 # determine integer positions; if allow_multi_hit is true, easy but if
 # not, shift them around to include all the snvs
