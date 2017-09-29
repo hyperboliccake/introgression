@@ -133,6 +133,9 @@ def process_args(print_args=True):
     expected_tract_lengths[d['species_to']] = float(expected_num_introgressed_bases) / \
         expected_num_tracts[d['species_to']]
 
+    d['expected_tract_lengths'] = expected_tract_lengths
+    d['expected_num_tracts'] = expected_num_tracts
+
     assert d['N0_species_to'] == d['N0_species_from1'] and \
         d['N0_species_to'] == d['N0_species_from2']
 
