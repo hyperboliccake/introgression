@@ -27,8 +27,6 @@ out_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
 introgression_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
                            args['tag'] + '_introgressed_actual.txt', 'w')
 
-fill_symbol = '0'
-
 for i in range(args['num_reps']):
     
     print i
