@@ -21,22 +21,22 @@ alignment_suffix = '.maf'
 # sequence locations/names
 #====
 
-ref_dir = {'S288c':'/net/akey/vol2/aclark4/nobackup/100_genomes/genomes/S288c_SGD-R64/', \
-                'CBS432':'/net/gs/vol1/home/aclark4/projects/introgression/data/CBS432/'}
+ref_dir = {'S288c':'/tigress/AKEY/akey_vol2/aclark4/nobackup/100_genomes/genomes/S288c_SGD-R64/', \
+                'CBS432':'/home/anneec/projects/introgression/data/CBS432/'}
 
 
 # will look at all *.fa files in these directories; expects filenames
 # in the format strain_chrX.fa
-non_ref_dirs = {'S288c':['/net/akey/vol2/aclark4/nobackup/100_genomes/genomes_gb/'], \
+non_ref_dirs = {'S288c':['/tigress/AKEY/akey_vol2/aclark4/nobackup/100_genomes/genomes_gb/'], \
                     'CBS432':[]}
 
 # genbank file for _all_ species/strains
-gb_all = '/net/akey/vol2/aclark4/nobackup/100_genomes/sequence.gb'
+gb_all = '/tigress/AKEY/akey_vol2/aclark4/nobackup/100_genomes/sequence.gb'
 
 #master_ref = 'S288c'
 
 # gb master
-gb_master_dir = '/net/akey/vol2/aclark4/nobackup/'
+gb_master_dir = '/tigress/AKEY/akey_vol2/aclark4/nobackup/'
 
 #====
 # alignment files
@@ -119,7 +119,7 @@ sim_params.append({'tag':'1', \
 #====
 
 analysis_out_dir_absolute = \
-    '/net/akey/vol2/aclark4/projects/introgression/results/analysis/'
+    '/home/anneec/projects/introgression/results/analysis/'
 
 regions_out_dir_absolute = analysis_out_dir_absolute + '/regions/'
 
@@ -135,7 +135,7 @@ tcoffee_install_path = '~/software/T-COFFEE_installer_Version_11.00.8cbe486_linu
 
 mafft_install_path = '~/software/mafft/bin/'
 
-ms_install_path = '/net/gs/vol1/home/aclark4/software/msdir/'
+ms_install_path = '~/software/msdir/'
 
 #====
 # other
