@@ -139,7 +139,7 @@ def read_introgression(f, line):
     rep = int(line[len('rep '):-1])
     # process each individual
     line = f.readline()
-    while line != '' and !line.startswith('rep'):
+    while line != '' and not line.startswith('rep'):
         x = line[:-1].split('\t')
         ind = line[0]
         d_ind = {}
@@ -150,7 +150,4 @@ def read_introgression(f, line):
         line = f.readline()
                 
     return d, rep, line
-
-    
-
 
