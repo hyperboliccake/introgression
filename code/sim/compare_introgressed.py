@@ -1,19 +1,65 @@
-def group_actual_predicted_bases(actual, predicted, states):
-    # number of bases that fit into every category of actual x
-    # predicted y for all x,y in states
-
-    # returns dictionary of lists (one entry per strain)
-
+def count_bases_one(d1, d2, args):
+    # for one individual
     d = {}
-    for state_actual in states:
-        for state_predicted in states:
-            d[(state_actual,state_predicted)] = [0] * len(actual)
+    for state1 in args['states']:
+        for state2 in args['states']:
+            d[(state1, state2)] = 0
 
-    for i in range(len(actual)):
-        for j in range(len(actual[i])):
-            d[(actual[i][j], predicted[i][j])][i] += 1
-
+    for i in range(args['num_sites']):
+        state1 = args['species_to']
+        state2 = args['species_to']
+        for state in args['states']:
+            if i in d1[state]:
+                state1 = state
+            if i in d2[state]:
+                state2 = state
+        d[(state1, state2)] += 1
     return d
+
+def count_bases(d1, d2, args):
+    # separate counts for all individuals
+    d = {}
+    # average counts across all individuals
+    d_avg = {}
+    for state1 in args['states']:
+        for state2 in args['states']:
+            d_avg[(state1, state2)] = 0
+    # loop through all individuals
+    num_inds = 0
+    for ind in d1.keys():
+        if d2.has_key(ind):
+            d[ind] = count_bases_one(d1[ind], d2[ind], args)
+            for pair in d[ind]:
+                d_avg[pair] += d[ind][pair]
+            num_inds += 1
+    for pair in d_avg:
+        d_avg[pair] = d_avg[pair]/float(num_inds)
+    return d, d_avg
+
+def write_compare_header(f, states, suffix1, suffix2, sep='\t'):
+
+    header_string = ''
+    for state1 in states:
+        for state2 in states:
+            header_string += 'bases_' + suffix1 + '_' + state1 + \
+                             '_' + suffix2 + '_' + state2 + sep
+    f.write(header_string[:-len(sep)] + '\n')
+
+def write_compare_line(avg_base_counts, f, states, suffix1, suffix2, sep='\t'):
+
+    if header:
+        write_compare_header(f, states, sep)
+
+    line_string = ''
+    for state1 in states:
+        for state2 in states:
+            line_string += str(avg_base_counts[(state1, state2)]) + sep
+
+    f.write(line_string[:-len(sep)] + '\n')
+
+
+
+
 
 def group_actual_predicted_blocks(blocks_actual, blocks_predicted, states, inds_to_predict):
     # each block entry is a list with four items: the species it was
