@@ -55,6 +55,8 @@ for i in range(args['num_reps']):
     ##======
 
     introgression_stats, actual_state_seq = find_introgressed(sim, args)
+    actual_state_seq_blocks = sim_process.convert_to_blocks(actual_state_seq, \
+                                                            args['states'])
 
     ##======
     # output
@@ -65,8 +67,8 @@ for i in range(args['num_reps']):
 
     # specific locations of introgression (for comparing predictions
     # to)
-    sim_process.write_introgression(actual_state_seq, introgression_f, \
-                                        i, args['species_to'])
+    sim_process.write_introgression_blocks(actual_state_seq_blocks, introgression_f, \
+                                           i, args['states'])
 
 ms_f.close()
 out_f.close()
