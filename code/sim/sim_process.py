@@ -131,32 +131,25 @@ def write_introgression(state_seq, f, rep, species):
             f.write(','.join([str(x) for x in d[ind][s]]))
         f.write('\n')
 
-def read_introgression(fn, rep):
+def read_introgression(f, line):
     # inverse of write_introgression function above
     
-    f = open(fn, 'r')
-    line = f.readline()
     d = {} # keyed by individual, then strain, list of sites
-    while line != '':
-        # if we've found the correct rep, read in the introgression
-        # information
-        if line.startswith('rep') and line[len('rep '):-1] == str(rep):
-            # process each individual
-            line = f.readline()
-            while line != '' and !line.startswith('rep'):
-                x = line[:-1].split('\t')
-                ind = line[0]
-                d_ind = {}
-                for s in x[1:]:
-                    strain, sites = s.split(':')
-                    d_ind[strain] = [int(i) for i in sites.split(',')]
-                d[ind] = d_ind
-            break
-
-        # otherwise keep reading file
+    assert line.startswith('rep'), line
+    rep = int(line[len('rep '):-1])
+    # process each individual
+    line = f.readline()
+    while line != '' and !line.startswith('rep'):
+        x = line[:-1].split('\t')
+        ind = line[0]
+        d_ind = {}
+        for s in x[1:]:
+            strain, sites = s.split(':')
+            d_ind[strain] = [int(i) for i in sites.split(',')]
+        d[ind] = d_ind
         line = f.readline()
                 
-    return d
+    return d, rep, line
 
     
 
