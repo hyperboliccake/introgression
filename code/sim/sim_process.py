@@ -216,8 +216,11 @@ def read_introgression_blocks(f, line, states):
             d_ind[state] = []
         for s in x[1:]:
             species, blocks = s.split(':')
+            blocks = blocks.split(',')
+            blocks = filter(lambda x: x != '', blocks) # a lil janky
             for block in blocks:
-                d_ind[species].append((int(block[0]), int(block[1])))
+                block_start, block_end = block.split('-')
+                d_ind[species].append((int(block_start), int(block_end)))
         d[ind] = d_ind
         line = f.readline()
                 
