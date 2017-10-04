@@ -29,11 +29,11 @@ f_out = open(f_out, 'w')
 line1 = f1.readline()
 line2 = f2.readline()
 
-write_compare_haeder(f_out, args['states'], suffix1, suffix2)
+write_compare_header(f_out, args['states'], suffix1, suffix2)
 while line1 != '':
 
-    d1, rep1, line1 = sim_process.read_introgression(f1, line1, args['states'])
-    d2, rep2, line2 = sim_process.read_introgression(f2, line2, args['states'])
+    d1, rep1, line1 = sim_process.read_introgression_blocks(f1, line1, args['states'])
+    d2, rep2, line2 = sim_process.read_introgression_blocks(f2, line2, args['states'])
     assert rep1 == rep2, str(rep1) + ' ' + str(rep2)
     print 'rep', rep1
 

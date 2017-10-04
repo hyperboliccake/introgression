@@ -1,3 +1,10 @@
+def find_in_blocks(i, blocks):
+    # return the state that has i in one of its blocks
+    for state in blocks:
+        for block in blocks[state]:
+            if i >= block[0] and i <= block[1]:
+                return state
+
 def count_bases_one(d1, d2, args):
     # for one individual
     d = {}
@@ -6,13 +13,8 @@ def count_bases_one(d1, d2, args):
             d[(state1, state2)] = 0
 
     for i in range(args['num_sites']):
-        state1 = args['species_to']
-        state2 = args['species_to']
-        for state in args['states']:
-            if i in d1[state]:
-                state1 = state
-            if i in d2[state]:
-                state2 = state
+        state1 = find_in_blocks(i, d1)
+        state2 = find_in_blocks(i, d2)
         d[(state1, state2)] += 1
     return d
 
@@ -47,9 +49,6 @@ def write_compare_header(f, states, suffix1, suffix2, sep='\t'):
 
 def write_compare_line(avg_base_counts, f, states, suffix1, suffix2, sep='\t'):
 
-    if header:
-        write_compare_header(f, states, sep)
-
     line_string = ''
     for state1 in states:
         for state2 in states:
@@ -58,7 +57,7 @@ def write_compare_line(avg_base_counts, f, states, suffix1, suffix2, sep='\t'):
     f.write(line_string[:-len(sep)] + '\n')
 
 
-
+###############
 
 
 def group_actual_predicted_blocks(blocks_actual, blocks_predicted, states, inds_to_predict):
