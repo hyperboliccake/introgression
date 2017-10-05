@@ -7,67 +7,64 @@
 
 import os
 import sys
-import sim_analyze_hmm_bw
+import process_args
 sys.path.insert(0, '..')
 import global_params as gp
 
+args = process_args.process_args()
 
-tag, topology, species_to, species_from1, species_from2, \
-    num_samples_species_to, num_samples_species_from1, num_samples_species_from2, \
-    N0_species_to, N0_species_from1, N0_species_from2, \
-    migration_from1, migration_from2, \
-    expected_length_introgressed, \
-    expected_num_introgressed_tracts, \
-    has_ref_from1, has_ref_from2, \
-    rho, outcross_rate, theta, num_sites, num_reps = \
-    sim_analyze_hmm_bw.process_args(sys.argv)
-
-num_samples = num_samples_species_to + num_samples_species_from1 + num_samples_species_from2
+num_samples = args['num_samples_species_to'] + \
+              args['num_samples_species_from1'] + \
+              args['num_samples_species_from2']
 
 gp_dir = '../'
-outfilename = gp.sim_out_prefix + tag + gp.sim_out_suffix
+outfilename = gp.sim_out_prefix + args['tag'] + gp.sim_out_suffix
 
 # start of ms command
 # (in case you were thinking about it, DON'T subtract 1 from nsites for
 # the -r option)
 ms_command = \
-    gp.ms_install_path + '/ms ' + str(num_samples) + ' ' + str(num_reps) + \
-    ' -t ' + str(theta) + \
-    ' -r ' + str(rho) + ' ' + str(num_sites)
+    gp.ms_install_path + '/ms ' + str(num_samples) + ' ' + str(args['num_reps']) + \
+    ' -t ' + str(args['theta']) + \
+    ' -r ' + str(args['rho']) + ' ' + str(args['num_sites'])
 
 # 2 species
-if species_from2 == None:
-    join_time = topology[2]
+if args['species_from2'] == None:
+    join_time = args['topology'][2]
     ms_command += \
-        ' -I 2 ' + str(num_samples_species_to) + ' ' + str(num_samples_species_from1)
+        ' -I 2 ' + str(args['num_samples_species_to']) + \
+        ' ' + str(args['num_samples_species_from1'])
     ms_command += \
-        ' -m 1 2 ' + str(migration_from1) + \
+        ' -m 1 2 ' + str(args['migration_from1']) + \
         ' -em ' + str(join_time) + ' 1 2 0' # this is probably implied
     ms_command += \
         ' -ej ' + str(join_time) + ' 1 2'
 
 # 3 species
 else:
-    if type(topology[0]) != type([]):
-        left = topology[0]
-        topology[0] = topology[1]
+    if type(args['topology'][0]) != type([]):
+        left = args['topology'][0]
+        topology[0] = args['topology'][1]
         topology[1] = left
-    most_recent_join_time = topology[0][2]
-    least_recent_join_time = topology[2]
-    last_to_join = topology[1]
-    first_to_join1 = topology[0][0]
-    first_to_join2 = topology[0][1]
+    most_recent_join_time = args['topology'][0][2]
+    least_recent_join_time = args['topology'][2]
+    last_to_join = args['topology'][1]
+    first_to_join1 = args['topology'][0][0]
+    first_to_join2 = args['topology'][0][1]
 
-    label = {species_to:'1', species_from1:'2', species_from2:'3'}
+    label = {args['species_to']:'1', \
+             args['species_from1']:'2', \
+             args['species_from2']:'3'}
 
     # note that we need to keep the species in the order to, from1,
     # from2 (because we're assuming this is true in the analysis)
-    ms_command += ' -I 3 ' + str(num_samples_species_to) + ' ' + \
-        str(num_samples_species_from1) + ' ' + str(num_samples_species_from2)
+    ms_command += ' -I 3 ' + str(args['num_samples_species_to']) + ' ' + \
+        str(args['num_samples_species_from1']) + ' ' + \
+        str(args['num_samples_species_from2'])
 
     ms_command += \
-        ' -m 1 2 ' + str(migration_from1) + \
-        ' -m 1 3 ' + str(migration_from2) + \
+        ' -m 1 2 ' + str(args['migration_from1']) + \
+        ' -m 1 3 ' + str(args['migration_from2']) + \
         ' -em ' + str(most_recent_join_time) + ' 1 2 0' + \
         ' -em ' + str(most_recent_join_time) + ' 1 3 0'
 
