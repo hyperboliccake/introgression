@@ -9,10 +9,14 @@ med 4e-07
 mig
 no 0
 low 1e-10
-med 1e-09
-high 1e-08
+lowmed .25e-09
+med .5e-09
+medhigh 1e-09
+high 2e-09
 
 1 no_mig
 2 low_mig
-3 med_mig
-4 high_mig
+3 lowmed_mig
+4 med_mig
+5 medhigh_mig
+6 high_mig
