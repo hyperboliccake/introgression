@@ -1,5 +1,0 @@
-==> sim_multi_model_args.txt <==
-1 A 8000000 10 41 54 0 17000000 250000000 10000 7.425e-06 2e-05 1
-
-==> sim_multi_model.py <==
-# Run ms coalescent simulations under a variety of demographic models
