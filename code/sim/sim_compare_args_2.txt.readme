@@ -1,0 +1,18 @@
+tag topology species_to num_samples_species_to N0_species_to to species_from1 num_samples_species_from1 N0_species_from1 migration_from1 has_ref_from1 expected_tract_length_from1 expected_num_tracts_from1 species_from2 num_samples_species_from2 N0_species_from2 migration_from2 has_ref_from2 expected_tract_length_from2 expected_num_tracts_from2 num_sites rho_factor outcross_rate num_reps
+
+pop_size
+med 8000000
+
+outcross
+med 4e-07
+
+mig
+no 0
+low 1e-10
+med 1e-09
+high 1e-08
+
+1 no_mig
+2 low_mig
+3 med_mig
+4 high_mig

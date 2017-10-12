@@ -1,31 +1,49 @@
-low_pop_size low_outcross low_mig
-low_pop_size low_outcross med_mig
-low_pop_size low_outcross high_mig
-low_pop_size med_outcross low_mig
-low_pop_size med_outcross med_mig
-low_pop_size med_outcross high_mig
-low_pop_size high_outcross low_mig
-low_pop_size high_outcross med_mig
-low_pop_size high_outcross high_mig
-med_pop_size low_outcross low_mig
-med_pop_size low_outcross med_mig
-med_pop_size low_outcross high_mig
-med_pop_size med_outcross low_mig
-med_pop_size med_outcross med_mig
-med_pop_size med_outcross high_mig
-med_pop_size high_outcross low_mig
-med_pop_size high_outcross med_mig
-med_pop_size high_outcross high_mig
-high_pop_size low_outcross low_mig
-high_pop_size low_outcross med_mig
-high_pop_size low_outcross high_mig
-high_pop_size med_outcross low_mig
-high_pop_size med_outcross med_mig
-high_pop_size med_outcross high_mig
-high_pop_size high_outcross low_mig
-high_pop_size high_outcross med_mig
-high_pop_size high_outcross high_mig
-med_pop_size med_outcross med_mig longer_expected_int_tracts
-med_pop_size med_outcross med_mig shorter_expected_int_tracts
-med_pop_size med_outcross med_mig more_expected_int_tracts
-med_pop_size med_outcross med_mig fewer_expected_int_tracts
+tag topology species_to num_samples_species_to N0_species_to to species_from1 num_samples_species_from1 N0_species_from1 migration_from1 has_ref_from1 expected_tract_length_from1 expected_num_tracts_from1 species_from2 num_samples_species_from2 N0_species_from2 migration_from2 has_ref_from2 expected_tract_length_from2 expected_num_tracts_from2 num_sites rho_factor outcross_rate num_reps
+
+pop_size
+low 4000000
+med 8000000
+high 16000000
+
+outcross
+low 2e-07
+med 4e-07
+high 8e-07
+
+mig
+no 0
+high 1e-07
+low 1e-09
+
+
+1 low_pop_size low_outcross no_mig
+2 low_pop_size low_outcross high_mig
+3 low_pop_size low_outcross low_mig
+4 low_pop_size med_outcross no_mig
+5 low_pop_size med_outcross high_mig
+6 low_pop_size med_outcross low_mig
+7 low_pop_size high_outcross no_mig
+8 low_pop_size high_outcross high_mig
+9 low_pop_size high_outcross low_mig
+10 med_pop_size low_outcross no_mig
+11 med_pop_size low_outcross high_mig
+12 med_pop_size low_outcross low_mig
+13 med_pop_size med_outcross no_mig
+14 med_pop_size med_outcross high_mig
+15 med_pop_size med_outcross low_mig
+16 med_pop_size high_outcross no_mig
+17 med_pop_size high_outcross high_mig
+18 med_pop_size high_outcross low_mig
+19 high_pop_size low_outcross no_mig
+20 high_pop_size low_outcross high_mig
+21 high_pop_size low_outcross low_mig
+22 high_pop_size med_outcross no_mig
+23 high_pop_size med_outcross high_mig
+24 high_pop_size med_outcross low_mig
+25 high_pop_size high_outcross no_mig
+26 high_pop_size high_outcross high_mig
+27 high_pop_size high_outcross low_mig
+28 med_pop_size med_outcross high_mig longer_expected_int_tracts
+29 med_pop_size med_outcross high_mig shorter_expected_int_tracts
+30 med_pop_size med_outcross high_mig more_expected_int_tracts
+31 med_pop_size med_outcross high_mig fewer_expected_int_tracts
