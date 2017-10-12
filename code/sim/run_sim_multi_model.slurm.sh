@@ -4,7 +4,7 @@
 # Or you can do something like this:
 # cd $GRID_HOME
 
-#SBATCH --array=1-31
+#SBATCH --array=1-4
 
 # We need 20 GB for each instance (must be a good estimate).
 # Note that SLURM assumes one core per task. For tasks using multiple
@@ -24,6 +24,6 @@
 # You can use SLURM_PROCID to distinguish different tasks.
 # It will have a value between 0 and 31 in this example.
 
-ARGS=$(head -n $SLURM_ARRAY_TASK_ID sim_compare_args.txt | tail -n 1)
+ARGS=$(head -n $SLURM_ARRAY_TASK_ID sim_compare_args_2.txt | tail -n 1)
 
 python sim_multi_model.py $ARGS

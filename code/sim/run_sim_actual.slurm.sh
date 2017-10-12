@@ -24,6 +24,6 @@
 # You can use SLURM_PROCID to distinguish different tasks.
 # It will have a value between 0 and 31 in this example.
 
-ARGS=$(head -n $SLURM_ARRAY_TASK_ID sim_compare_args.txt | tail -n 1)
+ARGS=$(head -n $SLURM_ARRAY_TASK_ID sim_compare_args_2.txt | tail -n 1)
 
 python sim_actual_main.py $ARGS
