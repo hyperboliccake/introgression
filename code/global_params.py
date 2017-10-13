@@ -119,7 +119,7 @@ sim_params.append({'tag':'1', \
 #====
 
 analysis_out_dir_absolute = \
-    '/home/anneec/projects/introgression/results/analysis/'
+    '/tigress/anneec/projects/introgression/results/analysis/'
 
 regions_out_dir_absolute = analysis_out_dir_absolute + '/regions/'
 
@@ -129,13 +129,13 @@ genes_out_dir_absolute = analysis_out_dir_absolute + '/genes/'
 # software install locations
 #====
 
-mugsy_install_path = '~/software/mugsy/'
+mugsy_install_path = '/tigress/anneec/software/mugsy/'
 
-tcoffee_install_path = '~/software/T-COFFEE_installer_Version_11.00.8cbe486_linux_x64/bin/'
+tcoffee_install_path = '/tigress/anneec/software/T-COFFEE_installer_Version_11.00.8cbe486_linux_x64/bin/'
 
-mafft_install_path = '~/software/mafft/bin/'
+mafft_install_path = '/tigress/anneec/software/mafft/bin/'
 
-ms_install_path = '~/software/msdir/'
+ms_install_path = '/tigress/anneec/software/msdir/'
 
 #====
 # other
