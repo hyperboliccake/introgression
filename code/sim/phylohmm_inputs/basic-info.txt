@@ -1,0 +1,3 @@
+4
+A T G C
+C1 C2 P OUTGROUP
