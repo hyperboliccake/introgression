@@ -30,10 +30,12 @@ outfilename = gp.sim_out_prefix + tag + gp.sim_out_suffix
 # start of ms command
 # (in case you were thinking about it, DON'T subtract 1 from nsites for
 # the -r option)
+# the -p option is to insure there's enough granularity in segsite locations
 ms_command = \
     gp.ms_install_path + '/ms ' + str(num_samples) + ' ' + str(num_reps) + \
     ' -t ' + str(theta) + \
-    ' -r ' + str(rho) + ' ' + str(num_sites)
+    ' -r ' + str(rho) + ' ' + str(num_sites) + \
+    ' -p 8'
 
 # 2 species
 if species_from2 == None:
