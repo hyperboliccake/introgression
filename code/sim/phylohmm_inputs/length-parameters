@@ -1,0 +1,2 @@
+pblp1 0.1 p2,par,ANC p2,cer_int,ANC p2,cer_ref,ROOT p1,cer,ROOT p1,par,ROOT
+pblp2 1.0 p2,ANC,ROOT p2,cer_ref,ROOT p1,cer,ROOT p1,par,ROOT
