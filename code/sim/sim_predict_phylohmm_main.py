@@ -2,7 +2,8 @@ import sys
 import os
 import process_args
 import sim_process
-from sim_predict import *
+import sim_predict
+from sim_predict_phylohmm import *
 sys.path.append('..')
 import global_params as gp
 
@@ -22,10 +23,10 @@ ms_f = open(gp_dir + gp.sim_out_dir + '/ms/' + gp.sim_out_prefix + \
                 args['tag'] + '.txt', 'r')
 # summary output
 out_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
-                args['tag'] + '_hmm.txt', 'w')
+                args['tag'] + '_phylohmm.txt', 'w')
 # introgression output
 introgression_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
-                           args['tag'] + '_introgressed_predicted.txt', 'w')
+                           args['tag'] + '_introgressed_predicted_phylohmm.txt', 'w')
 
 for i in range(args['num_reps']):
     
@@ -41,37 +42,9 @@ for i in range(args['num_reps']):
     ##======
     # predict introgressed/non-introgressed tracts
     ##======
-    
-        # use letters because phylo-hmm seems set up only for that
-        sim[4] = convert_binary_to_nucleotides(seqs_filled)
-        # also write to fasta
-        seq_fn = gp_dir + gp.sim_out_dir + '/ms/' + gp.sim_out_prefix + \
-            'sequence_' + tag + '_rep' + str(i) + '.fasta'
-        # TODO unhardcode
-        write_fasta(sim[4], ['C1', 'C2', 'P', 'OUTGROUP'], seq_fn)
 
-    # create input file for phylo-hmm
-    input_fn = gp_dir + gp.sim_out_dir + '/phylo-hmm/' + 'autoinput_' + \
-        tag + '_rep' + str(i) + '.txt'
-    working_dir = gen_input_file(seq_fn, input_fn, tag, i)
+    state_seq, init, emis, trans = predict_introgressed(sim, args, i, gp_dir)
 
-    # run phylo-hmm
-    os.system('java -jar ~/software/phylo_hmm/phmm-0.1/dist/lib/phmm.jar < ' + input_fn)
-
-    # write results in different format
-    trees_to_states = {'p1':'cer', 'p2':'par'} # generalize this? worth it? nah
-    init_new, emis_new, trans_new = process_phylo_output(sim, ref_inds, output_dic, \
-                                                             f_out, \
-                                                             trees_to_states, tag, i, \
-                                                             num_samples_species_to, \
-                                                             topology, species_to, \
-                                                             index_to_species, states, \
-                                                             f_tracts_predicted, \
-                                                             working_dir + \
-                                                             '/filtered_sites.txt')
-#############
-
-    state_seq, hmm = predict_introgressed(sim, args, train=True)
     state_seq_blocks = sim_process.convert_to_blocks(state_seq, \
                                                      args['states'])
 
@@ -80,7 +53,7 @@ for i in range(args['num_reps']):
     ##======
 
     # summary info about HMM
-    write_hmm_line(hmm, out_f, i==0) 
+    # sim_predict.write_hmm_line(hmm, out_f, i==0) 
 
     # specific locations of introgression (for comparing predictions
     # to)
