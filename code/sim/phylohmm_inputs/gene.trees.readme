@@ -1,0 +1,6 @@
+It's really important that the labeling of trees is correct---program
+won't necessarily catch incorrectness in obvious way. For example, can
+get error where transition probability rows don't add to 1. Or a
+matrix singularity error from phylogeny calculations if you don't
+include all ancestral labels. Not that I know this from experience or
+anything.
