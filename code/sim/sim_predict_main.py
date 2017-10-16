@@ -2,18 +2,18 @@ import sys
 import os
 import process_args
 import sim_process
-from sim_actual import *
+from sim_predict import *
 sys.path.append('..')
 import global_params as gp
 
 ##======
 # read in simulation parameters
 ##======
- 
+
 args = process_args.process_args(sys.argv)
 
 ##======
-# loop through all simulations and do several analyses
+# loop through all simulations predict introgression
 ##======
 
 gp_dir = '../'
@@ -22,10 +22,10 @@ ms_f = open(gp_dir + gp.sim_out_dir + '/ms/' + gp.sim_out_prefix + \
                 args['tag'] + '.txt', 'r')
 # summary output
 out_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
-                args['tag'] + '_summary.txt', 'w')
+                args['tag'] + '_hmm.txt', 'w')
 # introgression output
 introgression_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
-                           args['tag'] + '_introgressed_actual.txt', 'w')
+                           args['tag'] + '_introgressed_predicted.txt', 'w')
 
 for i in range(args['num_reps']):
     
@@ -39,39 +39,26 @@ for i in range(args['num_reps']):
     sim = sim_process.read_one_sim(ms_f, args['num_sites'], args['num_samples'])
 
     ##======
-    # summarize properties of sequences
+    # predict introgressed/non-introgressed tracts
     ##======
-
-    stats = sim_stats(sim, args)
-
-    ##======
-    # calculate frequency of ILS (or of possible ILS...)
-    ##======
-
-    concordance_info = calculate_ils(sim, args)
-
-    ##======
-    # find introgressed/non-introgressed tracts
-    ##======
-
-    introgression_stats, actual_state_seq = find_introgressed(sim, args)
-    actual_state_seq_blocks = sim_process.convert_to_blocks(actual_state_seq, \
-                                                            args['states'])
+    
+    state_seq, hmm = predict_introgressed(sim, args, train=True)
+    state_seq_blocks = sim_process.convert_to_blocks(state_seq, \
+                                                     args['states'])
 
     ##======
     # output
     ##======
 
-    # general summary statistics about simulated sequences
-    write_output_line(stats, concordance_info, introgression_stats, out_f, i==0) 
+    # summary info about HMM
+    write_hmm_line(hmm, out_f, i==0) 
 
     # specific locations of introgression (for comparing predictions
     # to)
-    sim_process.write_introgression_blocks(actual_state_seq_blocks, introgression_f, \
+    sim_process.write_introgression_blocks(state_seq_blocks, introgression_f, \
                                            i, args['states'])
-
+    
 ms_f.close()
 out_f.close()
 introgression_f.close()
-
 

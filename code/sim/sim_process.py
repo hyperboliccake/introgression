@@ -1,19 +1,3 @@
-# add in the nonpolymorphic sites
-def fill_seqs(polymorphic_seqs, polymorphic_sites, nsites, fill):
-    
-    seqs_filled = []
-    for seq in polymorphic_seqs:
-        s = ''
-        poly_ind = 0
-        for i in range(nsites):
-            if i in polymorphic_sites:
-                s += seq[poly_ind]
-                poly_ind += 1
-            else:
-                s += fill
-        seqs_filled.append(s)
-    return seqs_filled
-
 # given fractional positions for snvs and length of sequence l,
 # determine integer positions; if allow_multi_hit is true, easy but if
 # not, shift them around to include all the snvs
@@ -119,7 +103,40 @@ def read_one_sim(f, num_sites, num_samples):
 
     return sim
 
-def write_introgression(state_seq, f, rep, species):
+def convert_to_blocks_one(state_seq, states):
+    # single individual state sequence
+    blocks = {}
+    for state in states:
+        blocks[state] = []
+    prev_species = state_seq[0]
+    block_start = 0
+    block_end = 0
+    for i in range(len(state_seq)):
+        if state_seq[i] == prev_species:
+            block_end = i
+        else:
+            blocks[prev_species].append((block_start, block_end))
+            block_start = i
+            block_end = i
+            prev_species = state_seq[i]
+    # add last block
+    if prev_species not in blocks:
+        blocks[prev_species] = []
+    blocks[prev_species].append((block_start, block_end))
+    return blocks
+
+def convert_to_blocks(state_seqs, states):
+    blocks = {}
+    for ind in state_seqs.keys():
+        blocks[ind] = convert_to_blocks_one(state_seqs[ind], states)
+    return blocks    
+
+def write_introgression(state_seq, f, rep, states):
+    # file format is:
+    # rep 0
+    # 2\tpar:3,4,5,9,10,12\tbay:15,16
+    # 3\tpar:3,4,5,9,10,12\tbay:15,16
+    # rep 1 ...
 
     d = {}
     # loop through all individuals (in species_to)
@@ -142,5 +159,69 @@ def write_introgression(state_seq, f, rep, species):
             f.write(','.join([str(x) for x in d[ind][s]]))
         f.write('\n')
 
+def read_introgression(f, line, states):
+    # inverse of write_introgression function above
+    
+    d = {} # keyed by individual, then strain, list of sites
+    assert line.startswith('rep'), line
+    rep = int(line[len('rep '):-1])
+    # process each individual
+    line = f.readline()
+    while line != '' and not line.startswith('rep'):
+        x = line[:-1].split('\t')
+        ind = line[0]
+        d_ind = {}
+        for species in states:
+            d_ind[species] = []
+        for s in x[1:]:
+            species, sites = s.split(':')
+            d_ind[species] = [int(i) for i in sites.split(',')]
+        d[ind] = d_ind
+        line = f.readline()
                 
+    return d, rep, line
 
+def write_introgression_blocks(state_seq_blocks, f, rep, states):
+    # file format is:
+    # rep 0
+    # 2\tcer:0-2,6-8\tpar:3-5,9-12\tbay:15-16
+    # 3\tcer:8-9,16-16\tpar:3-7,10-12\tbay:15-15
+    # rep 1 ...
+
+    f.write('rep ' + str(rep) + '\n')
+
+    for ind in state_seq_blocks:
+        f.write(str(ind))
+        for state in states:
+            f.write('\t' + state + ':')
+            blocks_string = ''
+            for block in state_seq_blocks[ind][state]:
+                blocks_string += str(block[0]) + '-' + str(block[1]) + ','
+            f.write(blocks_string[:-1])
+        f.write('\n')
+
+def read_introgression_blocks(f, line, states):
+    # inverse of write_introgression_blocks function above
+    
+    d = {} # keyed by individual, then strain, list of sites
+    assert line.startswith('rep'), line
+    rep = int(line[len('rep '):-1])
+    # process each individual
+    line = f.readline()
+    while line != '' and not line.startswith('rep'):
+        x = line[:-1].split('\t')
+        ind = line[0]
+        d_ind = {}
+        for state in states:
+            d_ind[state] = []
+        for s in x[1:]:
+            species, blocks = s.split(':')
+            blocks = blocks.split(',')
+            blocks = filter(lambda x: x != '', blocks) # a lil janky
+            for block in blocks:
+                block_start, block_end = block.split('-')
+                d_ind[species].append((int(block_start), int(block_end)))
+        d[ind] = d_ind
+        line = f.readline()
+                
+    return d, rep, line

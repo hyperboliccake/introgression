@@ -41,7 +41,7 @@ def parse_topology_helper(t, factor=1):
 def parse_topology(t, factor=1):
     return parse_topology_helper(t, factor)
 
-def process_args(print_args=True):
+def process_args(arg_list, print_args=True):
 
     # store all arguments in dictionary
     d = {}
@@ -54,11 +54,11 @@ def process_args(print_args=True):
     ########
 
     # simulation tag
-    d['tag'] = sys.argv[i]
+    d['tag'] = arg_list[i]
     i += 1
 
     # topology of the species
-    d['topology'] = sys.argv[i]
+    d['topology'] = arg_list[i]
     i += 1
 
     # species names
@@ -70,31 +70,31 @@ def process_args(print_args=True):
     expected_num_tracts = {}
 
     # ...for the species with introgression
-    d['species_to'] = sys.argv[i]
+    d['species_to'] = arg_list[i]
     i += 1
     assert d['species_to'] in d['species']
-    d['num_samples_species_to'] = int(sys.argv[i])
+    d['num_samples_species_to'] = int(arg_list[i])
     i += 1
-    d['N0_species_to'] = int(sys.argv[i])
+    d['N0_species_to'] = int(arg_list[i])
     i += 1
-    assert sys.argv[i] == 'to'
+    assert arg_list[i] == 'to'
     i += 1
 
     # ...for one species introgression is coming from
-    d['species_from1'] = sys.argv[i]
+    d['species_from1'] = arg_list[i]
     i += 1
     assert d['species_from1'] in d['species']
-    d['num_samples_species_from1'] = int(sys.argv[i])
+    d['num_samples_species_from1'] = int(arg_list[i])
     i += 1
-    d['N0_species_from1'] = int(sys.argv[i])
+    d['N0_species_from1'] = int(arg_list[i])
     i += 1
-    d['migration_from1'] = float(sys.argv[i]) * 2 * d['N0_species_from1']
+    d['migration_from1'] = float(arg_list[i]) * 2 * d['N0_species_from1']
     i += 1
-    expected_tract_lengths[d['species_from1']] = float(sys.argv[i])
+    expected_tract_lengths[d['species_from1']] = float(arg_list[i])
     i += 1
-    expected_num_tracts[d['species_from1']] = int(sys.argv[i])
+    expected_num_tracts[d['species_from1']] = int(arg_list[i])
     i += 1
-    d['has_ref_from1'] = (sys.argv[i] == 'ref')
+    d['has_ref_from1'] = (arg_list[i] == 'ref')
     i += 1
 
     # ...for second species introgression is coming from (optional)
@@ -104,20 +104,20 @@ def process_args(print_args=True):
     d['migration_from2'] = 0
     d['has_ref_from2'] = False
     if len(d['species']) == 3:
-        d['species_from2'] = sys.argv[i]
+        d['species_from2'] = arg_list[i]
         i += 1
         assert d['species_from2'] in d['species']
-        d['num_samples_species_from2'] = int(sys.argv[i])
+        d['num_samples_species_from2'] = int(arg_list[i])
         i += 1
-        d['N0_species_from2'] = int(sys.argv[i])
+        d['N0_species_from2'] = int(arg_list[i])
         i += 1
-        d['migration_from2'] = float(sys.argv[i]) * 2 * d['N0_species_from2']
+        d['migration_from2'] = float(arg_list[i]) * 2 * d['N0_species_from2']
         i += 1
-        expected_tract_lengths[d['species_from2']] = float(sys.argv[i])
+        expected_tract_lengths[d['species_from2']] = float(arg_list[i])
         i += 1
-        expected_num_tracts[d['species_from2']] = int(sys.argv[i])
+        expected_num_tracts[d['species_from2']] = int(arg_list[i])
         i += 1
-        d['has_ref_from2'] = (sys.argv[i] == 'ref')
+        d['has_ref_from2'] = (arg_list[i] == 'ref')
         i += 1
 
     # only makes sense to have one unknown species at most
@@ -133,6 +133,9 @@ def process_args(print_args=True):
     expected_tract_lengths[d['species_to']] = float(expected_num_introgressed_bases) / \
         expected_num_tracts[d['species_to']]
 
+    d['expected_tract_lengths'] = expected_tract_lengths
+    d['expected_num_tracts'] = expected_num_tracts
+
     assert d['N0_species_to'] == d['N0_species_from1'] and \
         d['N0_species_to'] == d['N0_species_from2']
 
@@ -141,24 +144,24 @@ def process_args(print_args=True):
     # 13,500 sites to get about 10% with one recombination event, .3% with
     # more than one (based on poisson(.1), 1 recombination per chromosome
     # of average length 750,000)
-    d['num_sites'] = int(sys.argv[i])
+    d['num_sites'] = int(arg_list[i])
     i += 1
 
     # parameter is recombination rate between adjacent bp per generation
     # should probably be 1/750000 + 6.1 * 10^-6 (where 750000 is average
     # chr size)
     # recombination rate
-    d['rho'] = 2 * d['N0_species_to'] * float(sys.argv[i]) * (d['num_sites'] - 1)
+    d['rho'] = 2 * d['N0_species_to'] * float(arg_list[i]) * (d['num_sites'] - 1)
     i += 1
 
-    d['outcross_rate'] = float(sys.argv[i])
+    d['outcross_rate'] = float(arg_list[i])
     i += 1
     
     d['rho'] *= d['outcross_rate']
 
     d['theta'] = gp.mu * 2 * d['num_sites'] * d['N0_species_to']
 
-    d['num_reps'] = int(sys.argv[i])
+    d['num_reps'] = int(arg_list[i])
 
     #####
     # reference stuff
