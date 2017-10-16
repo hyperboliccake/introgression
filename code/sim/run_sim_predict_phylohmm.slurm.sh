@@ -4,7 +4,7 @@
 # Or you can do something like this:
 # cd $GRID_HOME
 
-#SBATCH --array=1-31
+#SBATCH --array=1-6
 
 # We need 20 GB for each instance (must be a good estimate).
 # Note that SLURM assumes one core per task. For tasks using multiple
@@ -17,7 +17,7 @@
 #SBATCH --time=4:00
 
 # This specifies 32 tasks, which will require at least 2 nodes.
-#SBATCH -n 31
+#SBATCH -n 6
 
 # With 32 tasks allocated, srun will start 32 instances of
 # the same program (in this case sh with an explicit command).
@@ -26,4 +26,4 @@
 
 ARGS=$(head -n $SLURM_ARRAY_TASK_ID sim_compare_args_small.txt | tail -n 1)
 
-python sim_actual_main.py $ARGS
+python sim_predict_phylohmm_main.py $ARGS
