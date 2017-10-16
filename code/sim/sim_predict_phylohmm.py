@@ -225,10 +225,10 @@ def gen_input_file(sequence_fn, fn, tag, rep):
     """
 
     initial_mode = '0' # build new model
-    basic_info_fn = 'basic-info.txt'
+    basic_info_fn = 'phylohmm_inputs/basic-info.txt'
     num_states = '6' # num parental trees * num genealogies
-    parental_trees_fn = 'parental.trees'
-    gene_trees_fn = 'gene.trees'
+    parental_trees_fn = 'phylohmm_inputs/parental.trees'
+    gene_trees_fn = 'phylohmm_inputs/gene.trees'
     outgroup_name = 'OUTGROUP'
     working_dir = '../../results/sim/phylo-hmm/working/' + tag # don't need one for every rep because we do one at a time
     if not os.path.exists(working_dir):
@@ -236,7 +236,7 @@ def gen_input_file(sequence_fn, fn, tag, rep):
     substitution_rates = '1 1 1 1 1' # <AG> <AC> <AT> <GC> <GT>
     base_frequencies = '0.25 0.25 0.25 0.25' # <A> <G> <C> <T>
     parental_tree_switching_freq = '.1'
-    gene_tree_switching_fn = 'switching-frequency-ratio-terms'
+    gene_tree_switching_fn = 'phylohmm_inputs/switching-frequency-ratio-terms'
     operate_mode = '0' # run viterbi
     # operate_mode = '1' # learn with Baum-Welch
     output_file_path = '../../results/sim/phylo-hmm/initial.viterbi.sequence.' + tag + '.' + str(rep)
@@ -245,9 +245,9 @@ def gen_input_file(sequence_fn, fn, tag, rep):
     #sequence_fn = 'sequence.fasta'
     operate_mode_2 = '3' # learn with "a multivariate optimization heuristic that incorporates Brent's method"
     observation_sequence_option_2 = '0' # reuse previously read sequence
-    length_params_fn = 'length-parameters'
-    length_params_inequality_constraints_fn = 'length-parameter-inequality-constraints'
-    length_params_constraint_sets_fn = 'length-parameter-constraint-sets'
+    length_params_fn = 'phylohmm_inputs/length-parameters'
+    length_params_inequality_constraints_fn = 'phylohmm_inputs/length-parameter-inequality-constraints'
+    length_params_constraint_sets_fn = 'phylohmm_inputs/length-parameter-constraint-sets'
     restore_fn = '' # blank for no file
     output_posterior_decoding_fn = '../../results/sim/phylo-hmm/optimized.posterior.decoding.probabilities.' + tag + '.' + str(rep)
     output_viterbi_optimized_fn = '../../results/sim/phylo-hmm/optimized.viterbi.sequence.'  + tag + '.' + str(rep)
