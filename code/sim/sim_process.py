@@ -158,6 +158,7 @@ def write_introgression(state_seq, f, rep, states):
             f.write('\t' + s + ':')
             f.write(','.join([str(x) for x in d[ind][s]]))
         f.write('\n')
+    f.flush()
 
 def read_introgression(f, line, states):
     # inverse of write_introgression function above
@@ -199,6 +200,7 @@ def write_introgression_blocks(state_seq_blocks, f, rep, states):
                 blocks_string += str(block[0]) + '-' + str(block[1]) + ','
             f.write(blocks_string[:-1])
         f.write('\n')
+    f.flush()
 
 def read_introgression_blocks(f, line, states):
     # inverse of write_introgression_blocks function above

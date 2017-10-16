@@ -427,7 +427,8 @@ def write_hmm_headers(states, emis_symbols, f, sep):
             header_string += 'trans_' + s1 + '_' + s2 + sep
     
     f.write(header_string[:-(len(sep))] + '\n')
-    
+    f.flush()
+
 def write_hmm_line(hmm, f, header = False):
 
     sep = '\t'
@@ -453,4 +454,4 @@ def write_hmm_line(hmm, f, header = False):
             line_string += str(hmm.trans[i][j]) + sep
 
     f.write(line_string[:-(len(sep))] + '\n')
-
+    f.flush()
