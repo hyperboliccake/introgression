@@ -163,6 +163,10 @@ def find_introgressed(sim, args):
     # how many bases are introgressed in total in each strain
     num_introgressed = \
         dict(zip(inds, [0] * args['num_samples_species_to']))
+    # how many bases are introgressed in total in each strain but NOT
+    # in the reference (i.e. the bases we'd have a chance of detecting)
+    num_introgressed_non_ref = \
+        dict(zip(inds, [0] * args['num_samples_species_to']))
     # loop through the trees for all blocks with no recombination
     # within them
     num_trees = len(sim['trees'])
@@ -196,10 +200,13 @@ def find_introgressed(sim, args):
             if introgressed.has_key(i):
                 num_introgressed[i] += num_sites_t
                 actual_state_seq[i] += [introgressed[i]] * num_sites_t
+                if not introgressed.has_key(args['ref_inds'][0]):
+                    num_introgressed_non_ref[i] += num_sites_t
             else:
                 actual_state_seq[i] += [args['species_to']] * num_sites_t
 
-    stats = {'num_introgressed':num_introgressed}
+    stats = {'num_introgressed':num_introgressed, \
+             'num_introgressed_non_ref':num_introgressed_non_ref}
 
     return stats, actual_state_seq
 
