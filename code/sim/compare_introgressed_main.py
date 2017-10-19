@@ -9,7 +9,7 @@ import global_params as gp
 # compares them (for example, actual and predicted regions, or calls
 # from two different prediction methods)
 
-args = process_args.process_args()
+args = process_args.process_args(sys.argv)
 suffix1 = sys.argv[-2]
 suffix2 = sys.argv[-1]
 
@@ -30,7 +30,7 @@ line1 = f1.readline()
 line2 = f2.readline()
 
 write_compare_header(f_out, args['states'], suffix1, suffix2)
-while line1 != '':
+while line1 != '' and line2 != '':
 
     d1, rep1, line1 = sim_process.read_introgression_blocks(f1, line1, args['states'])
     d2, rep2, line2 = sim_process.read_introgression_blocks(f2, line2, args['states'])
@@ -41,6 +41,7 @@ while line1 != '':
 
     write_compare_line(avg_base_counts, f_out, args['states'], suffix1, suffix2)
 
-assert line2 == '', line2
+if line1 != '' or line2 != '':
+    print 'one of these files is incomplete and for some reason I\'m not bothering to tell you which!'
 
 f_out.close()
