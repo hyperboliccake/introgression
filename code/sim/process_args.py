@@ -88,7 +88,7 @@ def process_args(arg_list, print_args=True):
     i += 1
     d['N0_species_from1'] = int(arg_list[i])
     i += 1
-    d['migration_from1'] = float(arg_list[i]) * 2 * d['N0_species_from1']
+    d['migration_from1'] = float(arg_list[i]) * 4 * d['N0_species_from1']
     i += 1
     expected_tract_lengths[d['species_from1']] = float(arg_list[i])
     i += 1
@@ -111,7 +111,7 @@ def process_args(arg_list, print_args=True):
         i += 1
         d['N0_species_from2'] = int(arg_list[i])
         i += 1
-        d['migration_from2'] = float(arg_list[i]) * 2 * d['N0_species_from2']
+        d['migration_from2'] = float(arg_list[i]) * 4 * d['N0_species_from2']
         i += 1
         expected_tract_lengths[d['species_from2']] = float(arg_list[i])
         i += 1
@@ -139,7 +139,7 @@ def process_args(arg_list, print_args=True):
     assert d['N0_species_to'] == d['N0_species_from1'] and \
         d['N0_species_to'] == d['N0_species_from2']
 
-    d['topology'] = parse_topology(d['topology'], 1/float(2 * d['N0_species_to']))
+    d['topology'] = parse_topology(d['topology'], 1/float(4 * d['N0_species_to']))
 
     # 13,500 sites to get about 10% with one recombination event, .3% with
     # more than one (based on poisson(.1), 1 recombination per chromosome
@@ -147,11 +147,10 @@ def process_args(arg_list, print_args=True):
     d['num_sites'] = int(arg_list[i])
     i += 1
 
-    # parameter is recombination rate between adjacent bp per generation
-    # should probably be 1/750000 + 6.1 * 10^-6 (where 750000 is average
-    # chr size)
-    # recombination rate
-    d['rho'] = 2 * d['N0_species_to'] * float(arg_list[i]) * (d['num_sites'] - 1)
+    # parameter is recombination rate between adjacent bp per
+    # generation should probably be 1/750000 + 6.1 * 10^-6 = 7.425 *
+    # 10^-6 (where 750000 is average chr size) recombination rate
+    d['rho'] = 4 * d['N0_species_to'] * float(arg_list[i]) * (d['num_sites'] - 1)
     i += 1
 
     d['outcross_rate'] = float(arg_list[i])
@@ -159,7 +158,7 @@ def process_args(arg_list, print_args=True):
     
     d['rho'] *= d['outcross_rate']
 
-    d['theta'] = gp.mu * 2 * d['num_sites'] * d['N0_species_to']
+    d['theta'] = gp.mu * 4 * d['num_sites'] * d['N0_species_to']
 
     d['num_reps'] = int(arg_list[i])
 
