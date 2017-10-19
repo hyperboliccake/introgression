@@ -59,7 +59,7 @@ for i in range(args['num_reps']):
     # to)
     sim_process.write_introgression_blocks(state_seq_blocks, introgression_f, \
                                            i, args['states'])
-    
+
 ms_f.close()
 out_f.close()
 introgression_f.close()

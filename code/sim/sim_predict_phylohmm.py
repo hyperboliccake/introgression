@@ -102,13 +102,16 @@ def predict_introgressed(sim, args, i, gp_dir):
 
     # write results in different format
     trees_to_states = {'p1':'cer', 'p2':'par'} # generalize this? worth it? nah
-    init_new, emis_new, trans_new = process_phylo_output(trees_to_states, \
-                                                         args['tag'], \
-                                                         i, \
-                                                         working_dir + \
-                                                         '/filtered_sites.txt')
+    state_seq, init, emis, trans = process_phylo_output(trees_to_states, \
+                                                        args['tag'], \
+                                                        i, \
+                                                        working_dir + \
+                                                        '/filtered_sites.txt')
 
-    return state_seq, init, emis, trans
+    # TODO gah
+    state_seq_dic = {'1': state_seq}
+
+    return state_seq_dic, init, emis, trans
 
 def gen_input_file(sequence_fn, fn, tag, rep):
     """
@@ -241,7 +244,7 @@ def gen_input_file(sequence_fn, fn, tag, rep):
     # operate_mode = '1' # learn with Baum-Welch
     output_file_path = '../../results/sim/phylo-hmm/initial.viterbi.sequence.' + tag + '.' + str(rep)
     observation_sequence_option = '1' # read new sequence
-    keep_uninformative_sites = 'false' # referred to as "optional filter step" later
+    keep_uninformative_sites = 'true' # referred to as "optional filter step" later
     #sequence_fn = 'sequence.fasta'
     operate_mode_2 = '3' # learn with "a multivariate optimization heuristic that incorporates Brent's method"
     observation_sequence_option_2 = '0' # reuse previously read sequence
