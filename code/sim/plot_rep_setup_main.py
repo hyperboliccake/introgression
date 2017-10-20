@@ -44,7 +44,8 @@ import global_params as gp
 ##======
 
 args, last_read = process_args.process_args(sys.argv)
-block_types = sys.argv[last_read+1:]
+# TODO fix
+block_types = sys.argv[last_read+1+len(args['states']):]
 
 ##======
 # loop through all simulations predict introgression
@@ -63,22 +64,25 @@ introgression_file_lines = [f.readline() for f in introgression_files]
 
 # indices of individuals in species with introgression (keep the
 # reference in even though it's not interesting
-inds = args['species_to_indices']['species_to']
+inds = args['species_to_indices'][args['species_to']]
 #inds.remove(args['ref_inds'][0])
 
 # table 1 (coding of which references each strain matches at each
 # site, 1 file per strain)
 coding_fn_prefix = gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
                args['tag'] + '_site_codings_strain_'
-coding_files = [open(coding_fn_prefix + str(i) + '.txt', 'w') \
-               for i in inds]
+coding_files = dict(zip(inds, \
+                        [open(coding_fn_prefix + str(i) + '.txt', 'w') \
+                         for i in inds]))
+
 
 # table 2 (actual and predicted introgressed blocks, 1 file per
 # strain)
 blocks_fn_prefix = gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
                args['tag'] + '_introgressed_blocks_strain_'
-blocks_files = [open(blocks_fn_prefix + str(i) + '.txt', 'w') \
-               for i in inds]
+blocks_files = dict(zip(inds, \
+                        [open(blocks_fn_prefix + str(i) + '.txt', 'w') \
+                         for i in inds]))
 
 # loop through reps and then individuals
 for i in range(args['num_reps']):
@@ -86,7 +90,7 @@ for i in range(args['num_reps']):
     sim = sim_process.read_one_sim(ms_f, args['num_sites'], args['num_samples'])
 
     seqs_coded = sim_predict.set_up_seqs(sim, args)
-    write_coding_table(seqs_coded, coding_files, i)
+    write_coding_table(seqs_coded, coding_files, i, i == 0)
 
     # read in blocks from all methods
     # keyed by individual, then block type, then species
@@ -99,15 +103,19 @@ for i in range(args['num_reps']):
         assert i == rep, str(i) + ' ' + str(rep)
         introgression_file_lines[j] = line
 
+        # this is just converting the dictionary to have the block
+        # type layer
         for ind in d.keys():
+            if not blocks_dic.has_key(ind):
+                blocks_dic[ind] = {}
             if not blocks_dic[ind].has_key(block_types[j]):
                 blocks_dic[ind][block_types[j]] = {}
             for species in d[ind]:
                 if not blocks_dic[ind][block_types[j]].has_key(species):
                     blocks_dic[ind][block_types[j]][species] = []
-                blocks_dic[ind][block_types[j]][species].append(d[ind][species])    
+                blocks_dic[ind][block_types[j]][species] += d[ind][species]
 
-    write_blocks_table(blocks_dic, blocks_files, i)
+    write_blocks_table(blocks_dic, blocks_files, i, i == 0)
 
-for f in introgression_files + coding_files + blocks_files:
+for f in introgression_files + coding_files.values() + blocks_files.values():
     f.close()
