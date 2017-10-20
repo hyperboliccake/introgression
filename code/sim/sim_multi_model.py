@@ -11,7 +11,7 @@ import process_args
 sys.path.insert(0, '..')
 import global_params as gp
 
-args = process_args.process_args(sys.argv)
+args, last_read = process_args.process_args(sys.argv)
 
 num_samples = args['num_samples_species_to'] + \
               args['num_samples_species_from1'] + \

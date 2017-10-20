@@ -9,9 +9,9 @@ import global_params as gp
 # compares them (for example, actual and predicted regions, or calls
 # from two different prediction methods)
 
-args = process_args.process_args(sys.argv)
-suffix1 = sys.argv[-2]
-suffix2 = sys.argv[-1]
+args, last_read = process_args.process_args(sys.argv)
+suffix1 = sys.argv[last_read + 1]
+suffix2 = sys.argv[last_read + 2]
 
 
 gp_dir = '../'

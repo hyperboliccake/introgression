@@ -216,7 +216,7 @@ def process_args(arg_list, print_args=True):
         for key in d.keys():
             print key, d[key]
 
-    return d
+    return d, i
     
     #return tag, topology, species_to, species_from1, species_from2, \
     #    num_samples_species_to, num_samples_species_from1, num_samples_species_from2, \
