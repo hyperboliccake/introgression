@@ -388,7 +388,7 @@ def run_hmm(seqs, args, init, emis, trans, train):
 
     return predicted, hmm
 
-def predict_introgressed(sim, args, train):
+def set_up_seqs(sim, args): 
 
     # fill in nonpolymorphic sites
     fill_symbol = '0'
@@ -398,6 +398,12 @@ def predict_introgressed(sim, args, train):
     # code sequences by which references they match at each position
     ref_seqs = [seqs_filled[r] for r in args['ref_inds']]
     seqs_coded = code_seqs(seqs_filled, args['num_sites'], ref_seqs)
+
+    return seqs_coded
+
+def predict_introgressed(sim, args, train):
+    
+    seqs_coded = set_up_seqs(sim, args)
 
     # initial values for initial, emission, and transition
     # probabilities
