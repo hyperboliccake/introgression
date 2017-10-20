@@ -205,7 +205,7 @@ def write_introgression_blocks(state_seq_blocks, f, rep, states):
 def read_introgression_blocks(f, line, states):
     # inverse of write_introgression_blocks function above
     
-    d = {} # keyed by individual, then strain, list of sites
+    d = {} # keyed by individual, then species, list of (start, end)
     assert line.startswith('rep'), line
     rep = int(line[len('rep '):-1])
     # process each individual
