@@ -78,7 +78,7 @@ def predict_introgressed(sim, args, i, gp_dir):
 
     # fill in nonpolymorphic sites
     fill_symbol = '0'
-    seqs_filled = sim_predict.fill_seqs(sim['seqs'], sim['recomb_sites'], \
+    seqs_filled = sim_predict.fill_seqs(sim['seqs'], sim['positions'], \
                                         args['num_sites'], fill_symbol)
 
     # use letters because phylo-hmm seems set up only for that

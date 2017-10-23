@@ -392,7 +392,7 @@ def set_up_seqs(sim, args):
 
     # fill in nonpolymorphic sites
     fill_symbol = '0'
-    seqs_filled = fill_seqs(sim['seqs'], sim['recomb_sites'], \
+    seqs_filled = fill_seqs(sim['seqs'], sim['positions'], \
                             args['num_sites'], fill_symbol)
 
     # code sequences by which references they match at each position
