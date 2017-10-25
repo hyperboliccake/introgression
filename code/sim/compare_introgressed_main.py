@@ -10,8 +10,8 @@ import global_params as gp
 # from two different prediction methods)
 
 args, last_read = process_args.process_args(sys.argv)
-suffix1 = sys.argv[last_read + 1]
-suffix2 = sys.argv[last_read + 2]
+suffix1 = sys.argv[-2]
+suffix2 = sys.argv[-1]
 
 
 gp_dir = '../'
