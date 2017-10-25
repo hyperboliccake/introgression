@@ -95,6 +95,7 @@ for i in range(args['num_reps']):
     # read in blocks from all methods
     # keyed by individual, then block type, then species
     blocks_dic = {} 
+
     for j in range(len(block_types)):
         # d is keyed by individual, then species
         d, rep, line = sim_process.read_introgression_blocks(introgression_files[j], \
@@ -115,7 +116,7 @@ for i in range(args['num_reps']):
                     blocks_dic[ind][block_types[j]][species] = []
                 blocks_dic[ind][block_types[j]][species] += d[ind][species]
 
-    write_blocks_table(blocks_dic, blocks_files, i, i == 0)
+    write_blocks_table(blocks_dic, blocks_files, i, str(args['ref_inds'][0]), i == 0)
 
 for f in introgression_files + coding_files.values() + blocks_files.values():
     f.close()
