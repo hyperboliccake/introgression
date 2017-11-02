@@ -37,7 +37,7 @@ while line1 != '' and line2 != '':
     assert rep1 == rep2, str(rep1) + ' ' + str(rep2)
     print 'rep', rep1
 
-    base_counts, avg_base_counts = count_bases(d1, d2, args)
+    base_counts, avg_base_counts = count_bases(d1, d2, args, suffix1, suffix2, 'par')
 
     write_compare_line(avg_base_counts, f_out, args['states'], suffix1, suffix2)
 
