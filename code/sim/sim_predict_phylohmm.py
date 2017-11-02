@@ -57,9 +57,6 @@ def process_phylo_output(trees_to_states, tag, rep, filtered_sites_fn):
         tag + '.' + str(rep)
     predicted = read_predicted(viterbi_fn, trees_to_states)
 
-    # get state sequence
-    
-
     # move filtered sites file to appopriate output directory
     try:
         filtered_sites = [int(x) for x in \
