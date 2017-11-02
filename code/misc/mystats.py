@@ -2,13 +2,14 @@ import math
 import numpy.random
 
 def mean(l):
-    l = filter(lambda x: x != 'NA', l)
+    l = filter(lambda x: x != 'NA' and not math.isnan(x), l)
     if len(l) == 0:
+        #TODO float('nan') ?
         return 'NA'
     return float(sum(l)) / len(l)
 
 def std_dev(l):
-    l = filter(lambda x: x != 'NA', l)
+    l = filter(lambda x: x != 'NA' and not math.isnan(x), l)
     if len(l) == 0:
         return 'NA'
     if len(l) == 1:
@@ -17,13 +18,13 @@ def std_dev(l):
     return math.sqrt(sum([(x - m)**2 for x in l]) / (len(l) - 1))
 
 def std_err(l):
-    l = filter(lambda x: x != 'NA', l)
+    l = filter(lambda x: x != 'NA' and not math.isnan(x), l)
     if len(l) == 0:
         return 'NA'
     return std_dev(l) / math.sqrt(len(l))
 
 def bootstrap(l, n = 100, alpha = .05):
-    l = filter(lambda x: x != 'NA', l)
+    l = filter(lambda x: x != 'NA' and not math.isnan(x), l)
     x = len(l)
     if x == 0:
         return 'NA', 'NA'
