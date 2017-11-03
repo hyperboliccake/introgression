@@ -20,7 +20,7 @@ num_samples = args['num_samples_species_to'] + \
 gp_dir = '../'
 outfilename = gp.sim_out_prefix + args['tag'] + gp.sim_out_suffix
 
-migration1_time_scaling = 45
+migration1_time_scaling = 20
 
 # start of ms command
 # (in case you were thinking about it, DON'T subtract 1 from nsites for
@@ -41,6 +41,7 @@ if args['species_from2'] == None:
         ' ' + str(args['num_samples_species_from1'])
     ms_command += \
         ' -m 1 2 ' + str(args['migration_from1']) + \
+        ' -em ' + str(join_time / float(migration1_time_scaling)) + ' 1 2 0' + \
         ' -em ' + str(join_time) + ' 1 2 0' # this is probably implied
     ms_command += \
         ' -ej ' + str(join_time) + ' 1 2'
