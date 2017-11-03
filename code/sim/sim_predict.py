@@ -45,6 +45,9 @@ def code_seqs(seqs, nsites, ref_seqs):
 
 def get_symbol_freqs_one(seqs, args):
 
+    if len(seqs) == 0:
+        return None
+
     known_states = copy.deepcopy(args['states'])
     if args['unknown_species'] != None:
         known_states.remove(args['unknown_species'])
@@ -120,14 +123,14 @@ def get_symbol_freqs_one(seqs, args):
 def get_symbol_freqs(seqs_coded, args):
 
     # for each species/state set of sequences calculate: the
-    # frequencies of individuals symbols for each species, the
+    # frequencies of individual symbols for each species, the
     # frequencies of combined symbols, and weighted match frequencies
 
     d = {}
     for state in args['states']:
         seqs_current = []
-        for i in range(len(seqs_coded)):
-            if args['index_to_species'][i] == state:
+        for i in args['species_to_indices'][state]:
+            if i not in args['ref_inds']:
                 seqs_current.append(seqs_coded[i])
         d[state] = get_symbol_freqs_one(seqs_current, args)
 
@@ -232,28 +235,12 @@ def transition_probabilities(weighted_match_freqs, args):
     # c->b basically 0
 
     # TODO should be able to calculate expected length based on expected time?
-    #expected_length_introgressed = {}
-    expected_num_introgressed_bases = {}
-    for species in args['expected_tract_lengths'].keys():
-        expected_num_introgressed_bases[species] = \
-            args['expected_num_tracts'][species] * \
-            args['expected_tract_lengths'][species]
-    # TODO should be able to calculate expected length based on expected amount of migration?
-    #expected_num_introgressed_tracts = {}
 
-    expected_num_not_introgressed_tracts = \
-        sum(args['expected_num_tracts'].values()) + 1
-    expected_num_not_introgressed_bases = \
-        args['num_sites'] - sum(expected_num_introgressed_bases.values())
-    expected_length_not_introgressed = float(expected_num_not_introgressed_bases) / \
-        expected_num_not_introgressed_tracts
-    
-    assert expected_num_not_introgressed_tracts >= 0, \
-        expected_num_not_introgressed_tracts
-    assert expected_num_not_introgressed_bases >= 0, \
-        expected_num_not_introgressed_bases
-    assert expected_length_not_introgressed >= 0, \
-        expected_length_not_introgressed
+    # TODO should be able to calculate expected length based on
+    # expected amount of migration?
+
+    expected_length_not_introgressed = \
+        float(args['expected_tract_lengths'][args['species_to']])
 
     # fraction of time we should choose given species state over
     # others based on number of sites that match it
@@ -284,8 +271,7 @@ def transition_probabilities(weighted_match_freqs, args):
             # moving from non-introgressed (cer) to introgressed
             elif state_from == args['species_to']:
                 if expected_length_not_introgressed > 0:
-                    val = 1 / float(expected_length_not_introgressed) * \
-                        fracs[state_to]
+                    val = 1 / expected_length_not_introgressed * fracs[state_to]
                 else:
                     # we should definitely transition if we expect
                     # entire sequence to be introgressed
