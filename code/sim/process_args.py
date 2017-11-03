@@ -123,18 +123,6 @@ def process_args(arg_list, print_args=True):
     # only makes sense to have one unknown species at most
     assert d['has_ref_from1'] or d['has_ref_from2']
 
-    # calculate these based on remaining bases
-    expected_num_tracts[d['species_to']] = sum(expected_num_tracts.values()) + 1
-    expected_num_introgressed_bases = expected_tract_lengths[d['species_from1']] * \
-        expected_num_tracts[d['species_from1']]
-    if d['species_from2'] != None:
-        expected_num_introgressed_bases += expected_tract_lengths[d['species_from2']] * \
-            expected_num_tracts[d['species_from2']]
-    expected_tract_lengths[d['species_to']] = float(expected_num_introgressed_bases) / \
-        expected_num_tracts[d['species_to']]
-
-    d['expected_tract_lengths'] = expected_tract_lengths
-    d['expected_num_tracts'] = expected_num_tracts
 
     assert d['N0_species_to'] == d['N0_species_from1'] and \
         d['N0_species_to'] == d['N0_species_from2']
@@ -147,6 +135,20 @@ def process_args(arg_list, print_args=True):
     d['num_sites'] = int(arg_list[i])
     i += 1
 
+    # calculate these based on remaining bases
+    expected_num_tracts[d['species_to']] = sum(expected_num_tracts.values()) + 1
+    expected_num_introgressed_bases = expected_tract_lengths[d['species_from1']] * \
+        expected_num_tracts[d['species_from1']]
+    if d['species_from2'] != None:
+        expected_num_introgressed_bases += \
+            expected_tract_lengths[d['species_from2']] * \
+            expected_num_tracts[d['species_from2']]
+    expected_tract_lengths[d['species_to']] = \
+        float(d['num_sites'] - expected_num_introgressed_bases) / \
+        expected_num_tracts[d['species_to']]
+
+    d['expected_tract_lengths'] = expected_tract_lengths
+    d['expected_num_tracts'] = expected_num_tracts
     # parameter is recombination rate between adjacent bp per
     # generation should probably be 1/750000 + 6.1 * 10^-6 = 7.425 *
     # 10^-6 (where 750000 is average chr size) recombination rate
