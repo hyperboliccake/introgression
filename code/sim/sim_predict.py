@@ -1,4 +1,4 @@
-import sys
+oimport sys
 import os
 import copy
 import itertools
@@ -6,6 +6,91 @@ sys.path.append('..')
 import global_params as gp
 sys.path.append('../hmm')
 import hmm_bw
+
+def process_args(arg_list, all_sim_args, i=1):
+    
+    d = {}
+
+    d['tag'] = arg_list[i]
+    i += 1
+
+    sim_args = all_sim_args[d['tag']]
+
+    # expected length and number of tracts...
+    expected_tract_lengths = {}
+    expected_num_tracts = {}
+
+    expected_tract_lengths[sim_args['species_from1']] = float(arg_list[i])
+    i += 1
+    expected_num_tracts[sim_args['species_from1']] = int(arg_list[i])
+    i += 1
+    d['has_ref_from1'] = (arg_list[i] == 'ref')
+    i += 1
+
+    d['has_ref_from2'] = False
+    if len(sim_args['species']) == 3:
+        expected_tract_lengths[sim_args['species_from2']] = float(arg_list[i])
+        i += 1
+        expected_num_tracts[sim_args['species_from2']] = int(arg_list[i])
+        i += 1
+        d['has_ref_from2'] = (arg_list[i] == 'ref')
+
+    # only makes sense to have one unknown species at most
+    assert d['has_ref_from1'] or d['has_ref_from2']
+    # if there are three species and the second is the species that has no
+    # reference, flip the order of the states so that the species with no
+    # reference always comes last; this will ensure that the indices of
+    # the species in states correspond to the indices of the references
+    # (and the sequence codings later); ACTUALLY just force the unknown
+    # species to come last
+    if d['species_from2'] != None:
+        assert d['has_ref_from1']
+
+
+    # take first index from each population to be reference sequence
+    ref_ind_species_to = 0
+    ref_ind_species_from1 = d['num_samples_species_to']
+    ref_ind_species_from2 = d['num_samples_species_to'] + \
+                            d['num_samples_species_from1']
+    ref_inds = [ref_ind_species_to]
+
+    states = [d['species_to'], d['species_from1']]
+    unknown_species = None
+    if d['has_ref_from1']:
+        ref_inds.append(ref_ind_species_from1)
+    else:
+        unknown_species = d['species_from1']
+    if d['species_from2'] != None:
+        states.append(d['species_from2'])
+        if d['has_ref_from2']:
+            ref_inds.append(ref_ind_species_from2)
+        else:
+            unknown_species = d['species_from2']
+
+    d['unknown_species'] = unknown_species
+    d['states'] = states
+    d['ref_inds'] = ref_inds
+
+    # calculate these based on remaining bases
+    expected_num_tracts[sim_args['species_to']] = sum(expected_num_tracts.values()) + 1
+    expected_num_introgressed_bases = \
+        expected_tract_lengths[sim_args['species_from1']] * \
+        expected_num_tracts[sim_args['species_from1']]
+    if sim_args['species_from2'] != None:
+        expected_num_introgressed_bases += \
+            expected_tract_lengths[sim_args['species_from2']] * \
+            expected_num_tracts[sim_args['species_from2']]
+    expected_tract_lengths[sim_args['species_to']] = \
+        float(sim_args['num_sites'] - expected_num_introgressed_bases) / \
+        expected_num_tracts[sim_args['species_to']]
+
+    d['expected_tract_lengths'] = expected_tract_lengths
+    d['expected_num_tracts'] = expected_num_tracts
+
+    for key in sim_args.keys():
+        d[key] = sim_args[key]
+
+    return d, i
 
 # add in the nonpolymorphic sites
 def fill_seqs(polymorphic_seqs, polymorphic_sites, nsites, fill):
@@ -389,7 +474,7 @@ def set_up_seqs(sim, args):
 
     return seqs_coded
 
-def predict_introgressed(sim, args, train):
+def predict_introgressed(sim, sim_args, predict_args, train):
     
     seqs_coded = set_up_seqs(sim, args)
 

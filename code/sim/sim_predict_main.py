@@ -10,7 +10,8 @@ import global_params as gp
 # read in simulation parameters
 ##======
 
-args, last_read = process_args.process_args(sys.argv)
+all_sim_args = process_args.process_all_args(sys.argv[1])
+args, last_read = process_args(sys.argv, all_sim_args, i=2)
 
 ##======
 # loop through all simulations predict introgression
