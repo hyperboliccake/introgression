@@ -23,6 +23,9 @@ ms_f = open(gp_dir + gp.sim_out_dir + '/ms/' + gp.sim_out_prefix + \
 # summary output
 out_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
                 args['tag'] + '_hmm.txt', 'w')
+# summary output
+out_init_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
+                args['tag'] + '_hmm_init.txt', 'w')
 # introgression output
 introgression_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
                            args['tag'] + '_introgressed_predicted.txt', 'w')
@@ -42,7 +45,7 @@ for i in range(args['num_reps']):
     # predict introgressed/non-introgressed tracts
     ##======
     
-    state_seq, hmm = predict_introgressed(sim, args, train=True)
+    state_seq, hmm, hmm_init = predict_introgressed(sim, args, train=True)
     state_seq_blocks = sim_process.convert_to_blocks(state_seq, \
                                                      args['states'])
 
@@ -50,7 +53,10 @@ for i in range(args['num_reps']):
     # output
     ##======
 
-    # summary info about HMM
+    # summary info about HMM (before training)
+    write_hmm_line(hmm_init, out_init_f, i==0) 
+
+    # summary info about HMM (after training)
     write_hmm_line(hmm, out_f, i==0) 
 
     # specific locations of introgression (for comparing predictions

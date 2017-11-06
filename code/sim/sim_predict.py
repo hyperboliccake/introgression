@@ -362,6 +362,8 @@ def run_hmm(seqs, args, init, emis, trans, train):
     hmm.set_emis(emis)
     hmm.set_trans(trans)
 
+    hmm_init = copy.deepcopy(hmm)
+
     # optional Baum-Welch parameter estimation
     if train:
         hmm.go()
@@ -372,7 +374,7 @@ def run_hmm(seqs, args, init, emis, trans, train):
         hmm.set_obs(seqs[i])
         predicted[i] = convert_predictions(hmm.viterbi(), args['states'])
 
-    return predicted, hmm
+    return predicted, hmm, hmm_init
 
 def set_up_seqs(sim, args): 
 
@@ -396,9 +398,9 @@ def predict_introgressed(sim, args, train):
     init, emis, trans = initial_hmm_parameters(seqs_coded, args)
 
     # make predictions
-    predicted, hmm = run_hmm(seqs_coded, args, init, emis, trans, train)
+    predicted, hmm, hmm_init = run_hmm(seqs_coded, args, init, emis, trans, train)
 
-    return predicted, hmm
+    return predicted, hmm, hmm_init
 
 def write_hmm_headers(states, emis_symbols, f, sep):
 
