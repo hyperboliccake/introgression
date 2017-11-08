@@ -8,9 +8,10 @@ def find_in_blocks(i, blocks):
 def count_bases_one(d1, d2, args, suffix1, suffix2):
     # for one individual
     d = {}
+    d_suffix = {suffix1:{}, suffix2:{}}
     for state1 in args['states']:
-        d[(state1, suffix1)] = 0
-        d[(state1, suffix2)] = 0
+        d_suffix[suffix1][state1] = 0
+        d_suffix[suffix2][state1] = 0
         for state2 in args['states']:
             d[(state1, state2)] = 0
 
@@ -18,9 +19,10 @@ def count_bases_one(d1, d2, args, suffix1, suffix2):
         state1 = find_in_blocks(i, d1)
         state2 = find_in_blocks(i, d2)
         d[(state1, state2)] += 1
-        d[(state1, suffix1)] += 1
-        d[(state2, suffix2)] += 1
-    return d
+        d_suffix[suffix1][state1] += 1
+        d_suffix[suffix2][state2] += 1
+
+    return d, d_suffix
 
 def count_bases(d1, d2, args, suffix1, suffix2, pos):
     # separate counts for all individuals
@@ -29,8 +31,12 @@ def count_bases(d1, d2, args, suffix1, suffix2, pos):
     d_avg = {}
     d_avg['true positive'] = 0
     d_avg['positive'] = 0
+    d_avg['predicted positive'] = 0
     d_avg['false positive'] = 0
+    d_avg['true negative'] = 0
     d_avg['negative'] = 0
+    d_avg['false negative'] = 0
+    d_avg['predicted negative'] = 0
     for state1 in args['states']:
         d_avg[(state1, suffix1)] = 0
         d_avg[(state1, suffix2)] = 0
@@ -40,19 +46,37 @@ def count_bases(d1, d2, args, suffix1, suffix2, pos):
     num_inds = 0
     for ind in d1.keys():
         if d2.has_key(ind):
-            d[ind] = count_bases_one(d1[ind], d2[ind], args, suffix1, suffix2)
+            d_pairs, d_suffix = count_bases_one(d1[ind], d2[ind], args, \
+                                                suffix1, suffix2)
+            d[ind] = d_pairs
             for pair in d[ind]:
                 d_avg[pair] += d[ind][pair]
-                # TODO fix this jankiness
+
                 if pair == (pos, pos): # par, par
                     d_avg['true positive'] += d[ind][pair]
-                elif pair == (pos, suffix1): # par, actual
-                    d_avg['positive'] += d[ind][pair]
-                elif pair[0] != pos and pair[1] == pos: # cer|bay, par
+                elif pair[0] != pos and pair[1] == pos: # cer, par
                     d_avg['false positive'] += d[ind][pair]
-                elif pair[0] != pos and pair[1] == suffix1: # cer|bay, actual
-                    d_avg['negative'] += d[ind][pair]
+                elif pair[0] == pos and pair[1] != pos: # par, cer
+                    d_avg['false negative'] += d[ind][pair]
+                else: # cer, cer
+                    d_avg['true negative'] += d[ind][pair]
+
+            for state in d_suffix[suffix1]:
+                if state == pos:
+                    d_avg['positive'] += d_suffix[suffix1][state]
+                else:
+                    d_avg['negative'] += d_suffix[suffix1][state]
+
+            for state in d_suffix[suffix2]:
+                if state == pos:
+                    d_avg['predicted positive'] += d_suffix[suffix2][state]
+                else:
+                    d_avg['predicted negative'] += d_suffix[suffix2][state]
+
             num_inds += 1
+
+    for key in d_avg:
+        d_avg[key] = d_avg[key]/float(num_inds)
 
     try:
         d_avg['tpr'] = d_avg['true positive'] / float(d_avg['positive'])
@@ -62,9 +86,14 @@ def count_bases(d1, d2, args, suffix1, suffix2, pos):
         d_avg['fpr'] = d_avg['false positive'] / float(d_avg['negative'])
     except:
         d_avg['fpr'] = float('nan')
-
-    for pair in d_avg:
-        d_avg[pair] = d_avg[pair]/float(num_inds)
+    try: 
+        d_avg['ppv'] = d_avg['true positive'] / float(d_avg['predicted positive'])
+    except:
+        d_avg['ppv'] = float('nan')
+    try: 
+        d_avg['fdr'] = d_avg['false positive'] / float(d_avg['predicted positive'])
+    except:
+        d_avg['fdr'] = float('nan')
 
     # TODO fix d?
     return d, d_avg
@@ -72,33 +101,37 @@ def count_bases(d1, d2, args, suffix1, suffix2, pos):
 def write_compare_header(f, states, suffix1, suffix2, sep='\t'):
 
     header_string = ''
-    header_string += 'tpr' + sep + 'fpr' + sep
-    header_string += 'tp' + sep + 'p' + sep
-    header_string += 'fp' + sep + 'n' + sep
+    header_string += 'tp' + sep + 'p' + sep + 'fp' + sep + 'pp' + sep
+    header_string += 'tn' + sep + 'n' + sep + 'fn' + sep + 'pn' + sep
+    header_string += 'tpr' + sep + 'fpr' + sep + 'ppv' + sep + 'fdr' + sep
 
-    for state in states:
-        header_string += 'bases_' + suffix1 + '_' + state + sep
-        header_string += 'bases_' + suffix2 + '_' + state + sep
-    for state1 in states:
-        for state2 in states:
-            header_string += 'bases_' + suffix1 + '_' + state1 + \
-                             '_' + suffix2 + '_' + state2 + sep
-    # TODO also want to compute TPR/FPR etc here because we need to
-    # bootstrap on that, not just the numerator and denominator
+    #for state in states:
+    #    header_string += 'bases_' + suffix1 + '_' + state + sep
+    #    header_string += 'bases_' + suffix2 + '_' + state + sep
+    #for state1 in states:
+    #    for state2 in states:
+    #        header_string += 'bases_' + suffix1 + '_' + state1 + \
+    #                         '_' + suffix2 + '_' + state2 + sep
     f.write(header_string[:-len(sep)] + '\n')
 
 def write_compare_line(avg_base_counts, f, states, suffix1, suffix2, sep='\t'):
 
     line_string = ''
-    line_string += str(avg_base_counts['tpr']) + sep + str(avg_base_counts['fpr']) + sep
-    line_string += str(avg_base_counts['true positive']) + sep + str(avg_base_counts['positive']) + sep
-    line_string += str(avg_base_counts['false positive']) + sep + str(avg_base_counts['negative']) + sep
-    for state in states:
-        line_string += str(avg_base_counts[(state, suffix1)]) + sep
-        line_string += str(avg_base_counts[(state, suffix2)]) + sep
-    for state1 in states:
-        for state2 in states:
-            line_string += str(avg_base_counts[(state1, state2)]) + sep
+    line_string += str(avg_base_counts['tp']) + sep
+    line_string += str(avg_base_counts['p']) + sep
+    line_string += str(avg_base_counts['fp']) + sep
+    line_string += str(avg_base_counts['pp']) + sep
+    line_string += str(avg_base_counts['tn']) + sep
+    line_string += str(avg_base_counts['n']) + sep
+    line_string += str(avg_base_counts['fn']) + sep
+    line_string += str(avg_base_counts['pn']) + sep
+
+    #for state in states:
+    #    line_string += str(avg_base_counts[(state, suffix1)]) + sep
+    #    line_string += str(avg_base_counts[(state, suffix2)]) + sep
+    #for state1 in states:
+    #    for state2 in states:
+    #        line_string += str(avg_base_counts[(state1, state2)]) + sep
 
     f.write(line_string[:-len(sep)] + '\n')
 
