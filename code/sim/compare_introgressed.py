@@ -9,10 +9,10 @@ def count_bases_one(d1, d2, args, suffix1, suffix2):
     # for one individual
     d = {}
     d_suffix = {suffix1:{}, suffix2:{}}
-    for state1 in args['states']:
+    for state1 in args['species']:
         d_suffix[suffix1][state1] = 0
         d_suffix[suffix2][state1] = 0
-        for state2 in args['states']:
+        for state2 in args['species']:
             d[(state1, state2)] = 0
 
     for i in range(args['num_sites']):
@@ -37,10 +37,10 @@ def count_bases(d1, d2, args, suffix1, suffix2, pos):
     d_avg['negative'] = 0
     d_avg['false negative'] = 0
     d_avg['predicted negative'] = 0
-    for state1 in args['states']:
+    for state1 in args['species']:
         d_avg[(state1, suffix1)] = 0
         d_avg[(state1, suffix2)] = 0
-        for state2 in args['states']:
+        for state2 in args['species']:
             d_avg[(state1, state2)] = 0
     # loop through all individuals
     num_inds = 0
@@ -117,14 +117,20 @@ def write_compare_header(f, states, suffix1, suffix2, sep='\t'):
 def write_compare_line(avg_base_counts, f, states, suffix1, suffix2, sep='\t'):
 
     line_string = ''
-    line_string += str(avg_base_counts['tp']) + sep
-    line_string += str(avg_base_counts['p']) + sep
-    line_string += str(avg_base_counts['fp']) + sep
-    line_string += str(avg_base_counts['pp']) + sep
-    line_string += str(avg_base_counts['tn']) + sep
-    line_string += str(avg_base_counts['n']) + sep
-    line_string += str(avg_base_counts['fn']) + sep
-    line_string += str(avg_base_counts['pn']) + sep
+    line_string += str(avg_base_counts['true positive']) + sep
+    line_string += str(avg_base_counts['positive']) + sep
+    line_string += str(avg_base_counts['false positive']) + sep
+    line_string += str(avg_base_counts['predicted positive']) + sep
+
+    line_string += str(avg_base_counts['true negative']) + sep
+    line_string += str(avg_base_counts['negative']) + sep
+    line_string += str(avg_base_counts['false negative']) + sep
+    line_string += str(avg_base_counts['predicted negative']) + sep
+
+    line_string += str(avg_base_counts['tpr']) + sep
+    line_string += str(avg_base_counts['fpr']) + sep
+    line_string += str(avg_base_counts['ppv']) + sep
+    line_string += str(avg_base_counts['fdr']) + sep
 
     #for state in states:
     #    line_string += str(avg_base_counts[(state, suffix1)]) + sep
