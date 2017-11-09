@@ -26,7 +26,7 @@ ms_f = open(gp_dir + gp.sim_out_dir + '/ms/' + gp.sim_out_prefix + \
                 args['tag'] + '.txt', 'r')
 # summary output
 out_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
-                args['tag'] + '_phylohmm.txt', 'w')
+                args['tag'] + '_phylohmm' + predict_tag + '.txt', 'w')
 # introgression output
 introgression_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
                        args['tag'] + '_introgressed_predicted_phylohmm' + \
