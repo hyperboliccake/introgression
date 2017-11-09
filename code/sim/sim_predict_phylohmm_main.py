@@ -13,6 +13,9 @@ import global_params as gp
 
 args, last_read = process_args.process_args(sys.argv)
 
+predict_tag = args[-2]
+threshold = float(args[-1])
+
 ##======
 # loop through all simulations predict introgression
 ##======
@@ -26,7 +29,8 @@ out_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
                 args['tag'] + '_phylohmm.txt', 'w')
 # introgression output
 introgression_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
-                           args['tag'] + '_introgressed_predicted_phylohmm.txt', 'w')
+                       args['tag'] + '_introgressed_predicted_phylohmm' + \
+                       predict_tag + '.txt', 'w')
 
 for i in range(args['num_reps']):
     
@@ -43,10 +47,11 @@ for i in range(args['num_reps']):
     # predict introgressed/non-introgressed tracts
     ##======
 
-    state_seq, init, emis, trans = predict_introgressed(sim, args, i, gp_dir)
+    state_seq, probs, init, emis, trans = \
+        predict_introgressed(sim, args, i, gp_dir, threshold)
 
     state_seq_blocks = sim_process.convert_to_blocks(state_seq, \
-                                                     args['states'])
+                                                     args['species'])
 
     ##======
     # output
@@ -58,7 +63,7 @@ for i in range(args['num_reps']):
     # specific locations of introgression (for comparing predictions
     # to)
     sim_process.write_introgression_blocks(state_seq_blocks, introgression_f, \
-                                           i, args['states'])
+                                           i, args['species'])
 
 ms_f.close()
 out_f.close()
