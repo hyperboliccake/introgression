@@ -11,10 +11,12 @@ import global_params as gp
 # read in simulation parameters
 ##======
 
-args, last_read = process_args.process_args(sys.argv)
-
-predict_tag = args[-2]
-threshold = float(args[-1])
+# need to read in all sim args so that we can find the one with the
+# correct tag
+all_sim_args = process_args.process_all_args(sys.argv[1])
+# then read prediction-specific args and combine those with sim args
+# for the correct tag
+args, last_read = process_args(sys.argv, all_sim_args, i=2)
 
 ##======
 # loop through all simulations predict introgression
@@ -26,11 +28,11 @@ ms_f = open(gp_dir + gp.sim_out_dir + '/ms/' + gp.sim_out_prefix + \
                 args['tag'] + '.txt', 'r')
 # summary output
 out_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
-                args['tag'] + '_phylohmm' + predict_tag + '.txt', 'w')
+                args['tag'] + '_phylohmm' + args['predict_tag'] + '.txt', 'w')
 # introgression output
 introgression_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
                        args['tag'] + '_introgressed_predicted_phylohmm' + \
-                       predict_tag + '.txt', 'w')
+                       args['predict_tag'] + '.txt', 'w')
 
 for i in range(args['num_reps']):
     
@@ -48,7 +50,7 @@ for i in range(args['num_reps']):
     ##======
 
     state_seq, probs, init, emis, trans = \
-        predict_introgressed(sim, args, i, gp_dir, threshold)
+        predict_introgressed(sim, args, i, gp_dir)
 
     state_seq_blocks = sim_process.convert_to_blocks(state_seq, \
                                                      args['species'])
