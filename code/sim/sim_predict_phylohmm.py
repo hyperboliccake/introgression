@@ -21,9 +21,6 @@ def process_args(arg_list, all_sim_args, i=1):
 
     d['threshold'] = float(args[i])
 
-    for key in sim_args.keys():
-        d[key] = sim_args[key]
-
     return d, i
 
 def convert_binary_to_nucleotides(seqs):
@@ -151,25 +148,25 @@ def process_phylo_posterior_decoding_output(state_index_to_species, tag, rep, \
     return state_seq, probs, None, None, None
 
 
-def predict_introgressed(sim, args, i, gp_dir):
+def predict_introgressed(sim, sim_args, predict_args, i, gp_dir):
 
     # fill in nonpolymorphic sites
     fill_symbol = '0'
     seqs_filled = sim_predict.fill_seqs(sim['seqs'], sim['positions'], \
-                                        args['num_sites'], fill_symbol)
+                                        sim_args['num_sites'], fill_symbol)
 
     # use letters because phylo-hmm seems set up only for that
     seqs_filled = convert_binary_to_nucleotides(seqs_filled)
 
     # and write to file
     seq_fn = gp_dir + gp.sim_out_dir + '/ms/' + gp.sim_out_prefix + \
-             'sequence_' + args['tag'] + '_rep' + str(i) + '.fasta'
+             'sequence_' + sim_args['tag'] + '_rep' + str(i) + '.fasta'
     write_fasta(seqs_filled, ['C1', 'C2', 'P', 'OUTGROUP'], seq_fn) # TODO unhardcode
 
     # create input file for phylo-hmm
     input_fn = gp_dir + gp.sim_out_dir + '/phylo-hmm/' + 'autoinput_' + \
-        args['tag'] + '_rep' + str(i) + '.txt'
-    working_dir = gen_input_file(seq_fn, input_fn, args['tag'], i)
+        sim_args['tag'] + '_rep' + str(i) + '.txt'
+    working_dir = gen_input_file(seq_fn, input_fn, sim_args['tag'], i)
 
     # make predictions
     phylohmm_command = \
@@ -190,9 +187,9 @@ def predict_introgressed(sim, args, i, gp_dir):
     default_state = args['species_to']
     state_seq, probs, init, emis, trans = \
         process_phylo_posterior_decoding_output(state_index_to_species, \
-                                                args['tag'], i, \
+                                                sim_args['tag'], i, \
                                                 working_dir + '/filtered_sites.txt',
-                                                args['threshold'], default_state)
+                                                predict_args['threshold'], default_state)
 
     # TODO gah
     state_seq_dic = {'1': state_seq}

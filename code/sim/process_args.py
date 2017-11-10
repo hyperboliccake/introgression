@@ -153,15 +153,15 @@ def process_args(arg_list, i=1, print_args=True):
 
     return d, i
     
-def process_all_args(fn):
+def process_args_by_tag(fn, tag):
     
     f = open(fn, 'r')
     line = f.readline()
-    args = {}
+    args = None
     while line != '':
-        current_args = process_args(line, i=0)
-        args[current_args['tag']] = current_args
+        args = process_args(line, i=0)
+        if args['tag'] == tag:
+            break
         line = f.readline()
-
     f.close()
     return args

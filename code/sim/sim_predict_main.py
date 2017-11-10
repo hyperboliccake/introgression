@@ -10,7 +10,15 @@ import global_params as gp
 # read in simulation parameters
 ##======
 
+sim_tag = sys.argv[2]
+sim_args = process_args.process_args_by_tag(sys.argv[1], sim_tag)
+predict_args, last_read = process_args(sys.argv, sim_args, i=2)
+
+# need to read in all sim args so that we can find the one with the
+# correct tag
 all_sim_args = process_args.process_all_args(sys.argv[1])
+# then read prediction-specific args and combine those with sim args
+# for the correct tag
 args, last_read = process_args(sys.argv, all_sim_args, i=2)
 
 ##======
@@ -20,16 +28,17 @@ args, last_read = process_args(sys.argv, all_sim_args, i=2)
 gp_dir = '../'
 # for reading output from ms
 ms_f = open(gp_dir + gp.sim_out_dir + '/ms/' + gp.sim_out_prefix + \
-                args['tag'] + '.txt', 'r')
+            args['tag'] + '.txt', 'r')
 # summary output
 out_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
-                args['tag'] + '_hmm.txt', 'w')
+             args['tag'] + '_hmm_' + args['predict_tag'] + '.txt', 'w')
 # summary output
 out_init_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
-                args['tag'] + '_hmm_init.txt', 'w')
+                  args['tag'] + '_hmm_init_' + args['predict_tag'] + '.txt', 'w')
 # introgression output
 introgression_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
-                           args['tag'] + '_introgressed_predicted.txt', 'w')
+                       args['tag'] + '_introgressed_predicted_' + \
+                       args['predict_tag'] + '.txt', 'w')
 
 for i in range(args['num_reps']):
     
@@ -46,7 +55,7 @@ for i in range(args['num_reps']):
     # predict introgressed/non-introgressed tracts
     ##======
     
-    state_seq, hmm, hmm_init = predict_introgressed(sim, args, train=True)
+    state_seq, probs, hmm, hmm_init = predict_introgressed(sim, args, train=True)
     state_seq_blocks = sim_process.convert_to_blocks(state_seq, \
                                                      args['states'])
 
@@ -64,6 +73,8 @@ for i in range(args['num_reps']):
     # to)
     sim_process.write_introgression_blocks(state_seq_blocks, introgression_f, \
                                            i, args['states'])
+
+    # TODO file format that gives probabilities
     
 ms_f.close()
 out_f.close()

@@ -7,14 +7,17 @@ import global_params as gp
 sys.path.append('../hmm')
 import hmm_bw
 
-def process_args(arg_list, all_sim_args, i=1):
+def process_args(arg_list, sim_args, i=1):
     
     d = {}
 
     d['tag'] = arg_list[i]
     i += 1
 
-    sim_args = all_sim_args[d['tag']]
+    d['predict_tag'] = arg_list[i]
+    i += 1
+
+    d['threshold'] = float(arg_list[i])
 
     # expected length and number of tracts...
     expected_tract_lengths = {}
@@ -86,9 +89,6 @@ def process_args(arg_list, all_sim_args, i=1):
 
     d['expected_tract_lengths'] = expected_tract_lengths
     d['expected_num_tracts'] = expected_num_tracts
-
-    for key in sim_args.keys():
-        d[key] = sim_args[key]
 
     return d, i
 
