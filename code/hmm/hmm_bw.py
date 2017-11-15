@@ -412,3 +412,11 @@ class HMM:
           max_path = self.max_path(T_probs, T_states)
           return max_path
 
+     def posterior_decoding(self):
+          
+          # probability of being in each state at each position, in
+          # format of a list of lists
+          alpha = self.foward()
+          beta = self.backward()
+          return self.state_probs(alpha, beta)
+          
