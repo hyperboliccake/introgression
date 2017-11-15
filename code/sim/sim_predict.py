@@ -341,7 +341,7 @@ def transition_probabilities(weighted_match_freqs, sim_args, predict_args):
     # any probabilities to 0
     for state in fracs:
         fracs[state] /= float(frac_den)
-
+        
     trans = []
     for state_from in predict_args['states']:
         trans_current = {}
@@ -364,7 +364,7 @@ def transition_probabilities(weighted_match_freqs, sim_args, predict_args):
             # moving from introgressed to non-introgressed
             elif state_to == sim_args['species_to']:
                 if predict_args['expected_tract_lengths'][state_from] > 0:
-                    val = 1 / float([predict_args['expected_tract_lengths'][state_from])
+                    val = 1 / float(predict_args['expected_tract_lengths'][state_from])
                 else:
                     # we should definitely transition if we don't
                     # expect any introgression
@@ -377,7 +377,7 @@ def transition_probabilities(weighted_match_freqs, sim_args, predict_args):
             trans_current[state_to] = val
 
         trans_current[state_from] = 1 - total
-
+                                    
         # add epsilon and normalize to avoid 0 probabilities
         total = 1 + len(predict_args['states']) * epsilon
         for state_to in predict_args['states']:
@@ -420,6 +420,20 @@ def convert_predictions(path, states):
         new_path.append(states[p])
     return new_path
 
+def get_max_path(path, states):
+    max_path = []
+    max_probs = []
+    for site_probs in path:
+        max_ind = None
+        max_prob = -1
+        for i in range(len(states)):
+            if site_probs[i] > max_prob:
+                max_prob = site_probs[i]
+                max_ind = i
+        max_path.append(states[max_ind])
+        max_probs.append(max_prob)
+    return max_path, max_probs
+
 def run_hmm(seqs, sim_args, predict_args, init, emis, trans, train):
 
     # sanity checks
@@ -454,13 +468,18 @@ def run_hmm(seqs, sim_args, predict_args, init, emis, trans, train):
     if train:
         hmm.go()
 
-    # make predictions!
+    # make predictions! (with posterior decoding, not viterbi)
     predicted = {}
+    probs = {}
     for i in predict_inds:
         hmm.set_obs(seqs[i])
-        predicted[i] = convert_predictions(hmm.viterbi(), predict_args['states'])
+        # alpha
+        probs = hmm.posterior_decoding()
+        path, probs = get_max_path(probs, predict_args['states'])
+        predicted[i] = path
+        probs[i] = probs
 
-    return predicted, hmm, hmm_init
+    return predicted, probs, hmm, hmm_init
 
 def set_up_seqs(sim, sim_args, predict_args): 
 
@@ -484,10 +503,10 @@ def predict_introgressed(sim, sim_args, predict_args, train):
     init, emis, trans = initial_hmm_parameters(seqs_coded, sim_args, predict_args)
 
     # make predictions
-    predicted, hmm, hmm_init = run_hmm(seqs_coded, sim_args, predict_args,\
-                                       init, emis, trans, train)
+    predicted, probs, hmm, hmm_init = run_hmm(seqs_coded, sim_args, predict_args,\
+                                              init, emis, trans, train)
 
-    return predicted, hmm, hmm_init
+    return predicted, probs, hmm, hmm_init
 
 def write_hmm_headers(states, emis_symbols, f, sep):
 
@@ -536,3 +555,4 @@ def write_hmm_line(hmm, f, header = False):
 
     f.write(line_string[:-(len(sep))] + '\n')
     f.flush()
+

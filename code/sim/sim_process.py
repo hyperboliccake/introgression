@@ -227,3 +227,22 @@ def read_introgression_blocks(f, line, states):
         line = f.readline()
                 
     return d, rep, line
+
+def write_state_probs(probs, f, rep):
+    
+    # file format (similar to introgressed blocks) is:
+    # rep 0
+    # 2\t.1,.2,.3
+    # 3\t.4,.2,.3
+    # rep 1 ...
+
+    f.write('rep ' + str(rep) + '\n')
+
+    for ind in probs:
+        f.write(str(ind) + '\t')
+        # currently only keeping track of the highest
+        # probabilities at each site, but might be useful to keep
+        # track of all the state probabilities
+        probs_string = ','.join([str(x) for x in probs[ind]])
+        f.write(probs_string + '\n')
+    f.flush()

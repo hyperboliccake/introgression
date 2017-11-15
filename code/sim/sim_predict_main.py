@@ -14,13 +14,6 @@ sim_tag = sys.argv[2]
 sim_args = process_args.process_args_by_tag(sys.argv[1], sim_tag)
 predict_args, last_read = process_args(sys.argv, sim_args, i=2)
 
-# need to read in all sim args so that we can find the one with the
-# correct tag
-all_sim_args = process_args.process_all_args(sys.argv[1])
-# then read prediction-specific args and combine those with sim args
-# for the correct tag
-args, last_read = process_args(sys.argv, all_sim_args, i=2)
-
 ##======
 # loop through all simulations predict introgression
 ##======
@@ -28,19 +21,23 @@ args, last_read = process_args(sys.argv, all_sim_args, i=2)
 gp_dir = '../'
 # for reading output from ms
 ms_f = open(gp_dir + gp.sim_out_dir + '/ms/' + gp.sim_out_prefix + \
-            args['tag'] + '.txt', 'r')
+            sim_tag + '.txt', 'r')
 # summary output
 out_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
-             args['tag'] + '_hmm_' + args['predict_tag'] + '.txt', 'w')
+             sim_tag + '_hmm_' + predict_args['predict_tag'] + '.txt', 'w')
 # summary output
 out_init_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
-                  args['tag'] + '_hmm_init_' + args['predict_tag'] + '.txt', 'w')
+                  sim_tag + '_hmm_init_' + predict_args['predict_tag'] + '.txt', 'w')
 # introgression output
 introgression_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
-                       args['tag'] + '_introgressed_predicted_' + \
-                       args['predict_tag'] + '.txt', 'w')
+                       sim_tag + '_introgressed_predicted_' + \
+                       predict_args['predict_tag'] + '.txt', 'w')
+# associtated probabilities output
+prob_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
+              sim_tag + '_introgressed_probs_predicted_' + \
+              predict_args['predict_tag'] + '.txt', 'w')
 
-for i in range(args['num_reps']):
+for i in range(sim_args['num_reps']):
     
     print i
 
@@ -49,15 +46,16 @@ for i in range(args['num_reps']):
     ##======
     
     # trees, recomb_sites, seg_sites, positions, seqs
-    sim = sim_process.read_one_sim(ms_f, args['num_sites'], args['num_samples'])
+    sim = sim_process.read_one_sim(ms_f, sim_args['num_sites'], sim_args['num_samples'])
 
     ##======
     # predict introgressed/non-introgressed tracts
     ##======
     
-    state_seq, probs, hmm, hmm_init = predict_introgressed(sim, args, train=True)
+    state_seq, probs, hmm, hmm_init = predict_introgressed(sim, sim_args, \
+                                                           predict_args, train=True)
     state_seq_blocks = sim_process.convert_to_blocks(state_seq, \
-                                                     args['states'])
+                                                     predict_args['states'])
 
     ##======
     # output
@@ -69,14 +67,14 @@ for i in range(args['num_reps']):
     # summary info about HMM (after training)
     write_hmm_line(hmm, out_f, i==0) 
 
-    # specific locations of introgression (for comparing predictions
-    # to)
+    # locations of introgression
     sim_process.write_introgression_blocks(state_seq_blocks, introgression_f, \
-                                           i, args['states'])
+                                           i, predict_args['states'])
 
-    # TODO file format that gives probabilities
+    # probabilities at each site
+    sim_process.write_state_probs(probs, prob_f, i)
     
 ms_f.close()
 out_f.close()
 introgression_f.close()
-
+prob_f.close()
