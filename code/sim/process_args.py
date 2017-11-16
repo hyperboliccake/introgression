@@ -43,6 +43,8 @@ def parse_topology(t, factor=1):
 
 def process_args(arg_list, i=1, print_args=True):
 
+    print arg_list
+
     # store all arguments in dictionary
     d = {}
 
@@ -60,6 +62,8 @@ def process_args(arg_list, i=1, print_args=True):
 
     # species names
     d['species'] = concordance_functions.get_labels(parse_topology(d['topology']))
+    print d['topology']
+    print d['species']
     assert len(d['species']) == 2 or len(d['species']) == 3, d['species']
 
     # ...for the species with introgression
@@ -159,7 +163,7 @@ def process_args_by_tag(fn, tag):
     line = f.readline()
     args = None
     while line != '':
-        args = process_args(line, i=0)
+        args, last_read = process_args(line.strip().split(' '), i=0)
         if args['tag'] == tag:
             break
         line = f.readline()
