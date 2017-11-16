@@ -416,7 +416,17 @@ class HMM:
           
           # probability of being in each state at each position, in
           # format of a list of lists
-          alpha = self.foward()
+          alpha = self.forward()
           beta = self.backward()
-          return self.state_probs(alpha, beta)
-          
+          gamma = self.state_probs(alpha, beta)
+          p = []
+          for ind in range(len(self.obs)):
+               p_ind = []
+               for site in range(len(self.obs[ind])):
+                    p_ind_site = {}
+                    for state_ind in range(len(self.states)):
+                         p_ind_site[self.states[state_ind]] = \
+                              eexp(gamma[ind][site][state_ind])
+                    p_ind.append(p_ind_site)
+               p.append(p_ind)
+          return p
