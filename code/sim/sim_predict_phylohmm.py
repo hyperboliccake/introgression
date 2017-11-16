@@ -3,7 +3,7 @@ import os
 import copy
 import itertools
 import random
-import sim_predict
+import sim_process
 sys.path.append('..')
 import global_params as gp
 
@@ -14,12 +14,10 @@ def process_args(arg_list, all_sim_args, i=1):
     d['tag'] = arg_list[i]
     i += 1
 
-    sim_args = all_sim_args[d['tag']]
-
     d['predict_tag'] = arg_list[i]
     i += 1
 
-    d['threshold'] = float(args[i])
+    d['threshold'] = float(arg_list[i])
 
     return d, i
 
@@ -87,18 +85,9 @@ def process_phylo_viterbi_output(trees_to_states, tag, rep, filtered_sites_fn):
     # TODO implement getting hmm params
     return predicted, None, None, None
 
-def threshold_predicted(predicted, probs, threshold, default_state):
-
-    predicted_thresholded = []
-    for i in range(len(predicted)):
-        if probs[i] > threshold:
-            predicted_thresholded.append(predicted[i])
-        else:
-            predicted_thresholded.append(default_state)
-    return predicted_thresholded
-
 def read_predicted_posterior_decoding(fn, state_index_to_species, \
-                                      threshold, default_state):
+                                      predict_args,
+                                      default_state):
     
     # TODO make this deal with filtered sites? here or somewhere else?
 
@@ -108,51 +97,46 @@ def read_predicted_posterior_decoding(fn, state_index_to_species, \
 
     num_sites = int(lines[-1][0]) + 1
     all_probs = [{} for i in range(num_sites)]
-
     for line in lines:
         site = int(line[0])
         state = state_index_to_species[int(line[1])]
         prob = float(line[2])
-        all_probs[site][state] = prob
+        if not all_probs[site].has_key(state):
+            all_probs[site][state] = 0
+        all_probs[site][state] += prob
         
-    predicted = []
-    probs = []
-    for i in range(num_sites):
-        max_prob = -1
-        max_state = None
-        for state in all_probs[i]:
-            if all_probs[i][state] > max_prob:
-                max_prob = all_probs[i][state]
-                max_state = state
-        predicted.append(max_state)
-        probs.append(max_prob)
+    # not actually going to return probs, at least for now, since we want
+    # to keep track of the probabilities for all states at each point
+    predicted, probs = sim_process.get_max_path(all_probs)
 
-    predicted = threshold_predicted(predicted, probs, threshold, default_state)
+    predicted = sim_process.threshold_predicted(predicted, probs, \
+                                                predict_args['threshold'], \
+                                                default_state)
 
-    return predicted, probs, all_probs
+    return predicted, all_probs
 
 def process_phylo_posterior_decoding_output(state_index_to_species, tag, rep, \
                                             filtered_sites_fn, \
-                                            threshold, default_state):
+                                            predict_args, default_state):
 
     # read predicted state sequence
     posterior_decoding_fn = \
-        '../../results/sim/phylo-hmm/optimized.posterior.decoding.probabilities.' \
+        '../../results/sim/phylo-hmm/optimized.posterior.decoding.probabilities.' + \
         tag + '.' + str(rep)
-    predicted, probs, all_probs = \
+    predicted, all_probs = \
         read_predicted_posterior_decoding(posterior_decoding_fn, \
                                           state_index_to_species, \
-                                          threshold, default_state)
+                                          predict_args, default_state)
 
     # TODO implement getting hmm params
-    return state_seq, probs, None, None, None
+    return predicted, all_probs, None, None, None
 
 
 def predict_introgressed(sim, sim_args, predict_args, i, gp_dir):
 
     # fill in nonpolymorphic sites
     fill_symbol = '0'
-    seqs_filled = sim_predict.fill_seqs(sim['seqs'], sim['positions'], \
+    seqs_filled = sim_process.fill_seqs(sim['seqs'], sim['positions'], \
                                         sim_args['num_sites'], fill_symbol)
 
     # use letters because phylo-hmm seems set up only for that
@@ -184,12 +168,12 @@ def predict_introgressed(sim, sim_args, predict_args, i, gp_dir):
                                                         '/filtered_sites.txt')
     """
     state_index_to_species = {0:'cer',1:'cer',2:'cer',3:'par',4:'par',5:'par'} 
-    default_state = args['species_to']
+    default_state = sim_args['species_to']
     state_seq, probs, init, emis, trans = \
         process_phylo_posterior_decoding_output(state_index_to_species, \
                                                 sim_args['tag'], i, \
                                                 working_dir + '/filtered_sites.txt',
-                                                predict_args['threshold'], default_state)
+                                                predict_args, default_state)
 
     # TODO gah
     state_seq_dic = {'1': state_seq}

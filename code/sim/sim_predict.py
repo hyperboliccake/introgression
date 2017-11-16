@@ -2,6 +2,7 @@ import sys
 import os
 import copy
 import itertools
+import sim_process
 sys.path.append('..')
 import global_params as gp
 sys.path.append('../hmm')
@@ -18,6 +19,7 @@ def process_args(arg_list, sim_args, i=1):
     i += 1
 
     d['threshold'] = float(arg_list[i])
+    i += 1
 
     # expected length and number of tracts...
     expected_tract_lengths = {}
@@ -46,29 +48,29 @@ def process_args(arg_list, sim_args, i=1):
     # the species in states correspond to the indices of the references
     # (and the sequence codings later); ACTUALLY just force the unknown
     # species to come last
-    if d['species_from2'] != None:
+    if sim_args['species_from2'] != None:
         assert d['has_ref_from1']
 
 
     # take first index from each population to be reference sequence
     ref_ind_species_to = 0
-    ref_ind_species_from1 = d['num_samples_species_to']
-    ref_ind_species_from2 = d['num_samples_species_to'] + \
-                            d['num_samples_species_from1']
+    ref_ind_species_from1 = sim_args['num_samples_species_to']
+    ref_ind_species_from2 = sim_args['num_samples_species_to'] + \
+                            sim_args['num_samples_species_from1']
     ref_inds = [ref_ind_species_to]
 
-    states = [d['species_to'], d['species_from1']]
+    states = [sim_args['species_to'], sim_args['species_from1']]
     unknown_species = None
     if d['has_ref_from1']:
         ref_inds.append(ref_ind_species_from1)
     else:
-        unknown_species = d['species_from1']
-    if d['species_from2'] != None:
-        states.append(d['species_from2'])
+        unknown_species = sim_args['species_from1']
+    if sim_args['species_from2'] != None:
+        states.append(sim_args['species_from2'])
         if d['has_ref_from2']:
             ref_inds.append(ref_ind_species_from2)
         else:
-            unknown_species = d['species_from2']
+            unknown_species = sim_args['species_from2']
 
     d['unknown_species'] = unknown_species
     d['states'] = states
@@ -91,22 +93,6 @@ def process_args(arg_list, sim_args, i=1):
     d['expected_num_tracts'] = expected_num_tracts
 
     return d, i
-
-# add in the nonpolymorphic sites
-def fill_seqs(polymorphic_seqs, polymorphic_sites, nsites, fill):
-    
-    seqs_filled = []
-    for seq in polymorphic_seqs:
-        s = ''
-        poly_ind = 0
-        for i in range(nsites):
-            if i in polymorphic_sites:
-                s += seq[poly_ind]
-                poly_ind += 1
-            else:
-                s += fill
-        seqs_filled.append(s)
-    return seqs_filled
 
 # convert sequences from bases to symbols indicating which references they match
 def code_seqs(seqs, nsites, ref_seqs):
@@ -398,14 +384,14 @@ def initial_hmm_parameters(seqs_coded, sim_args, predict_args):
 
     # get frequencies of all symbols (i.e. matching to each
     # reference/all combinations of references)
-    d_freqs = get_symbol_freqs(seqs_coded, args)
+    d_freqs = get_symbol_freqs(seqs_coded, sim_args, predict_args)
 
     # using only the sequences to predict introgression in: (1) the
     # frequency of alignment columns that match/don't match each
     # reference, (2) the frequency of all symbol combinations, (3)
     # weights for each symbol combination/reference
     individual_symbol_freqs, symbol_freqs, weighted_match_freqs = \
-        d_freqs[args['species_to']]
+        d_freqs[sim_args['species_to']]
 
     p = {}
     p['init'] = initial_probabilities(weighted_match_freqs, sim_args, predict_args)
@@ -420,24 +406,10 @@ def convert_predictions(path, states):
         new_path.append(states[p])
     return new_path
 
-def get_max_path(path, states):
-    max_path = []
-    max_probs = []
-    for site_probs in path:
-        max_ind = None
-        max_prob = -1
-        for i in range(len(states)):
-            if site_probs[i] > max_prob:
-                max_prob = site_probs[i]
-                max_ind = i
-        max_path.append(states[max_ind])
-        max_probs.append(max_prob)
-    return max_path, max_probs
-
-def run_hmm(seqs, sim_args, predict_args, init, emis, trans, train):
+def run_hmm(seqs, sim_args, predict_args, init, emis, trans, train, default_state):
 
     # sanity checks
-    if args['unknown_species'] != None:
+    if predict_args['unknown_species'] != None:
         assert len(seqs[0][0]) == len(predict_args['states']) - 1
         assert set(sim_args['index_to_species']) == set(predict_args['states']), \
             str(set(sim_args['index_to_species'])) + ' ' + str(predict_args['states'])
@@ -470,23 +442,29 @@ def run_hmm(seqs, sim_args, predict_args, init, emis, trans, train):
 
     # make predictions! (with posterior decoding, not viterbi)
     predicted = {}
-    probs = {}
-    for i in predict_inds:
-        hmm.set_obs(seqs[i])
-        # alpha
-        probs = hmm.posterior_decoding()
-        path, probs = get_max_path(probs, predict_args['states'])
-        predicted[i] = path
-        probs[i] = probs
+    all_probs = {}
+    # for all obs sequences, each site is a dic with one prob for each
+    # state
+    p = hmm.posterior_decoding()
+    for i in range(len(p)):
+        # not actually going to return path_probs, at least for now,
+        # since we want to keep track of the probabilities for all
+        # states at each point
+        path, path_probs = sim_process.get_max_path(p[i])
+        path_t = sim_process.threshold_predicted(path, path_probs, \
+                                                 predict_args['threshold'], \
+                                                 default_state)
+        predicted[predict_inds[i]] = path_t
+        all_probs[predict_inds[i]] = p[i]
 
-    return predicted, probs, hmm, hmm_init
+    return predicted, all_probs, hmm, hmm_init
 
 def set_up_seqs(sim, sim_args, predict_args): 
 
     # fill in nonpolymorphic sites
     fill_symbol = '0'
-    seqs_filled = fill_seqs(sim['seqs'], sim['positions'], \
-                            sim_args['num_sites'], fill_symbol)
+    seqs_filled = sim_process.fill_seqs(sim['seqs'], sim['positions'], \
+                                        sim_args['num_sites'], fill_symbol)
 
     # code sequences by which references they match at each position
     ref_seqs = [seqs_filled[r] for r in predict_args['ref_inds']]
@@ -503,8 +481,9 @@ def predict_introgressed(sim, sim_args, predict_args, train):
     init, emis, trans = initial_hmm_parameters(seqs_coded, sim_args, predict_args)
 
     # make predictions
+    default_state = sim_args['species_to']
     predicted, probs, hmm, hmm_init = run_hmm(seqs_coded, sim_args, predict_args,\
-                                              init, emis, trans, train)
+                                              init, emis, trans, train, default_state)
 
     return predicted, probs, hmm, hmm_init
 

@@ -228,21 +228,67 @@ def read_introgression_blocks(f, line, states):
                 
     return d, rep, line
 
-def write_state_probs(probs, f, rep):
+def write_state_probs(probs, f, rep, states):
+
+    # probs is keyed by individual, list of sites, each site dic keyed
+    # by state
     
-    # file format (similar to introgressed blocks) is:
+    # file format is:
     # rep 0
-    # 2\t.1,.2,.3
-    # 3\t.4,.2,.3
+    # 2\tcer:.1,.2,.3\tpar:.9,.8,.7
+    # 3\tcer:.4,.2,.3\tpar:.6,.8,.7
     # rep 1 ...
 
     f.write('rep ' + str(rep) + '\n')
 
-    for ind in probs:
-        f.write(str(ind) + '\t')
-        # currently only keeping track of the highest
-        # probabilities at each site, but might be useful to keep
-        # track of all the state probabilities
-        probs_string = ','.join([str(x) for x in probs[ind]])
-        f.write(probs_string + '\n')
+    for ind in probs.keys():
+        f.write(str(ind))
+        for state in states:
+            f.write('\t' + state + ':')
+            probs_string = ','.join(["{0:.5f}".format(site[state]) \
+                                     for site in probs[ind]])
+            f.write(probs_string)
+        f.write('\n')
     f.flush()
+
+def threshold_predicted(predicted, probs, threshold, default_state):
+
+    predicted_thresholded = []
+    for i in range(len(predicted)):
+        if probs[i] > threshold:
+            predicted_thresholded.append(predicted[i])
+        else:
+            predicted_thresholded.append(default_state)
+    return predicted_thresholded
+
+# add in the nonpolymorphic sites
+def fill_seqs(polymorphic_seqs, polymorphic_sites, nsites, fill):
+    
+    seqs_filled = []
+    for seq in polymorphic_seqs:
+        s = ''
+        poly_ind = 0
+        for i in range(nsites):
+            if i in polymorphic_sites:
+                s += seq[poly_ind]
+                poly_ind += 1
+            else:
+                s += fill
+        seqs_filled.append(s)
+    return seqs_filled
+
+def get_max_path(p):
+
+    max_path = []
+    max_probs = []
+    for site_probs in p:
+        max_state = None
+        max_prob = -1
+        for state in site_probs:
+            if site_probs[state] > max_prob:
+                max_prob = site_probs[state]
+                max_state = state
+        max_path.append(max_state)
+        max_probs.append(max_prob)
+    return max_path, max_probs
+

@@ -2,7 +2,7 @@ import sys
 import os
 import process_args
 import sim_process
-from sim_predict import *
+import sim_predict
 sys.path.append('..')
 import global_params as gp
 
@@ -12,7 +12,7 @@ import global_params as gp
 
 sim_tag = sys.argv[2]
 sim_args = process_args.process_args_by_tag(sys.argv[1], sim_tag)
-predict_args, last_read = process_args(sys.argv, sim_args, i=2)
+predict_args, last_read = sim_predict.process_args(sys.argv, sim_args, i=2)
 
 ##======
 # loop through all simulations predict introgression
@@ -32,7 +32,7 @@ out_init_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
 introgression_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
                        sim_tag + '_introgressed_predicted_' + \
                        predict_args['predict_tag'] + '.txt', 'w')
-# associtated probabilities output
+# associated probabilities output
 prob_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
               sim_tag + '_introgressed_probs_predicted_' + \
               predict_args['predict_tag'] + '.txt', 'w')
@@ -52,8 +52,9 @@ for i in range(sim_args['num_reps']):
     # predict introgressed/non-introgressed tracts
     ##======
     
-    state_seq, probs, hmm, hmm_init = predict_introgressed(sim, sim_args, \
-                                                           predict_args, train=True)
+    state_seq, probs, hmm, hmm_init = sim_predict.predict_introgressed(sim, sim_args, \
+                                                                       predict_args, \
+                                                                       train=True)
     state_seq_blocks = sim_process.convert_to_blocks(state_seq, \
                                                      predict_args['states'])
 
@@ -62,17 +63,17 @@ for i in range(sim_args['num_reps']):
     ##======
 
     # summary info about HMM (before training)
-    write_hmm_line(hmm_init, out_init_f, i==0) 
+    sim_predict.write_hmm_line(hmm_init, out_init_f, i==0) 
 
     # summary info about HMM (after training)
-    write_hmm_line(hmm, out_f, i==0) 
+    sim_predict.write_hmm_line(hmm, out_f, i==0) 
 
     # locations of introgression
     sim_process.write_introgression_blocks(state_seq_blocks, introgression_f, \
                                            i, predict_args['states'])
 
     # probabilities at each site
-    sim_process.write_state_probs(probs, prob_f, i)
+    sim_process.write_state_probs(probs, prob_f, i, predict_args['states'])
     
 ms_f.close()
 out_f.close()
