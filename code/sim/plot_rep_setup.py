@@ -5,7 +5,8 @@ import sim_predict
 sys.path.append('..')
 import global_params as gp
 
-def write_combined_file(f, rep, codings, introgressed, probs, header):
+def write_combined_file(f, rep, codings, introgressed, \
+                        actual_block_type, introgressed_ref, probs, header):
     #  rep site coding predicted actual actual_ref prob_cer prob_par
     #    0    0     ++       cer    cer        cer      .99       .1
     #    .
@@ -13,13 +14,14 @@ def write_combined_file(f, rep, codings, introgressed, probs, header):
     #    .
 
     categories = sorted(introgressed.keys())
-    states = sorted(probs.keys())
     prob_types = sorted(probs.keys())
+    states = sorted(probs[prob_types[0]].keys())
 
     if header:
         f.write('rep\tsite\tcoding')
         for category in categories:
-            f.write('\t' + category))
+            f.write('\t' + category)
+        f.write('\t' + 'ref')
         for prob_type in prob_types:
             for state in states:
                 f.write('\t' + 'prob_' + prob_type + '_' + state)
@@ -28,15 +30,18 @@ def write_combined_file(f, rep, codings, introgressed, probs, header):
     for i in range(len(codings)):
         f.write(str(rep) + '\t' + str(i) + '\t' + codings[i])
         for category in categories:
-            f.write('\t' + introgressed[category][i]))
+            f.write('\t' + introgressed[category][i])
+        f.write('\t' + introgressed_ref[actual_block_type][i])
         for prob_type in prob_types:
             for state in states:
                 f.write('\t' + str(probs[prob_type][state][i]))
         f.write('\n')
 
-def write_combined_files(files, rep, codings, introgressed, probs, header):
+def write_combined_files(files, inds, rep, codings, introgressed, probs, \
+                         actual_block_type, ref_ind, header):
     for i in inds:
-        write_combined_file(files[i], rep, codings[i], introgressed[i], probs[i], header)
+        write_combined_file(files[i], rep, codings[i], introgressed[i], \
+                            actual_block_type, introgressed[ref_ind], probs[i], header)
 
 def write_coding_table(seqs_coded, files, rep, header):
     

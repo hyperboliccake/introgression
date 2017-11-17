@@ -212,7 +212,7 @@ def read_introgression_blocks(f, line, states):
     line = f.readline()
     while line != '' and not line.startswith('rep'):
         x = line[:-1].split('\t')
-        ind = line[0]
+        ind = int(line[0])
         d_ind = {}
         for state in states:
             d_ind[state] = []
@@ -235,7 +235,7 @@ def unblock(blocks, num_sites):
         d[ind] = ['None' for x in range(num_sites)]
         for state in blocks[ind].keys():
             for block in blocks[ind][state]:
-                for i in range(block[0], block[end]+1):
+                for i in range(block[0], block[1]+1):
                     d[ind][i] = state
     return d
 
@@ -272,7 +272,7 @@ def read_state_probs(f, line, states):
     line = f.readline()
     while line != '' and not line.startswith('rep'):
         x = line[:-1].split('\t')
-        ind = line[0]
+        ind = int(line[0])
         d_ind = {}
         for state in states:
             d_ind[state] = []
@@ -284,8 +284,6 @@ def read_state_probs(f, line, states):
         line = f.readline()
                 
     return d, rep, line
-    
-    
 
 def threshold_predicted(predicted, probs, threshold, default_state):
 

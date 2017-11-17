@@ -28,7 +28,10 @@ import global_params as gp
 sim_tag = sys.argv[2]
 sim_args = process_args.process_args_by_tag(sys.argv[1], sim_tag)
 predict_args, last_read = sim_predict.process_args(sys.argv, sim_args, i=2)
-block_types = sys.argv[last_read+1:]
+
+predict_block_types = ['predicted_' + predict_args['predict_tag']]
+actual_block_type = 'actual'
+block_types = predict_block_types + [actual_block_type]
 
 ##======
 # produce combined file
@@ -42,35 +45,41 @@ ms_f = open(gp_dir + gp.sim_out_dir + '/ms/' + gp.sim_out_prefix + \
 # all introgressed block files to read
 introgression_fn_prefix = gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
                           sim_args['tag'] + '_introgressed_'
-introgression_files = [open(introgression_fn_prefix + t + '.txt', 'r') \
-                       for t in block_types]
-introgression_file_lines = [f.readline() for f in introgression_files]
+introgression_files = dict(zip(block_types, \
+                               [open(introgression_fn_prefix + t + '.txt', 'r') \
+                                for t in block_types]))
+introgression_file_lines = dict(zip(block_types, \
+                                    [introgression_files[k].readline() \
+                                     for k in introgression_files]))
 
 # all prob files to read
 prob_fn_prefix = gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
                           sim_args['tag'] + '_introgressed_probs_'
-prob_files = [open(prob_fn_prefix + t + '_' + \
-                   predict_args['predict_tag'] + '.txt', 'r') \
-              for t in block_types]
-prob_file_lines = [f.readline() for f in prob_files]
+prob_files = dict(zip(predict_block_types, \
+                      [open(prob_fn_prefix + t + '.txt', 'r') \
+                       for t in predict_block_types]))
+prob_file_lines = dict(zip(predict_block_types, \
+                           [prob_files[k].readline() for k in prob_files]))
 
 
 # indices of individuals in species we're predicting introgression in
 inds = sim_args['species_to_indices'][sim_args['species_to']]
-for i in inds:
-    if i in predict_args['ref_inds']:
-        inds.remove(i)
+ref_ind = predict_args['ref_inds'][0]
+inds.remove(ref_ind)
 
 # combined output files, one per predicted strain
 combined_fn_prefix = gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
-                     sim_args['tag'] + '_site_codings_strain_'
+                     sim_args['tag'] + '_' + predict_args['predict_tag'] + \
+                     '_combined_strain_'
 combined_files = dict(zip(inds, \
-                          [open(coding_fn_prefix + str(i) + '.txt', 'w') \
+                          [open(combined_fn_prefix + str(i) + '.txt', 'w') \
                            for i in inds]))
 
 
 # loop through reps and then individuals
 for i in range(sim_args['num_reps']):
+
+    print 'rep', i
 
     sim = sim_process.read_one_sim(ms_f, sim_args['num_sites'], sim_args['num_samples'])
 
@@ -83,32 +92,42 @@ for i in range(sim_args['num_reps']):
     # keyed by individual and then block_type and then species, list of probs
     probs = {}
 
-    for j in range(len(block_types)):
+    for t in block_types:
         # d is keyed by individual, then species
-        d, rep, line = sim_process.read_introgression_blocks(introgression_files[j], \
-                                                        introgression_file_lines[j], \
-                                                        predict_args['states'])
+        d, rep, line = sim_process.read_introgression_blocks(\
+                            introgression_files[t], \
+                            introgression_file_lines[t], \
+                            predict_args['states'])
         assert i == rep, str(i) + ' ' + str(rep)
-        introgression_file_lines[j] = line
+        introgression_file_lines[t] = line
         d = sim_process.unblock(d, sim_args['num_sites'])
-
-        probs_ind, rep, line = sim_process.read_state_probs(prob_files[j], \
-                                                            prob_file_lines[j], \
-                                                            predict_args['states'])
-        assert i == rep, str(i) + ' ' + str(rep)
-        prob_file_lines[j] = line
-
-        # this is just converting the dictionaries to have the block
+        # this is just converting the dictionary to have the block
         # type layer
-        for ind in d.keys():
+        for ind in inds:
             if not blocks_dic.has_key(ind):
                 blocks_dic[ind] = {}
-            blocks_dic[ind][block_types[j]] = d[ind]
-            if not probs.has_key(ind):
-                probs[ind] = {}
-            probs[ind][block_types[j]] = probs[ind]
+            blocks_dic[ind][t] = d[ind]
 
-    write_combined_files(combined_files, i, seqs_coded, blocks_dic, probs, i==0)
+        # want to keep track of (actual) introgression in reference also
+        if t == actual_block_type:
+            blocks_dic[ref_ind] = {}
+            blocks_dic[ref_ind][t] = d[ref_ind]
+        # probs only exist for predictions, not actual
+        else:
+            probs_ind, rep, line = sim_process.read_state_probs(prob_files[t], \
+                                                                prob_file_lines[t], \
+                                                                predict_args['states'])
+            assert i == rep, str(i) + ' ' + str(rep)
+            prob_file_lines[t] = line
+            # this is just converting the dictionary to have the block
+            # type layer
+            for ind in inds:
+                if not probs.has_key(ind):
+                    probs[ind] = {}
+                probs[ind][t] = probs_ind[ind]
 
-for f in introgression_files + prob_files + combined_files.values():
+    write_combined_files(combined_files, inds, i, seqs_coded, blocks_dic, probs, \
+                         actual_block_type, ref_ind, i==0)
+
+for f in introgression_files.values() + prob_files.values() + combined_files.values():
     f.close()
