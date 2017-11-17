@@ -5,6 +5,39 @@ import sim_predict
 sys.path.append('..')
 import global_params as gp
 
+def write_combined_file(f, rep, codings, introgressed, probs, header):
+    #  rep site coding predicted actual actual_ref prob_cer prob_par
+    #    0    0     ++       cer    cer        cer      .99       .1
+    #    .
+    #    .
+    #    .
+
+    categories = sorted(introgressed.keys())
+    states = sorted(probs.keys())
+    prob_types = sorted(probs.keys())
+
+    if header:
+        f.write('rep\tsite\tcoding')
+        for category in categories:
+            f.write('\t' + category))
+        for prob_type in prob_types:
+            for state in states:
+                f.write('\t' + 'prob_' + prob_type + '_' + state)
+        f.write('\n')
+
+    for i in range(len(codings)):
+        f.write(str(rep) + '\t' + str(i) + '\t' + codings[i])
+        for category in categories:
+            f.write('\t' + introgressed[category][i]))
+        for prob_type in prob_types:
+            for state in states:
+                f.write('\t' + str(probs[prob_type][state][i]))
+        f.write('\n')
+
+def write_combined_files(files, rep, codings, introgressed, probs, header):
+    for i in inds:
+        write_combined_file(files[i], rep, codings[i], introgressed[i], probs[i], header)
+
 def write_coding_table(seqs_coded, files, rep, header):
     
     for i in files.keys():

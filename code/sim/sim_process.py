@@ -228,6 +228,18 @@ def read_introgression_blocks(f, line, states):
                 
     return d, rep, line
 
+def unblock(blocks, num_sites):
+    # blocks is keyed by individual, then species, list of (start, end)
+    d = {} # keyed by individual, list of species, one for each site
+    for ind in blocks.keys():
+        d[ind] = ['None' for x in range(num_sites)]
+        for state in blocks[ind].keys():
+            for block in blocks[ind][state]:
+                for i in range(block[0], block[end]+1):
+                    d[ind][i] = state
+    return d
+
+
 def write_state_probs(probs, f, rep, states):
 
     # probs is keyed by individual, list of sites, each site dic keyed
@@ -250,6 +262,30 @@ def write_state_probs(probs, f, rep, states):
             f.write(probs_string)
         f.write('\n')
     f.flush()
+
+def read_state_probs(f, line, states):
+
+    d = {} # keyed by individual, then species, list of probs
+    assert line.startswith('rep'), line
+    rep = int(line[len('rep '):-1])
+    # process each individual
+    line = f.readline()
+    while line != '' and not line.startswith('rep'):
+        x = line[:-1].split('\t')
+        ind = line[0]
+        d_ind = {}
+        for state in states:
+            d_ind[state] = []
+        for s in x[1:]:
+            species, probs = s.split(':')
+            probs = [float(x) for x in probs.split(',')]
+            d_ind[species] = probs
+        d[ind] = d_ind
+        line = f.readline()
+                
+    return d, rep, line
+    
+    
 
 def threshold_predicted(predicted, probs, threshold, default_state):
 
