@@ -5,6 +5,7 @@ require(grDevices)
 sim_id = 'p7'
 pred_id = 'pred7'
 num_reps = 500
+reps = 100:110
 threshold = .95
 
 prob_height = 20
@@ -17,7 +18,7 @@ vcolors = viridis(7, option = 'plasma')
 
 prob_label = paste('prob_predicted_', pred_id, '_par', sep='')
 
-for (rep in 0:(num_reps-1))
+for (rep in reps)
 {
     print(rep)
 
@@ -73,14 +74,13 @@ for (rep in 0:(num_reps-1))
 	for (b in 1:num_block_types)
 	{
 	    species = a[i,block_types[b]]
-            color <- switch(species,
-	    	   	    'cer' = vcolors[2],
-        		    'par' = vcolors[4])
-	    starty = vmargin + (padding + row_height) * b
-	    endy = starty + row_height
-	    if (species == 'par'){
-            segments(x, starty, x, endy, col=color, lend=1, alph=.5)}
-
+	    color = vcolors[2]
+	    if (species == 'par') {
+	       color = vcolors[4]
+               starty = vmargin + (padding + row_height) * b
+	       endy = starty + row_height
+               segments(x, starty, x, endy, col=color, lend=1, alph=.5)
+	    }
 	}
 
 	# plot probabilities - manual graph, woooo
