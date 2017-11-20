@@ -67,19 +67,24 @@ inds = sim_args['species_to_indices'][sim_args['species_to']]
 ref_ind = predict_args['ref_inds'][0]
 inds.remove(ref_ind)
 
-# combined output files, one per predicted strain
-combined_fn_prefix = gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
+# combined output files, one per predicted strain and rep
+combined_dir = gp_dir + gp.sim_out_dir + sim_args['tag'] + '/' + \
+               predict_args['predict_tag'] + '/'
+combined_fn_prefix = combined_dir + gp.sim_out_prefix + \
                      sim_args['tag'] + '_' + predict_args['predict_tag'] + \
                      '_combined_strain_'
-combined_files = dict(zip(inds, \
-                          [open(combined_fn_prefix + str(i) + '.txt', 'w') \
-                           for i in inds]))
-
+if not os.path.exists(combined_dir):
+    os.makedirs(combined_dir)
 
 # loop through reps and then individuals
 for i in range(sim_args['num_reps']):
 
     print 'rep', i
+
+    combined_files = dict(zip(inds, \
+                              [open(combined_fn_prefix + str(ind) + '_rep' + str(i) + \
+                                    '.txt', 'w') \
+                               for ind in inds]))
 
     sim = sim_process.read_one_sim(ms_f, sim_args['num_sites'], sim_args['num_samples'])
 
@@ -127,7 +132,7 @@ for i in range(sim_args['num_reps']):
                 probs[ind][t] = probs_ind[ind]
 
     write_combined_files(combined_files, inds, i, seqs_coded, blocks_dic, probs, \
-                         actual_block_type, ref_ind, i==0)
+                         actual_block_type, ref_ind, True)
 
 for f in introgression_files.values() + prob_files.values() + combined_files.values():
     f.close()
