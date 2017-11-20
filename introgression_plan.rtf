@@ -1,7 +1,7 @@
 {\rtf1\ansi\ansicpg1252\cocoartf1404\cocoasubrtf470
 {\fonttbl\f0\fswiss\fcharset0 Helvetica;}
 {\colortbl;\red255\green255\blue255;}
-\margl1440\margr1440\vieww12560\viewh14280\viewkind0
+\margl1440\margr1440\vieww11160\viewh14280\viewkind0
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
 \f0\b\fs24 \cf0 Simulations
@@ -14,17 +14,16 @@ For the coalescent simulations, I need to choose reasonable model parameters. So
 From simulations without migration (or just using math), I can evaluate how likely ILS is to occur. It\'92s not likely, but I should maybe also demonstrate how different the parameters (specifically effective population size and mutation rate) would have to be for ILS to become an issue.\
 \
 Then, adding in migration to the simulations, I can evaluate my method\'92s performance and compare it to the phylo-hmm method. Things to compare:\
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
-\cf0     \'95 runtime\
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
-\cf0     \'95 power\
+    \'95 runtime\
+    \'95 power\
     \'95 false positive rate\
     \'95 overlap in predictions\
 \
 
 \b 100-genomes data\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
-\b0 Run HMM using S288c and CBS432 as references.\
+\b0 \cf0 Run HMM using S288c and CBS432 as references.\
 Maybe also run with a different cerevisiae and/or paradoxus reference.\
 Summarize properties of introgressed regions:\
     \'95 how many?\
@@ -43,4 +42,137 @@ Summarize properties of introgressed regions:\
 4. specific interesting introgressed genes/regions
 \b \
 \
-}
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\b0 \cf0 figure 1\
+- simulate data with variety of migration rates (more recent and over all time)\
+- 50000bp, 100 sims \
+- vary initial parameters, see how results (tpr/fpr, final hmm param vals) change\
+- train on more sequences? then predict without training?\
+- something about how close it gets to breakpoints\
+\
+for fixed everything else (mig = 1e-10):\
+	expected tract lengths: \
+	expected num tracts: \
+\
+100 x 1, 100 x 10, 1000 x 20\
+1000 x 1, 1000 x 5, 1000 x 10\
+10000 x 1, 10000 x 2, 10000 x 3\
+\
+for fixed expected tract length (1000) and num tracts (2):\
+	migration rate: 0,  2.5e-11, 5e-11, 1e-10, 2.5e-10, 5e-10, 1e-9, 2.5e-9\
+\
+is it okay to have bayanus with no expected introgressed? or does that break the model?\
+\
+ideally would run predictions varying initial hmm parameters on same simulated sequences\
+\'97> should be set up in a way where you specifiy simulation parameters and give that a tag, then you specify prediction parameters in another file with associated simulated sequence tag\
+\
+\
+\
+simulation plots\
+- tpr, fpr as function of amount of introgression/migration\
+- robustness to choice of starting parameters\
+	> vary number/length of expected introgressions\
+	> look at how much initial and final parameters change\
+	> look at tpr, fpr\
+\
+\
+\
+\
+qtls that influence variance in gene expression\
+10x\
+parental strains sequencing \
+\
+\
+roc curve for hmms?\
+scatterplot for my method and phylonet hmm\
+\
+vary time of migration, do as single point\
+show that priors actually matter by setting them to something stupid\
+\
+run again on empirical data\
+amounts of introgression in paralogs vs single copy genes\
+fsa on specific regions that look interesting\
+\
+bed file for each strain of introgression calls\
+\
+distribution of number of genes/total sequence lengths/median tract length per strain\
+\
+comparing calls to the 100 genomes paper\
+\
+anything we can infer\
+\
+how much does using a different reference change results? unique vs shared introgressions\
+\
+how much do strains differ in divergence to paradoxus locally\
+\
+genome research, plos genetics, mbe, pnas (?)\
+\
+number of nonsynonymous changes\
+\
+high frequency introgressions\
+\
+distribution of introgression length and frequency\
+\
+gene ontology \
+\
+coding vs noncoding regions\
+\
+phylogeny based on pairwise sharing of sequences compared to genome-wide phylogeny\
+\
+\
+\
+outline: using simulations to evaluate my method\
+- simulating useful sequences\
+- evaluating tpr/fpr etc\
+- evaluating robustness\
+- comparison to phylonet hmm\
+- other things to look at\
+\
+\
+simulating useful sequences\
+- two species\
+- range of migration rates, hoping to get intermediate level\
+- migration through all time -> vast majority of sequences not detectable\
+- migration more recently only (average over a range of recent times)\
+- calculated results very dependent on what kinds of sequences you\'92re actually including\
+- summary info about sequences i\'92m actually using\
+	- varying migration rate zero to high\
+	- varying initial parameters by varying expected number of tracts/length of tracts (robustness)\
+\
+performance of my method\
+- tpr\
+- fpr\
+- hmm params\
+- some things about tract lengths/boundaries\
+\
+comparison to phylonet hmm\
+- description of method\
+- sequences used for comparison\
+- tpr/fpr\
+- examples of predictions\
+\
+\uc0\u8232 \
+other things\
+- lengths/boundaries\
+- simulate points of migration\
+- look at robustness at different levels of introgression\
+\
+\
+\
+TODO:\
+add slide explain initial hmm parameter values\
+look at robustness for different migration rate (ie somewhere where transition probabilites aren\'92t always going in the same direction(?))\
+maybe take out simulating sequences intro except actual values->do all background on board\
+\
+\
+why doesn\'92t initial par->cer prob depend on number of tracts, but cer->par does\
+sim_predict line 366 fix this\
+\
+\
+\
+power/tpr as function of fdr\
+table of comparing methods, fpr for all different parameter sets\
+\
+fdr = tp/pp}
