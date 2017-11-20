@@ -29,6 +29,7 @@ for (rep in unique(blocks$rep))
 {
 
     print(rep)
+
     pdf(paste('../../results/sim/introgression_plots/s', sim_num, 
     	      '_strain_1_rep_', rep, '.pdf', sep=''), width = 16, height = 9)
     par(mar=c(5, 20, 4, 2))

@@ -25,12 +25,12 @@ def sim_stats(sim, args):
     # give some summary stats about simulated sequences, such as:
     # - average sequence identity within and between species
 
-    num_species = len(args['states'])
+    num_species = len(args['species'])
     ids = {}
     for i in range(num_species):
         for j in range(i, num_species):
             ids_ij = []
-            species1 = args['states'][i]
+            species1 = args['species'][i]
             species2 = species1
             inds1 = args['species_to_indices'][species1]
             # within species
@@ -44,7 +44,7 @@ def sim_stats(sim, args):
                         
             # between species
             else:
-                species2 = args['states'][j]
+                species2 = args['species'][j]
                 inds2 = args['species_to_indices'][species2] 
                 for s1 in inds1:
                     for s2 in inds2:
@@ -196,11 +196,14 @@ def find_introgressed(sim, args):
         # the length of the block to the total number of
         # introgressed sites across all strains; also update the
         # state sequence
+        
+        # just call ref ind the first index of the species
+        ref_ind = min(args['species_to_indices'][args['species_to']]) 
         for i in inds:
             if introgressed.has_key(i):
                 num_introgressed[i] += num_sites_t
                 actual_state_seq[i] += [introgressed[i]] * num_sites_t
-                if not introgressed.has_key(args['ref_inds'][0]):
+                if not introgressed.has_key(ref_ind):
                     num_introgressed_non_ref[i] += num_sites_t
             else:
                 actual_state_seq[i] += [args['species_to']] * num_sites_t

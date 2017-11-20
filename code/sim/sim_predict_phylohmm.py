@@ -3,9 +3,23 @@ import os
 import copy
 import itertools
 import random
-import sim_predict
+import sim_process
 sys.path.append('..')
 import global_params as gp
+
+def process_args(arg_list, all_sim_args, i=1):
+    
+    d = {}
+
+    d['tag'] = arg_list[i]
+    i += 1
+
+    d['predict_tag'] = arg_list[i]
+    i += 1
+
+    d['threshold'] = float(arg_list[i])
+
+    return d, i
 
 def convert_binary_to_nucleotides(seqs):
     n = ['A', 'T', 'G', 'C']
@@ -28,7 +42,7 @@ def write_fasta(seqs, names, fn):
         f.write(''.join(seqs[i]) + '\n')
     f.close()
 
-def read_predicted(fn, trees_to_states):
+def read_predicted_viterbi(fn, trees_to_states):
     
     # TODO make this deal with filtered sites? here or somewhere else?
 
@@ -50,12 +64,12 @@ def read_predicted(fn, trees_to_states):
     f.close()
     return predicted
 
-def process_phylo_output(trees_to_states, tag, rep, filtered_sites_fn):
+def process_phylo_viterbi_output(trees_to_states, tag, rep, filtered_sites_fn):
 
     # read predicted state sequence
     viterbi_fn = '../../results/sim/phylo-hmm/optimized.viterbi.sequence.'  + \
         tag + '.' + str(rep)
-    predicted = read_predicted(viterbi_fn, trees_to_states)
+    predicted = read_predicted_viterbi(viterbi_fn, trees_to_states)
 
     # move filtered sites file to appopriate output directory
     try:
@@ -71,25 +85,72 @@ def process_phylo_output(trees_to_states, tag, rep, filtered_sites_fn):
     # TODO implement getting hmm params
     return predicted, None, None, None
 
-def predict_introgressed(sim, args, i, gp_dir):
+def read_predicted_posterior_decoding(fn, state_index_to_species, \
+                                      predict_args,
+                                      default_state):
+    
+    # TODO make this deal with filtered sites? here or somewhere else?
+
+    f = open(fn, 'r')
+    lines = [x[:-1].split(' ') for x in f.readlines()]
+    f.close()
+
+    num_sites = int(lines[-1][0]) + 1
+    all_probs = [{} for i in range(num_sites)]
+    for line in lines:
+        site = int(line[0])
+        state = state_index_to_species[int(line[1])]
+        prob = float(line[2])
+        if not all_probs[site].has_key(state):
+            all_probs[site][state] = 0
+        all_probs[site][state] += prob
+        
+    # not actually going to return probs, at least for now, since we want
+    # to keep track of the probabilities for all states at each point
+    predicted, probs = sim_process.get_max_path(all_probs)
+
+    predicted = sim_process.threshold_predicted(predicted, probs, \
+                                                predict_args['threshold'], \
+                                                default_state)
+
+    return predicted, all_probs
+
+def process_phylo_posterior_decoding_output(state_index_to_species, tag, rep, \
+                                            filtered_sites_fn, \
+                                            predict_args, default_state):
+
+    # read predicted state sequence
+    posterior_decoding_fn = \
+        '../../results/sim/phylo-hmm/optimized.posterior.decoding.probabilities.' + \
+        tag + '.' + str(rep)
+    predicted, all_probs = \
+        read_predicted_posterior_decoding(posterior_decoding_fn, \
+                                          state_index_to_species, \
+                                          predict_args, default_state)
+
+    # TODO implement getting hmm params
+    return predicted, all_probs, None, None, None
+
+
+def predict_introgressed(sim, sim_args, predict_args, i, gp_dir):
 
     # fill in nonpolymorphic sites
     fill_symbol = '0'
-    seqs_filled = sim_predict.fill_seqs(sim['seqs'], sim['positions'], \
-                                        args['num_sites'], fill_symbol)
+    seqs_filled = sim_process.fill_seqs(sim['seqs'], sim['positions'], \
+                                        sim_args['num_sites'], fill_symbol)
 
     # use letters because phylo-hmm seems set up only for that
     seqs_filled = convert_binary_to_nucleotides(seqs_filled)
 
     # and write to file
     seq_fn = gp_dir + gp.sim_out_dir + '/ms/' + gp.sim_out_prefix + \
-             'sequence_' + args['tag'] + '_rep' + str(i) + '.fasta'
+             'sequence_' + sim_args['tag'] + '_rep' + str(i) + '.fasta'
     write_fasta(seqs_filled, ['C1', 'C2', 'P', 'OUTGROUP'], seq_fn) # TODO unhardcode
 
     # create input file for phylo-hmm
     input_fn = gp_dir + gp.sim_out_dir + '/phylo-hmm/' + 'autoinput_' + \
-        args['tag'] + '_rep' + str(i) + '.txt'
-    working_dir = gen_input_file(seq_fn, input_fn, args['tag'], i)
+        sim_args['tag'] + '_rep' + str(i) + '.txt'
+    working_dir = gen_input_file(seq_fn, input_fn, sim_args['tag'], i)
 
     # make predictions
     phylohmm_command = \
@@ -98,17 +159,27 @@ def predict_introgressed(sim, args, i, gp_dir):
     os.system(phylohmm_command)
 
     # write results in different format
+    """
     trees_to_states = {'p1':'cer', 'p2':'par'} # generalize this? worth it? nah
-    state_seq, init, emis, trans = process_phylo_output(trees_to_states, \
+    state_seq, init, emis, trans = process_phylo_viterbi_output(trees_to_states, \
                                                         args['tag'], \
                                                         i, \
                                                         working_dir + \
                                                         '/filtered_sites.txt')
+    """
+    state_index_to_species = {0:'cer',1:'cer',2:'cer',3:'par',4:'par',5:'par'} 
+    default_state = sim_args['species_to']
+    state_seq, probs, init, emis, trans = \
+        process_phylo_posterior_decoding_output(state_index_to_species, \
+                                                sim_args['tag'], i, \
+                                                working_dir + '/filtered_sites.txt',
+                                                predict_args, default_state)
 
     # TODO gah
     state_seq_dic = {'1': state_seq}
+    probs_dic = {'1': probs}
 
-    return state_seq_dic, init, emis, trans
+    return state_seq_dic, probs_dic, init, emis, trans
 
 def gen_input_file(sequence_fn, fn, tag, rep):
     """

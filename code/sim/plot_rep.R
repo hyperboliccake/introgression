@@ -2,13 +2,11 @@ library(ggplot2)
 library(viridis)
 require(grDevices)
 
-# read in table of introgressed blocks
-# type species start end rep
-blocks = read.table('../../results/sim/sim_out_s1_introgressed_blocks_strain_1.txt', sep='\t', header=T)
+sim_id = 'p1'
+pred_id = 'pred1'
+num_reps = 500
 
-# read in site codings
-# site code rep
-codings = read.table('../../results/sim/sim_out_s1_site_codings_strain_1.txt', sep='\t', header=T)
+prob_height = 20
 
 row_height = 2
 padding = 3
@@ -16,66 +14,68 @@ vmargin = 5 # for top and bottom
 
 vcolors = viridis(7, option = 'plasma')
 
-for (rep in unique(blocks$rep))
+for (rep in 0:(num_reps-1))
 {
-
     print(rep)
-    pdf(paste('../../results/sim/introgression_plots/s1_strain_1_rep_', rep, '.pdf', sep=''), width = 16, height = 9)
 
+    # read in input file for this rep
+    a = read.table(paste('../../results/sim/sim_out_', sim_id, '_', pred_id, '_combined_strain_1_rep', rep, '.txt', sep = ''), sep='\t', header=T)
+
+    # output file location and size
+    pdf(paste('../../results/sim/introgression_plots/', sim_id, '_', pred_id, '_strain_1_rep_', rep, '.pdf', sep=''), width = 16, height = 9)
+
+    # set margins: bottom, left, top, right
     par(mar=c(5, 10, 4, 2))
 
-    blocks_subset = blocks[which(blocks$rep == rep),]
-    block_types = levels(blocks$type)
+    block_types = c('ref', 'actual', paste('predicted_', pred_id, sep=''))
+    block_labels = c('reference', 'actual', 'predicted')
     num_block_types = length(block_types)
 
-    codings_subset = codings[which(codings$rep == rep),]
-    seq_start = min(codings_subset$site)
-    seq_end = max(codings_subset$site)
+    seq_start = min(a$site)
+    seq_end = max(a$site)
 
     # base plot
     # type n doesn't produce any points or lines
     # (left, right), (bottom, top)
+    # xaxs and yaxs args to specify axes go to edge of plot region
+    # xaxt and yaxt args to specify no axes drawn
     plot(c(seq_start, seq_end+1), 
-    	 c(0, num_block_types * (row_height + padding) + row_height + 2 * vmargin),
+    	 c(0, row_height + padding + num_block_types * (row_height + padding) + prob_height),
          type = "n", xlab = "",
-         ylab = "", main = "", xaxt='n', yaxt='n', xaxs='i', yaxs='i',
-mgp=c(2,2,.5)	 )
-
+         ylab = "", main = "", xaxt='n', yaxt='n', xaxs='i', yaxs='i', mgp=c(2,2,.5))
 
     # move x axis label and title closer to axis
     title(xlab = paste("position"), line = 3, cex.lab=1.7)
 
-    # plot codings (bottom row)
-    for (i in seq_start:seq_end)
+    for (i in 1:nrow(a))
     {
-	code = as.character(codings_subset[which(codings_subset$site == i),]$code)
+        # plot codings (bottom row)
+	code = a[i,]$code
 	color <- switch(code,
-			'++' = 'gray70',
+			'++' = NA,
         		'+-' = vcolors[2],
         		'-+' = vcolors[4],
 			'--' = vcolors[6])
-	if (code != '++') {
-	rect(i, vmargin, i+1, vmargin + row_height, col=color, border=color)}
+	# startx, starty, endx, endy
+	x = a[i,]$site
+	starty = vmargin
+	endy = starty + row_height
+	segments(x, starty, x, endy, col=color)
 
-    }
-
-    # plot actual/predicted introgressed rows
-    block_row = 1
-    for (block_type in block_types)
-    {
-	block_type_subset = blocks_subset[which(blocks_subset$type == block_type),]
-	for (i in 1:nrow(block_type_subset))
+	# plot all block type rows, starting from bottom
+	for (b in 1:num_block_types)
 	{
-	    # left, bottom, right, top
-	    print(block_row*(padding + row_height) + padding)
-	    print(block_row*(padding + row_height) + padding + row_height)
-	    rect(block_type_subset[i,]$start,
-	    	 block_row*(padding + row_height) + vmargin,
-        	 block_type_subset[i,]$end,
-	    	 block_row*(padding + row_height) + row_height + vmargin,
-         	 col = vcolors[2], border = vcolors[2])
+	    species = a[i,block_types[i]]
+            color <- switch(code,
+	    	   	    'cer' = vcolors[2],
+        		    'par' = vcolors[4])
+	    starty = vmargin + row_height + padding * i
+	    endy = starty + row_heigt
+            segments(x, starty, x, endy, col=color)
+
 	}
-	block_row = block_row + 1
+
+	# plot probabilities - manual graph, woooo
     }
 
     # plot block_type labels
@@ -87,13 +87,6 @@ mgp=c(2,2,.5)	 )
     # plot position labels
     positions = seq(seq_start, seq_end+1, (seq_end - seq_start + 1) / 10)
     axis(1, at=positions, las=1, cex.axis=1, line = 0)
-
-    # overall outline on top
-    rect(seq_start,
-         0,
-         seq_end + 1,
-         num_block_types * (row_height + padding) + row_height + 2 * vmargin,
-         col = FALSE, border = "black")
 
     dev.off()
 	 

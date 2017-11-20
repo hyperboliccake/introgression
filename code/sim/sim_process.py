@@ -212,7 +212,7 @@ def read_introgression_blocks(f, line, states):
     line = f.readline()
     while line != '' and not line.startswith('rep'):
         x = line[:-1].split('\t')
-        ind = line[0]
+        ind = int(line[0])
         d_ind = {}
         for state in states:
             d_ind[state] = []
@@ -227,3 +227,102 @@ def read_introgression_blocks(f, line, states):
         line = f.readline()
                 
     return d, rep, line
+
+def unblock(blocks, num_sites):
+    # blocks is keyed by individual, then species, list of (start, end)
+    d = {} # keyed by individual, list of species, one for each site
+    for ind in blocks.keys():
+        d[ind] = ['None' for x in range(num_sites)]
+        for state in blocks[ind].keys():
+            for block in blocks[ind][state]:
+                for i in range(block[0], block[1]+1):
+                    d[ind][i] = state
+    return d
+
+
+def write_state_probs(probs, f, rep, states):
+
+    # probs is keyed by individual, list of sites, each site dic keyed
+    # by state
+    
+    # file format is:
+    # rep 0
+    # 2\tcer:.1,.2,.3\tpar:.9,.8,.7
+    # 3\tcer:.4,.2,.3\tpar:.6,.8,.7
+    # rep 1 ...
+
+    f.write('rep ' + str(rep) + '\n')
+
+    for ind in probs.keys():
+        f.write(str(ind))
+        for state in states:
+            f.write('\t' + state + ':')
+            probs_string = ','.join(["{0:.5f}".format(site[state]) \
+                                     for site in probs[ind]])
+            f.write(probs_string)
+        f.write('\n')
+    f.flush()
+
+def read_state_probs(f, line, states):
+
+    d = {} # keyed by individual, then species, list of probs
+    assert line.startswith('rep'), line
+    rep = int(line[len('rep '):-1])
+    # process each individual
+    line = f.readline()
+    while line != '' and not line.startswith('rep'):
+        x = line[:-1].split('\t')
+        ind = int(line[0])
+        d_ind = {}
+        for state in states:
+            d_ind[state] = []
+        for s in x[1:]:
+            species, probs = s.split(':')
+            probs = [float(x) for x in probs.split(',')]
+            d_ind[species] = probs
+        d[ind] = d_ind
+        line = f.readline()
+                
+    return d, rep, line
+
+def threshold_predicted(predicted, probs, threshold, default_state):
+
+    predicted_thresholded = []
+    for i in range(len(predicted)):
+        if probs[i] > threshold:
+            predicted_thresholded.append(predicted[i])
+        else:
+            predicted_thresholded.append(default_state)
+    return predicted_thresholded
+
+# add in the nonpolymorphic sites
+def fill_seqs(polymorphic_seqs, polymorphic_sites, nsites, fill):
+    
+    seqs_filled = []
+    for seq in polymorphic_seqs:
+        s = ''
+        poly_ind = 0
+        for i in range(nsites):
+            if i in polymorphic_sites:
+                s += seq[poly_ind]
+                poly_ind += 1
+            else:
+                s += fill
+        seqs_filled.append(s)
+    return seqs_filled
+
+def get_max_path(p):
+
+    max_path = []
+    max_probs = []
+    for site_probs in p:
+        max_state = None
+        max_prob = -1
+        for state in site_probs:
+            if site_probs[state] > max_prob:
+                max_prob = site_probs[state]
+                max_state = state
+        max_path.append(max_state)
+        max_probs.append(max_prob)
+    return max_path, max_probs
+
