@@ -2,17 +2,20 @@ library(ggplot2)
 library(viridis)
 require(grDevices)
 
-sim_id = 'p1'
-pred_id = 'pred1'
+sim_id = 'p7'
+pred_id = 'pred7'
 num_reps = 500
+threshold = .95
 
 prob_height = 20
 
 row_height = 2
 padding = 3
-vmargin = 5 # for top and bottom
+vmargin = 1 # for top and bottom
 
 vcolors = viridis(7, option = 'plasma')
+
+prob_label = paste('prob_predicted_', pred_id, '_par', sep='')
 
 for (rep in 0:(num_reps-1))
 {
@@ -38,51 +41,67 @@ for (rep in 0:(num_reps-1))
     # type n doesn't produce any points or lines
     # (left, right), (bottom, top)
     # xaxs and yaxs args to specify axes go to edge of plot region
-    # xaxt and yaxt args to specify no axes drawn
+    # xaxt and yaxt args to specify...?
     plot(c(seq_start, seq_end+1), 
-    	 c(0, row_height + padding + num_block_types * (row_height + padding) + prob_height),
+    	 c(0, vmargin + row_height + padding + num_block_types * (row_height + padding) + prob_height + vmargin),
          type = "n", xlab = "",
-         ylab = "", main = "", xaxt='n', yaxt='n', xaxs='i', yaxs='i', mgp=c(2,2,.5))
+         ylab = "", main = "", xaxt='n', yaxt='n', xaxs='i', yaxs='i', mgp=c(2,2,.5), axes=F)
 
     # move x axis label and title closer to axis
     title(xlab = paste("position"), line = 3, cex.lab=1.7)
 
     for (i in 1:nrow(a))
     {
+	
         # plot codings (bottom row)
-	code = a[i,]$code
-	color <- switch(code,
-			'++' = NA,
-        		'+-' = vcolors[2],
-        		'-+' = vcolors[4],
-			'--' = vcolors[6])
-	# startx, starty, endx, endy
+	code = a[i,]$coding
 	x = a[i,]$site
-	starty = vmargin
-	endy = starty + row_height
-	segments(x, starty, x, endy, col=color)
+	y = vmargin + row_height/8
+	color = 'gray70'
+	if (code == '+-') {
+	   y = y + row_height/4
+	   color = vcolors[2]}
+	if (code == '-+') {
+	   y = y + 2*row_height/4
+	   color = vcolors[4]}
+	if (code == '--') {
+	   y = y + 3*row_height/4
+	   color = vcolors[6]}
+	points(x, y, col=color, pch=20, alpha=.5)
 
 	# plot all block type rows, starting from bottom
 	for (b in 1:num_block_types)
 	{
-	    species = a[i,block_types[i]]
-            color <- switch(code,
+	    species = a[i,block_types[b]]
+            color <- switch(species,
 	    	   	    'cer' = vcolors[2],
         		    'par' = vcolors[4])
-	    starty = vmargin + row_height + padding * i
-	    endy = starty + row_heigt
-            segments(x, starty, x, endy, col=color)
+	    starty = vmargin + (padding + row_height) * b
+	    endy = starty + row_height
+	    if (species == 'par'){
+            segments(x, starty, x, endy, col=color, lend=1, alph=.5)}
 
 	}
 
 	# plot probabilities - manual graph, woooo
+	graph_bottom = vmargin + (row_height + padding) * (num_block_types + 1)
+	p = a[i,prob_label]
+	y = p * prob_height + graph_bottom
+	color = vcolors[2]
+	if (p > threshold) { 
+	    color = vcolors[4] }
+	points(x, y, pch = 20, col=color)
+	
     }
+
+    # plot probability threshold
+    # segments(seq_start, y, seq_end, y)
 
     # plot block_type labels
     positions = seq((padding + row_height) + vmargin + row_height/2,
 	    	    num_block_types*(padding + row_height) + row_height + vmargin,
     	            padding+row_height)
-    axis(2, at=positions, labels=block_types, las=1, cex.axis=1, tick=FALSE, line=-.5)
+    axis(2, at=positions, labels=block_labels, las=1, cex.axis=1, tick=FALSE, line=-.5)
 
     # plot position labels
     positions = seq(seq_start, seq_end+1, (seq_end - seq_start + 1) / 10)
