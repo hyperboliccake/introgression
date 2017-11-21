@@ -466,7 +466,7 @@ def run_hmm(seqs, sim_args, predict_args, init, emis, trans, train, default_stat
         predicted = {}
         for i in predict_inds:
             hmm.set_obs(seqs[i])
-            predicted[i] = convert_predictions(hmm.viterbi(), args['states'])
+            predicted[i] = convert_predictions(hmm.viterbi(), predict_args['states'])
 
         return predicted, hmm, hmm_init
 
@@ -497,7 +497,7 @@ def predict_introgressed(sim, sim_args, predict_args, train, method):
     # make predictions
     default_state = sim_args['species_to']
     return run_hmm(seqs_coded, sim_args, predict_args,\
-                   init, emis, trans, train, default_state)
+                   init, emis, trans, train, default_state, method)
     
 def write_hmm_headers(states, emis_symbols, f, sep):
 
