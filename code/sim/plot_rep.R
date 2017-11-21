@@ -2,10 +2,10 @@ library(ggplot2)
 library(viridis)
 require(grDevices)
 
-sim_id = 'p7'
-pred_id = 'pred7'
+sim_id = 'p6'
+pred_ids = c('pred9', 'pred10', 'pred11', 'pred12', 'pred13', 'pred14', 'pred15', 'pred16', 'pred17', 'pred6')
 num_reps = 500
-reps = 100:110
+reps = c(103)
 threshold = .95
 
 prob_height = 20
@@ -15,6 +15,9 @@ padding = 3
 vmargin = 1 # for top and bottom
 
 vcolors = viridis(7, option = 'plasma')
+
+
+for (pred_id in pred_ids) {
 
 prob_label = paste('prob_predicted_', pred_id, '_par', sep='')
 
@@ -31,8 +34,8 @@ for (rep in reps)
     # set margins: bottom, left, top, right
     par(mar=c(5, 10, 4, 2))
 
-    block_types = c('ref', 'actual', paste('predicted_', pred_id, sep=''))
-    block_labels = c('reference', 'actual', 'predicted')
+    block_types = c('ref', 'actual', paste('predicted_', pred_id, sep=''), paste('predicted_viterbi_', pred_id, sep=''))
+    block_labels = c('reference', 'actual', 'predicted-viterbi', 'predicted-posterior')
     num_block_types = length(block_types)
 
     seq_start = min(a$site)
@@ -110,5 +113,5 @@ for (rep in reps)
     dev.off()
 	 
 }
-
+}
 
