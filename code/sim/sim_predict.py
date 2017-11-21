@@ -406,7 +406,8 @@ def convert_predictions(path, states):
         new_path.append(states[p])
     return new_path
 
-def run_hmm(seqs, sim_args, predict_args, init, emis, trans, train, default_state):
+def run_hmm(seqs, sim_args, predict_args, init, emis, trans, train, default_state, \
+            method):
 
     # sanity checks
     if predict_args['unknown_species'] != None:
@@ -440,24 +441,37 @@ def run_hmm(seqs, sim_args, predict_args, init, emis, trans, train, default_stat
     if train:
         hmm.go()
 
-    # make predictions! (with posterior decoding, not viterbi)
-    predicted = {}
-    all_probs = {}
-    # for all obs sequences, each site is a dic with one prob for each
-    # state
-    p = hmm.posterior_decoding()
-    for i in range(len(p)):
-        # not actually going to return path_probs, at least for now,
-        # since we want to keep track of the probabilities for all
-        # states at each point
-        path, path_probs = sim_process.get_max_path(p[i])
-        path_t = sim_process.threshold_predicted(path, path_probs, \
+    # make predictions! 
+
+    if method == "posterior":
+        predicted = {}
+        all_probs = {}
+        # for all obs sequences, each site is a dic with one prob for each
+        # state
+        p = hmm.posterior_decoding()
+        for i in range(len(p)):
+            # not actually going to return path_probs, at least for now,
+            # since we want to keep track of the probabilities for all
+            # states at each point
+            path, path_probs = sim_process.get_max_path(p[i])
+            path_t = sim_process.threshold_predicted(path, path_probs, \
                                                  predict_args['threshold'], \
                                                  default_state)
-        predicted[predict_inds[i]] = path_t
-        all_probs[predict_inds[i]] = p[i]
+            predicted[predict_inds[i]] = path_t
+            all_probs[predict_inds[i]] = p[i]
 
-    return predicted, all_probs, hmm, hmm_init
+        return predicted, all_probs, hmm, hmm_init
+        
+    if method == 'viterbi':
+        predicted = {}
+        for i in predict_inds:
+            hmm.set_obs(seqs[i])
+            predicted[i] = convert_predictions(hmm.viterbi(), args['states'])
+
+        return predicted, hmm, hmm_init
+
+    else:
+        'invalid method'
 
 def set_up_seqs(sim, sim_args, predict_args): 
 
@@ -472,7 +486,7 @@ def set_up_seqs(sim, sim_args, predict_args):
 
     return seqs_coded
 
-def predict_introgressed(sim, sim_args, predict_args, train):
+def predict_introgressed(sim, sim_args, predict_args, train, method):
     
     seqs_coded = set_up_seqs(sim, sim_args, predict_args)
 
@@ -482,11 +496,9 @@ def predict_introgressed(sim, sim_args, predict_args, train):
 
     # make predictions
     default_state = sim_args['species_to']
-    predicted, probs, hmm, hmm_init = run_hmm(seqs_coded, sim_args, predict_args,\
-                                              init, emis, trans, train, default_state)
-
-    return predicted, probs, hmm, hmm_init
-
+    return run_hmm(seqs_coded, sim_args, predict_args,\
+                   init, emis, trans, train, default_state)
+    
 def write_hmm_headers(states, emis_symbols, f, sep):
 
     header_string = ''

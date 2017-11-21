@@ -24,18 +24,15 @@ ms_f = open(gp_dir + gp.sim_out_dir + '/ms/' + gp.sim_out_prefix + \
             sim_tag + '.txt', 'r')
 # summary output
 out_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
-             sim_tag + '_hmm_' + predict_args['predict_tag'] + '.txt', 'w')
+             sim_tag + '_hmm_viterbi_' + predict_args['predict_tag'] + '.txt', 'w')
 # summary output
 out_init_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
-                  sim_tag + '_hmm_init_' + predict_args['predict_tag'] + '.txt', 'w')
+                  sim_tag + '_hmm_init_viterbi_' + predict_args['predict_tag'] + \
+                  '.txt', 'w')
 # introgression output
 introgression_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
-                       sim_tag + '_introgressed_predicted_' + \
+                       sim_tag + '_introgressed_predicted_viterbi_' + \
                        predict_args['predict_tag'] + '.txt', 'w')
-# associated probabilities output
-prob_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
-              sim_tag + '_introgressed_probs_predicted_' + \
-              predict_args['predict_tag'] + '.txt', 'w')
 
 for i in range(sim_args['num_reps']):
     
@@ -52,10 +49,10 @@ for i in range(sim_args['num_reps']):
     # predict introgressed/non-introgressed tracts
     ##======
     
-    state_seq, probs, hmm, hmm_init = sim_predict.predict_introgressed(sim, sim_args, \
-                                                                       predict_args, \
-                                                                       train=True,
-                                                                       method="posterior")
+    state_seq, hmm, hmm_init = sim_predict.predict_introgressed(sim, sim_args, \
+                                                                predict_args, \
+                                                                train=True,
+                                                                method = "viterbi")
     state_seq_blocks = sim_process.convert_to_blocks(state_seq, \
                                                      predict_args['states'])
 
@@ -73,10 +70,7 @@ for i in range(sim_args['num_reps']):
     sim_process.write_introgression_blocks(state_seq_blocks, introgression_f, \
                                            i, predict_args['states'])
 
-    # probabilities at each site
-    sim_process.write_state_probs(probs, prob_f, i, predict_args['states'])
     
 ms_f.close()
 out_f.close()
 introgression_f.close()
-prob_f.close()
