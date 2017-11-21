@@ -29,9 +29,10 @@ sim_tag = sys.argv[2]
 sim_args = process_args.process_args_by_tag(sys.argv[1], sim_tag)
 predict_args, last_read = sim_predict.process_args(sys.argv, sim_args, i=2)
 
-predict_block_types = ['predicted_' + predict_args['predict_tag']]
+predict_prob_block_types = ['predicted_' + predict_args['predict_tag']]
+predict_path_block_types = ['predicted_viterbi_' + predict_args['predict_tag']]
 actual_block_type = 'actual'
-block_types = predict_block_types + [actual_block_type]
+block_types = predict_prob_block_types + predict_path_block_types + [actual_block_type]
 
 ##======
 # produce combined file
@@ -55,10 +56,10 @@ introgression_file_lines = dict(zip(block_types, \
 # all prob files to read
 prob_fn_prefix = gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
                           sim_args['tag'] + '_introgressed_probs_'
-prob_files = dict(zip(predict_block_types, \
+prob_files = dict(zip(predict_prob_block_types, \
                       [open(prob_fn_prefix + t + '.txt', 'r') \
-                       for t in predict_block_types]))
-prob_file_lines = dict(zip(predict_block_types, \
+                       for t in predict_prob_block_types]))
+prob_file_lines = dict(zip(predict_prob_block_types, \
                            [prob_files[k].readline() for k in prob_files]))
 
 
@@ -117,8 +118,8 @@ for i in range(sim_args['num_reps']):
         if t == actual_block_type:
             blocks_dic[ref_ind] = {}
             blocks_dic[ref_ind][t] = d[ref_ind]
-        # probs only exist for predictions, not actual
-        else:
+        # probs only exist for predictions with probabilities
+        elif t in predict_prob_block_types:
             probs_ind, rep, line = sim_process.read_state_probs(prob_files[t], \
                                                                 prob_file_lines[t], \
                                                                 predict_args['states'])
