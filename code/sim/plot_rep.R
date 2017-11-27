@@ -30,7 +30,8 @@ for (rep in reps)
     a = read.table(paste('../../results/sim/', sim_id, '/', pred_id, '/sim_out_', sim_id, '_', pred_id, '_combined_strain_1_rep', rep, '.txt', sep = ''), sep='\t', header=T)
 
     # output file location and size
-    pdf(paste('../../results/sim/introgression_plots/', sim_id, '_', pred_id, '_strain_1_rep_', rep, '.pdf', sep=''), width = 16, height = 9)
+    #pdf(paste('../../results/sim/introgression_plots/', sim_id, '_', pred_id, '_strain_1_rep_', rep, '.pdf', sep=''), width = 16, height = 9)
+    png(paste('../../results/sim/introgression_plots/', sim_id, '_', pred_id, '_strain_1_rep_', rep, '.png', sep=''), 1600, 900)
 
     # set margins: bottom, left, top, right
     par(mar=c(5, 10, 4, 2))
