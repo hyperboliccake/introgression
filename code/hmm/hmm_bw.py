@@ -124,7 +124,7 @@ class HMM:
           self.print_results(num_its, LL)
 
           # continue until log likelihood has stopped increasing much
-          threshold = .05 * abs(LL)
+          threshold = .01 * abs(LL)
           while num_its < 1 or LL - prev_LL > threshold:
 
                print 'Iteration',  num_its
