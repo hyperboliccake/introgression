@@ -2,11 +2,14 @@ library(ggplot2)
 library(viridis)
 require(grDevices)
 
-sim_id = 'p6'
-pred_ids = c('pred9', 'pred10', 'pred11', 'pred12', 'pred13', 'pred14', 'pred15', 'pred16', 'pred17', 'pred6')
-num_reps = 500
-reps = c(103)
-threshold = .95
+args = commandArgs(trailingOnly=TRUE)
+
+sim_id = args[1]
+pred_id = args[2]
+#num_reps = 500
+num_reps = 100
+reps = 0:(num_reps-1)
+threshold = as.numeric(args[3])
 
 prob_height = 20
 
@@ -17,8 +20,6 @@ vmargin = 1 # for top and bottom
 vcolors = viridis(7, option = 'plasma')
 
 
-for (pred_id in pred_ids) {
-
 prob_label = paste('prob_predicted_', pred_id, '_par', sep='')
 
 for (rep in reps)
@@ -26,7 +27,7 @@ for (rep in reps)
     print(rep)
 
     # read in input file for this rep
-    a = read.table(paste('../../results/sim/sim_out_', sim_id, '_', pred_id, '_combined_strain_1_rep', rep, '.txt', sep = ''), sep='\t', header=T)
+    a = read.table(paste('../../results/sim/', sim_id, '/', pred_id, '/sim_out_', sim_id, '_', pred_id, '_combined_strain_1_rep', rep, '.txt', sep = ''), sep='\t', header=T)
 
     # output file location and size
     pdf(paste('../../results/sim/introgression_plots/', sim_id, '_', pred_id, '_strain_1_rep_', rep, '.pdf', sep=''), width = 16, height = 9)
@@ -34,7 +35,7 @@ for (rep in reps)
     # set margins: bottom, left, top, right
     par(mar=c(5, 10, 4, 2))
 
-    block_types = c('ref', 'actual', paste('predicted_', pred_id, sep=''), paste('predicted_viterbi_', pred_id, sep=''))
+    block_types = c('ref', 'actual', paste('predicted_viterbi_', pred_id, sep=''), paste('predicted_', pred_id, sep=''))
     block_labels = c('reference', 'actual', 'predicted-viterbi', 'predicted-posterior')
     num_block_types = length(block_types)
 
@@ -113,5 +114,5 @@ for (rep in reps)
     dev.off()
 	 
 }
-}
+
 
