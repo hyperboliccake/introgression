@@ -78,7 +78,8 @@ if not os.path.exists(combined_dir):
     os.makedirs(combined_dir)
 
 # loop through reps and then individuals
-for i in range(sim_args['num_reps']):
+#for i in range(sim_args['num_reps']):
+for i in range(100):
 
     print 'rep', i
 
