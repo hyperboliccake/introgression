@@ -9,17 +9,17 @@ import global_params as gp
 # compares them (for example, actual and predicted regions, or calls
 # from two different prediction methods)
 
-args, last_read = process_args.process_args(sys.argv)
-suffix1 = sys.argv[-2]
-suffix2 = sys.argv[-1]
-
+sim_tag = sys.argv[1]
+suffix1 = sys.argv[2] # actual, or first prediction method
+suffix2 = sys.argv[3] # prediction method
+args = process_args.process_args_by_tag(sys.argv[4], sim_tag)
 
 gp_dir = '../'
-fn1 = gp_dir + gp.sim_out_dir + gp.sim_out_prefix + args['tag'] + \
+fn1 = gp_dir + gp.sim_out_dir + gp.sim_out_prefix + sim_tag + \
       '_introgressed_' + suffix1 + '.txt'
-fn2 = gp_dir + gp.sim_out_dir + gp.sim_out_prefix + args['tag'] + \
+fn2 = gp_dir + gp.sim_out_dir + gp.sim_out_prefix + sim_tag + \
       '_introgressed_' + suffix2 + '.txt'
-f_out = gp_dir + gp.sim_out_dir + gp.sim_out_prefix + args['tag'] + \
+f_out = gp_dir + gp.sim_out_dir + gp.sim_out_prefix + sim_tag + \
       '_introgressed_compare_' + suffix1 + '_' + suffix2 + '.txt'
 
 f1 = open(fn1, 'r')
