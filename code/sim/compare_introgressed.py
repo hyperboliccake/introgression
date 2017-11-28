@@ -108,10 +108,9 @@ def write_compare_header(f, states, suffix1, suffix2, sep='\t'):
     #for state in states:
     #    header_string += 'bases_' + suffix1 + '_' + state + sep
     #    header_string += 'bases_' + suffix2 + '_' + state + sep
-    #for state1 in states:
-    #    for state2 in states:
-    #        header_string += 'bases_' + suffix1 + '_' + state1 + \
-    #                         '_' + suffix2 + '_' + state2 + sep
+    for state1 in states:
+        for state2 in states:
+            header_string += 'bases_' + state1 + '_' + state2 + sep
     f.write(header_string[:-len(sep)] + '\n')
 
 def write_compare_line(avg_base_counts, f, states, suffix1, suffix2, sep='\t'):
@@ -135,9 +134,9 @@ def write_compare_line(avg_base_counts, f, states, suffix1, suffix2, sep='\t'):
     #for state in states:
     #    line_string += str(avg_base_counts[(state, suffix1)]) + sep
     #    line_string += str(avg_base_counts[(state, suffix2)]) + sep
-    #for state1 in states:
-    #    for state2 in states:
-    #        line_string += str(avg_base_counts[(state1, state2)]) + sep
+    for state1 in states:
+        for state2 in states:
+            line_string += str(avg_base_counts[(state1, state2)]) + sep
 
     f.write(line_string[:-len(sep)] + '\n')
 
