@@ -298,17 +298,13 @@ def threshold_predicted(predicted, probs, threshold, default_state):
 # add in the nonpolymorphic sites
 def fill_seqs(polymorphic_seqs, polymorphic_sites, nsites, fill):
     
+    # note that polymorphic sites can have duplicates
     seqs_filled = []
     for seq in polymorphic_seqs:
-        s = ''
-        poly_ind = 0
-        for i in range(nsites):
-            if i in polymorphic_sites:
-                s += seq[poly_ind]
-                poly_ind += 1
-            else:
-                s += fill
-        seqs_filled.append(s)
+        s = [fill for x in range(nsites)]
+        for i in range(len(polymorphic_sites)):
+            s[polymorphic_sites[i]] = seq[i]
+        seqs_filled.append(''.join(s))
     return seqs_filled
 
 def get_max_path(p):
