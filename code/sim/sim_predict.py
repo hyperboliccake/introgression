@@ -18,6 +18,9 @@ def process_args(arg_list, sim_args, i=1):
     d['predict_tag'] = arg_list[i]
     i += 1
 
+    d['improvement_frac'] = float(arg_list[i])
+    i += 1
+
     d['threshold'] = float(arg_list[i])
     i += 1
 
@@ -439,7 +442,7 @@ def run_hmm(seqs, sim_args, predict_args, init, emis, trans, train, default_stat
 
     # optional Baum-Welch parameter estimation
     if train:
-        hmm.go()
+        hmm.go(predict_args['improvement_frac'])
 
     # make predictions! 
 

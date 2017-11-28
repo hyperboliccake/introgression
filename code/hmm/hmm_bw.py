@@ -105,7 +105,7 @@ class HMM:
 
           sys.stdout.flush()
 
-     def go(self, num_its = 0, prev_LL = 0):
+     def go(self, improvement_frac = .01, num_its = 0, prev_LL = 0):
 
           # calculate current log likelihood
           print "calculating alpha"
@@ -124,7 +124,7 @@ class HMM:
           self.print_results(num_its, LL)
 
           # continue until log likelihood has stopped increasing much
-          threshold = .01 * abs(LL)
+          threshold = improvement_frac * abs(LL)
           while num_its < 1 or LL - prev_LL > threshold:
 
                print 'Iteration',  num_its
