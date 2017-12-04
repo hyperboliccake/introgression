@@ -240,7 +240,7 @@ def unblock(blocks, num_sites):
     return d
 
 
-def write_state_probs(probs, f, rep, states):
+def write_state_probs(probs, f, rep):
 
     # probs is keyed by individual, list of sites, each site dic keyed
     # by state
@@ -255,7 +255,7 @@ def write_state_probs(probs, f, rep, states):
 
     for ind in probs.keys():
         f.write(str(ind))
-        for state in states:
+        for state in probs[ind][0].keys():
             f.write('\t' + state + ':')
             probs_string = ','.join(["{0:.5f}".format(site[state]) \
                                      for site in probs[ind]])
@@ -289,7 +289,7 @@ def threshold_predicted(predicted, probs, threshold, default_state):
 
     predicted_thresholded = []
     for i in range(len(predicted)):
-        if probs[i] > threshold:
+        if probs[i] >= threshold:
             predicted_thresholded.append(predicted[i])
         else:
             predicted_thresholded.append(default_state)
@@ -308,7 +308,8 @@ def fill_seqs(polymorphic_seqs, polymorphic_sites, nsites, fill):
     return seqs_filled
 
 def get_max_path(p):
-
+    # p is a list of dictionaries, one per site; each dict has keys
+    # for each state, with associated probability
     max_path = []
     max_probs = []
     for site_probs in p:
