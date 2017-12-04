@@ -78,8 +78,7 @@ if not os.path.exists(combined_dir):
     os.makedirs(combined_dir)
 
 # loop through reps and then individuals
-#for i in range(sim_args['num_reps']):
-for i in range(100):
+for i in range(sim_args['num_reps']):
 
     print 'rep', i
 
@@ -90,6 +89,7 @@ for i in range(100):
 
     sim = sim_process.read_one_sim(ms_f, sim_args['num_sites'], sim_args['num_samples'])
 
+    # list of num_samples sequences
     seqs_coded = sim_predict.set_up_seqs(sim, sim_args, predict_args)
 
     # read in blocks from all methods
