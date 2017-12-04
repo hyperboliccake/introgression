@@ -243,8 +243,10 @@ class HMM:
                # print results for every iteration
                self.print_results(num_its, LL)
 
-               assert LL > prev_LL or isclose(LL, prev_LL), \
-                    str(LL) + ' ' + str(prev_LL)
+               #assert LL > prev_LL or isclose(LL, prev_LL), \
+               #     str(LL) + ' ' + str(prev_LL)
+               if LL < prev_LL and not isclose(LL, prev_LL):
+                    print 'PROBLEM: log-likelihood stopped increasing; stopping training now'
 
                
           print "finished in", num_its, 'iterations'
