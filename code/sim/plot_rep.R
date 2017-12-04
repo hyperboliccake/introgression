@@ -9,7 +9,7 @@ pred_id = args[2]
 #num_reps = 500
 num_reps = 100
 reps = 0:(num_reps-1)
-threshold = as.numeric(args[3])
+threshold = as.numeric(args[4])
 
 prob_height = 20
 
