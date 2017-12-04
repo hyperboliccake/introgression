@@ -204,7 +204,9 @@ def get_symbol_freqs(seqs_coded, sim_args, predict_args):
     for state in predict_args['states']:
         seqs_current = []
         for i in sim_args['species_to_indices'][state]:
-            if i not in predict_args['ref_inds']:
+            # exclude reference individuals unless that's all we've got...
+            if len(sim_args['species_to_indices'][state]) == 1 or \
+               i not in predict_args['ref_inds']:
                 seqs_current.append(seqs_coded[i])
         d[state] = get_symbol_freqs_one(seqs_current, sim_args, predict_args)
 
