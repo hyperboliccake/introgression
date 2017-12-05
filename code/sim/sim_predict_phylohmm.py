@@ -19,6 +19,9 @@ def process_args(arg_list, all_sim_args, i=1):
 
     d['threshold'] = float(arg_list[i])
 
+    # TODO unhardcode
+    d['states'] = ['cer', 'par']
+
     return d, i
 
 def convert_binary_to_nucleotides(seqs):
@@ -154,7 +157,7 @@ def predict_introgressed(sim, sim_args, predict_args, i, gp_dir):
 
     # make predictions
     phylohmm_command = \
-            'java -jar ~/software/phylo_hmm/phmm-0.1/dist/lib/phmm.jar < ' + input_fn
+            'java -jar /tigress/anneec/software/phylo_hmm/phmm-0.1/dist/lib/phmm.jar < ' + input_fn
     print phylohmm_command
     os.system(phylohmm_command)
 
