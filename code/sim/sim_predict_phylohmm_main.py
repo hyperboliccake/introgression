@@ -68,7 +68,7 @@ for i in range(sim_args['num_reps']):
                                            i, sim_args['species'])
 
     # probabilities at each site
-    sim_process.write_state_probs(probs, prob_f, i, sim_args['species'])
+    sim_process.write_state_probs(probs, prob_f, i)
 
 ms_f.close()
 out_f.close()
