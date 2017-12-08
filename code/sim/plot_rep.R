@@ -19,8 +19,9 @@ vmargin = 1 # for top and bottom
 
 vcolors = viridis(7, option = 'plasma')
 
-
-prob_label = paste('prob_predicted_', pred_id, '_par', sep='')
+prob_labels = c(paste('prob_predicted_', pred_id, '_par', sep=''), 
+	      	paste('prob_predicted_phylohmm_', pred_id, '_par', sep=''))
+prob_points = c(20, 8)
 
 for (rep in reps)
 {
@@ -36,8 +37,8 @@ for (rep in reps)
     # set margins: bottom, left, top, right
     par(mar=c(5, 10, 4, 2))
 
-    block_types = c('ref', 'actual', paste('predicted_viterbi_', pred_id, sep=''), paste('predicted_', pred_id, sep=''))
-    block_labels = c('reference', 'actual', 'predicted-viterbi', 'predicted-posterior')
+    block_types = c('ref', 'actual', paste('predicted_phylohmm_', pred_id, sep=''), paste('predicted_', pred_id, sep=''))
+    block_labels = c('reference', 'actual', 'predicted-phylonet', 'predicted-posterior')
     num_block_types = length(block_types)
 
     seq_start = min(a$site)
@@ -55,6 +56,7 @@ for (rep in reps)
 
     # move x axis label and title closer to axis
     title(xlab = paste("position"), line = 3, cex.lab=1.7)
+
 
     for (i in 1:nrow(a))
     {
@@ -90,13 +92,25 @@ for (rep in reps)
 
 	# plot probabilities - manual graph, woooo
 	graph_bottom = vmargin + (row_height + padding) * (num_block_types + 1)
+	for (px in 1:length(prob_labels)) {
+	prob_label = prob_labels[px]
 	p = a[i,prob_label]
 	y = p * prob_height + graph_bottom
 	color = vcolors[2]
 	if (p > threshold) { 
 	    color = vcolors[4] }
-	points(x, y, pch = 20, col=color)
-	
+	points(x, y, pch = prob_points[px], col=color)
+	}	
+    }
+    
+    # a little hacky - show which probability points go with which prediction method
+    if (length(prob_labels > 1) {
+    for (px in 1:length(prob_labels)) {
+    	x = 3
+        y = vmargin + (padding + row_height) * 
+	    (num_block_types-px+1) + row_height / 2
+    	points(x, y, pch = prob_points[px], col=vcolors[2])
+    }
     }
 
     # plot probability threshold
