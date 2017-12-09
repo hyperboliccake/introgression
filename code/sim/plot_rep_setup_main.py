@@ -29,8 +29,9 @@ sim_tag = sys.argv[2]
 sim_args = process_args.process_args_by_tag(sys.argv[1], sim_tag)
 predict_args, last_read = sim_predict.process_args(sys.argv, sim_args, i=2)
 
-predict_prob_block_types = ['predicted_' + predict_args['predict_tag']]
-predict_path_block_types = ['predicted_viterbi_' + predict_args['predict_tag']]
+predict_prob_block_types = ['predicted_' + predict_args['predict_tag'], \
+                            'predicted_phylohmm_' + predict_args['predict_tag']]
+predict_path_block_types = []#['predicted_viterbi_' + predict_args['predict_tag']]
 actual_block_type = 'actual'
 block_types = predict_prob_block_types + predict_path_block_types + [actual_block_type]
 
@@ -122,8 +123,7 @@ for i in range(sim_args['num_reps']):
         # probs only exist for predictions with probabilities
         elif t in predict_prob_block_types:
             probs_ind, rep, line = sim_process.read_state_probs(prob_files[t], \
-                                                                prob_file_lines[t], \
-                                                                predict_args['states'])
+                                                                prob_file_lines[t])
             assert i == rep, str(i) + ' ' + str(rep)
             prob_file_lines[t] = line
             # this is just converting the dictionary to have the block

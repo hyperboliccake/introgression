@@ -15,7 +15,6 @@ def write_combined_file(f, rep, codings, introgressed, \
 
     categories = sorted(introgressed.keys())
     prob_types = sorted(probs.keys())
-    states = sorted(probs[prob_types[0]].keys())
 
     if header:
         f.write('rep\tsite\tcoding')
@@ -23,7 +22,7 @@ def write_combined_file(f, rep, codings, introgressed, \
             f.write('\t' + category)
         f.write('\t' + 'ref')
         for prob_type in prob_types:
-            for state in states:
+            for state in probs[prob_type].keys():
                 f.write('\t' + 'prob_' + prob_type + '_' + state)
         f.write('\n')
 
@@ -33,7 +32,7 @@ def write_combined_file(f, rep, codings, introgressed, \
             f.write('\t' + introgressed[category][i])
         f.write('\t' + introgressed_ref[actual_block_type][i])
         for prob_type in prob_types:
-            for state in states:
+            for state in probs[prob_type].keys():
                 f.write('\t' + str(probs[prob_type][state][i]))
         f.write('\n')
 
