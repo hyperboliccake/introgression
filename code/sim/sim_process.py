@@ -263,7 +263,7 @@ def write_state_probs(probs, f, rep):
         f.write('\n')
     f.flush()
 
-def read_state_probs(f, line, states):
+def read_state_probs(f, line):
 
     d = {} # keyed by individual, then species, list of probs
     assert line.startswith('rep'), line
@@ -274,8 +274,6 @@ def read_state_probs(f, line, states):
         x = line[:-1].split('\t')
         ind = int(line[0])
         d_ind = {}
-        for state in states:
-            d_ind[state] = []
         for s in x[1:]:
             species, probs = s.split(':')
             probs = [float(x) for x in probs.split(',')]
