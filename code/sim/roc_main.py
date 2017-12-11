@@ -57,8 +57,7 @@ for rep in range(sim_args['num_reps']):
     print '\r' + 'rep ' + str(rep) + '/' + str(sim_args['num_reps']),
     sys.stdout.flush()
     # {1:{cer:.9,.9,..., par:.1,.1,...}}
-    d, rep, line = sim_process.read_state_probs(f_probs, line, \
-                                                predict_args['states'])
+    d, rep, line = sim_process.read_state_probs(f_probs, line)
     # {1:[{cer:.9, par:.1},{cer:.9, par:.1},...]}
     d = roc.reformat_probs(d)
     probs.append(d)
@@ -86,7 +85,7 @@ for rep in range(sim_args['num_reps']):
 print 'generating ROC file'
 
 x = 100
-thresholds = [float(i) / x for i in range(0, x + 1)]
+thresholds = [float(i) / x for i in range(0, x + 2)]
 header = True
 for threshold in thresholds:
     print 'threshold:', threshold
