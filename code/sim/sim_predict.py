@@ -98,10 +98,11 @@ def process_args(arg_list, sim_args, i=1):
     return d, i
 
 # convert sequences from bases to symbols indicating which references they match
-def code_seqs(seqs, nsites, ref_seqs):
+def code_seqs(seqs, ref_seqs):
 
     nrefs = len(ref_seqs)
     seqs_coded = []
+    nsites = len(seqs[0])
     for seq in seqs:
         s = []
         for i in range(nsites):
@@ -117,7 +118,7 @@ def code_seqs(seqs, nsites, ref_seqs):
         seqs_coded.append(s)
     return seqs_coded
 
-def get_symbol_freqs_one(seqs, sim_args, predict_args):
+def get_symbol_freqs_one(seqs, predict_args):
 
     if len(seqs) == 0:
         return None
@@ -194,7 +195,7 @@ def get_symbol_freqs_one(seqs, sim_args, predict_args):
     
     return individual_symbol_freqs, symbol_freqs, weighted_match_freqs
 
-def get_symbol_freqs(seqs_coded, sim_args, predict_args):
+def get_symbol_freqs(seqs_coded, species_to_indices, predict_args):
 
     # for each species/state set of sequences calculate: the
     # frequencies of individual symbols for each species, the
@@ -203,16 +204,16 @@ def get_symbol_freqs(seqs_coded, sim_args, predict_args):
     d = {}
     for state in predict_args['states']:
         seqs_current = []
-        for i in sim_args['species_to_indices'][state]:
+        for i in species_to_indices[state]:
             # exclude reference individuals unless that's all we've got...
-            if len(sim_args['species_to_indices'][state]) == 1 or \
+            if len(species_to_indices[state]) == 1 or \
                i not in predict_args['ref_inds']:
                 seqs_current.append(seqs_coded[i])
-        d[state] = get_symbol_freqs_one(seqs_current, sim_args, predict_args)
+        d[state] = get_symbol_freqs_one(seqs_current, predict_args)
 
     return d
 
-def initial_probabilities(weighted_match_freqs, sim_args, predict_args):
+def initial_probabilities(weighted_match_freqs, num_sites, predict_args):
 
     # a small value to add so that no frequencies are actually 0
     epsilon = .001
@@ -228,7 +229,7 @@ def initial_probabilities(weighted_match_freqs, sim_args, predict_args):
         init.append(weighted_match_freqs[state] + \
                         float(predict_args['expected_tract_lengths'][state] * \
                               predict_args['expected_num_tracts'][state]) / \
-                    sim_args['num_sites'] + epsilon)
+                    num_sites + epsilon)
     scale = float(sum(init))
     for i in range(len(predict_args['states'])):
         init[i] /= scale
@@ -281,7 +282,7 @@ def emission_probabilities(d_freqs, own_bias, predict_args):
         emis.append(emis_species)
     return emis
 
-def transition_probabilities(weighted_match_freqs, sim_args, predict_args):
+def transition_probabilities(weighted_match_freqs, species_to, predict_args):
 
     # a small value to add so that no frequencies are actually 0
     epsilon = 1./1000000
@@ -316,7 +317,7 @@ def transition_probabilities(weighted_match_freqs, sim_args, predict_args):
     # expected amount of migration?
 
     expected_length_not_introgressed = \
-        float(predict_args['expected_tract_lengths'][sim_args['species_to']])
+        float(predict_args['expected_tract_lengths'][species_to]])
 
     # fraction of time we should choose given species state over
     # others based on number of sites that match it
@@ -345,7 +346,7 @@ def transition_probabilities(weighted_match_freqs, sim_args, predict_args):
             if state_to == state_from:
                 pass
             # moving from non-introgressed (cer) to introgressed
-            elif state_from == sim_args['species_to']:
+            elif state_from == species_to:
                 if expected_length_not_introgressed > 0:
                     val = 1 / expected_length_not_introgressed * fracs[state_to]
                 else:
@@ -353,7 +354,7 @@ def transition_probabilities(weighted_match_freqs, sim_args, predict_args):
                     # entire sequence to be introgressed
                     val = 1
             # moving from introgressed to non-introgressed
-            elif state_to == sim_args['species_to']:
+            elif state_to == species_to:
                 if predict_args['expected_tract_lengths'][state_from] > 0:
                     val = 1 / float(predict_args['expected_tract_lengths'][state_from])
                 else:
@@ -385,23 +386,24 @@ def transition_probabilities(weighted_match_freqs, sim_args, predict_args):
 
     return trans
 
-def initial_hmm_parameters(seqs_coded, sim_args, predict_args):
+def initial_hmm_parameters(seqs_coded, species_to_indices, species_to, \
+                           num_sites, predict_args):
 
     # get frequencies of all symbols (i.e. matching to each
     # reference/all combinations of references)
-    d_freqs = get_symbol_freqs(seqs_coded, sim_args, predict_args)
+    d_freqs = get_symbol_freqs(seqs_coded, species_to_indices, predict_args)
 
     # using only the sequences to predict introgression in: (1) the
     # frequency of alignment columns that match/don't match each
     # reference, (2) the frequency of all symbol combinations, (3)
     # weights for each symbol combination/reference
     individual_symbol_freqs, symbol_freqs, weighted_match_freqs = \
-        d_freqs[sim_args['species_to']]
+        d_freqs[species_to]
 
     p = {}
-    p['init'] = initial_probabilities(weighted_match_freqs, sim_args, predict_args)
+    p['init'] = initial_probabilities(weighted_match_freqs, species_to, predict_args)
     p['emis'] = emission_probabilities(d_freqs, .99, predict_args)
-    p['trans'] = transition_probabilities(weighted_match_freqs, sim_args, predict_args)
+    p['trans'] = transition_probabilities(weighted_match_freqs, num_sites, predict_args)
 
     return p['init'], p['emis'], p['trans']
 
@@ -476,7 +478,7 @@ def run_hmm(seqs, sim_args, predict_args, init, emis, trans, train, default_stat
         return predicted, hmm, hmm_init
 
     else:
-        'invalid method'
+        print 'invalid method'
 
 def set_up_seqs(sim, sim_args, predict_args): 
 
@@ -497,7 +499,10 @@ def predict_introgressed(sim, sim_args, predict_args, train, method):
 
     # initial values for initial, emission, and transition
     # probabilities
-    init, emis, trans = initial_hmm_parameters(seqs_coded, sim_args, predict_args)
+    init, emis, trans = initial_hmm_parameters(seqs_coded, \
+                                               sim_args['species_to_indices'], \
+                                               sim_args['species_to'], \
+                                               sim_args['num_sites'], predict_args)
 
     # make predictions
     default_state = sim_args['species_to']

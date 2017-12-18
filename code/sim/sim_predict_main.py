@@ -15,7 +15,7 @@ sim_args = process_args.process_args_by_tag(sys.argv[1], sim_tag)
 predict_args, last_read = sim_predict.process_args(sys.argv, sim_args, i=2)
 
 ##======
-# loop through all simulations predict introgression
+# loop through all simulations and predict introgression
 ##======
 
 gp_dir = '../'
@@ -52,10 +52,9 @@ for i in range(sim_args['num_reps']):
     # predict introgressed/non-introgressed tracts
     ##======
     
-    state_seq, probs, hmm, hmm_init = sim_predict.predict_introgressed(sim, sim_args, \
-                                                                       predict_args, \
-                                                                       train=True,
-                                                                       method="posterior")
+    state_seq, probs, hmm, hmm_init = \
+        sim_predict.predict_introgressed(sim, sim_args, predict_args, \
+                                         train=True, method='posterior')
     state_seq_blocks = sim_process.convert_to_blocks(state_seq, \
                                                      predict_args['states'])
 
