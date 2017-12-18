@@ -9,9 +9,10 @@ import sim_predict
 # read in analysis parameters
 ##======
 
-predict_args, last_read = sim_predict.process_args(sys.argv, sim_args, i=2)
-refs, strains = predict.read_strains(sys.argv[last_read+1])
-# refs = {'cer': ('S288c', '../../data/'), ...}
+predict_args = sim_predict.process_args(sys.argv, sim_args, i=2)
+species_order, refs, strains = predict.read_strains(sys.argv[last_read+1])
+# species_order = ['cer', 'par']
+# refs = [('S288c', '../../data/'), ...]
 # strains = [('strain1', '../../data/'), ...]
 
 
@@ -25,7 +26,7 @@ for chrm in gp.chrms:
 
     for strain in strains:
 
-        predict_seq = predict.read_seqs(strain, chrm)
+        predict_seq = predict.read_seq(strain, chrm)
 
         ##======
         # predict introgressed/non-introgressed tracts

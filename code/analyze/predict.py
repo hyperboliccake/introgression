@@ -6,9 +6,179 @@ import numpy.random
 sys.path.insert(0, '../hmm/')
 from hmm_bw import *
 sys.path.insert(0, '../sim/')
-import sim_analyze_hmm_bw as sim
+import sim_predict
 sys.path.insert(0, '../')
 import global_params as gp
+sys.path.insert(0, '../misc')
+import read_fasta
+
+
+def process_args(arg_list):
+
+    d = {}
+
+    d['improvement_frac'] = float(arg_list[i])
+    i += 1
+
+    d['threshold'] = float(arg_list[i])
+    i += 1
+
+    strain_fn = arg_list[i]
+    i += 1
+
+    f = open(strain_fn, 'r')
+    line = f.readline()
+    strains = [] # [strain:(fn, species), ...]
+    while line != '':
+        line = line.strip().split(' ')
+        current_species = line[0]
+        current_dir = line[1]
+        current_strains = line[2:]
+        for strain in current_strains:
+            strain_dir = current_dir + '/' + strain + '/'
+            strains.append(strain_dir, current_species)
+        line = f.readline()
+    f.close()
+
+    # expected length and number of tracts...
+    expected_tract_lengths = {}
+    expected_frac = {}
+
+    states = []
+    while i < len(arg_list):
+        states.append(arg_list[i])
+        i += 1
+        ref_names.append(arg_list[i])
+        i += 1
+        expected_tract_lengths[states[-1]] = float(arg_list[i])
+        i += 1
+        expected_frac[states[-1]] = float(arg_list[i])
+        i += 1
+
+    # TODO deal with noref
+
+    # calculate these based on remaining bases, but after we know
+    # which chromosome we're looking at
+    expected_tract_lengths[states[0]] = 0
+    expected_frac[states[0]] = 0
+    
+    d['expected_tract_lengths'] = expected_tract_lengths
+    d['expected_frac'] = expected_frac
+
+    return d, i
+
+
+def read_seq(strain, chrm):
+
+    name, path = strain
+    fn = path + '/' + name + '/' + name + 'chr' + chrm + '.fa'
+    headers, seqs = read_fasta.read_fasta(fn)
+    return seqs[0]
+
+def read_ref_seqs(refs, chrm):
+
+    ref_seqs = []
+    for ref in refs:
+        seq = read_seq(ref, chrm)
+        ref_seqs.append(seq)
+    return ref_seqs
+
+def ungap_and_code(predict_seq, ref_seqs, index_ref = 0):
+    # assume the first reference is what we want to index from
+    ps = []
+    seq = []
+    ind = 0
+    for i in range(len(predict_seq)):
+        xi = predict_seq[i]
+        # only keep this position in sequence if no gaps in
+        # the alignment column
+        keep = True
+        if xi == gp.gap_symbol:
+            keep = False
+        # determine which references the sequence matches at
+        # this position
+        symbol = ''
+        for ref in refs:
+            ri = ref_seqs[ref][i]
+            if ri == gp.gap_symbol:
+                keep = False
+                break
+            elif xi == ri:
+                symbol += match_symbol
+            else:
+                symbol += mismatch_symbol
+        if keep:
+            seq.append(symbol)
+            ps.append(ind)
+        if ref_seqs[index_ref][i] != gp.gap_symbol:
+            ind += 1
+    return seq, ps
+        
+
+def predict_introgressed(ref_seqs, predict_seq, predict_args, \
+                         train=True, method='posterior'):
+
+    # code sequence by which reference it matches at each site
+    seq_coded, ps = ungap_and_code(predict_seq, ref_seqs)
+
+    # initial values for initial, emission, and transition
+    # probabilities
+    init, emis, trans = initial_hmm_parameters([seq_coded], ['cer':[0]], \
+                                               'cer', \
+                                               len(seq_coded), \
+                                               predict_args)
+
+    ######
+    # make predictions
+    ######
+
+    default_state = sim_args['species_to']
+
+    # new Hidden Markov Model
+    hmm = hmm_bw.HMM()
+
+    # set obs
+    hmm.set_obs([predict_seq])
+
+    # set states and initial probabilties
+    hmm.set_states(predict_args['states'])
+    hmm.set_init(init)
+    hmm.set_emis(emis)
+    hmm.set_trans(trans)
+
+    hmm_init = copy.deepcopy(hmm)
+
+    # optional Baum-Welch parameter estimation
+    if train:
+        hmm.go(predict_args['improvement_frac'])
+
+    if method == "posterior":
+        predicted = {}
+        all_probs = {}
+        # for all obs sequences, each site is a dic with one prob for each
+        # state
+        p = hmm.posterior_decoding()
+        path, path_probs = sim_process.get_max_path(p[0])
+        path_t = sim_process.threshold_predicted(path, path_probs, \
+                                                 predict_args['threshold'], \
+                                                 default_state)
+
+        return path_t, probs[0], hmm, hmm_init
+        
+    if method == 'viterbi':
+        hmm.set_obs(predict_seq)
+        predicted = convert_predictions(hmm.viterbi(), predict_args['states'])
+        return predicted, hmm, hmm_init
+
+    else:
+        print 'invalid method'
+
+
+
+
+
+"""
+
 
 resume = False
 
@@ -292,3 +462,4 @@ def write_predicted_tracts(blocks, f):
         block = [str(x) for x in block]
         f.write('\t'.join(block) + '\n')
 
+"""
