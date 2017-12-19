@@ -12,8 +12,7 @@ import global_params as gp
 sys.path.insert(0, '../misc')
 import read_fasta
 
-
-def process_args(arg_list):
+def process_predict_args(arg_list):
 
     d = {}
 
@@ -26,49 +25,74 @@ def process_args(arg_list):
     strain_fn = arg_list[i]
     i += 1
 
-    f = open(strain_fn, 'r')
-    line = f.readline()
-    strains = [] # [strain:(fn, species), ...]
-    while line != '':
-        line = line.strip().split(' ')
-        current_species = line[0]
-        current_dir = line[1]
-        current_strains = line[2:]
-        for strain in current_strains:
-            strain_dir = current_dir + '/' + strain + '/'
-            strains.append(strain_dir, current_species)
-        line = f.readline()
-    f.close()
-
-    # expected length and number of tracts...
+    # expected length of introgressed tracts and fraction of sequence
+    # introgressed
     expected_tract_lengths = {}
     expected_frac = {}
 
-    states = []
+    species = []
     while i < len(arg_list):
-        states.append(arg_list[i])
+        species.append(arg_list[i])
         i += 1
-        ref_names.append(arg_list[i])
-        i += 1
-        expected_tract_lengths[states[-1]] = float(arg_list[i])
-        i += 1
-        expected_frac[states[-1]] = float(arg_list[i])
+        expected_tract_lengths[species[-1]] = float(arg_list[i])
+         i += 1
+        expected_frac[species[-1]] = float(arg_list[i])
         i += 1
 
     # TODO deal with noref
 
-    # calculate these based on remaining bases, but after we know
-    # which chromosome we're looking at
-    expected_tract_lengths[states[0]] = 0
-    expected_frac[states[0]] = 0
-    
-    d['expected_tract_lengths'] = expected_tract_lengths
+    expected_frac[species[0]] = 0
+    expected_frac[species[0]] = 1 - sum(expected_frac.values())
     d['expected_frac'] = expected_frac
 
-    return d, i
+    # calculate these based on remaining bases, but after we know
+    # which chromosome we're looking at
+    expected_tract_lengths[species[0]] = 0    
+    d['expected_tract_lengths'] = expected_tract_lengths
+    d['expected_num_tracts'] = {}
+    d['expected_bases'] = {}
+
+    return d
 
 
-def read_seq(strain, chrm):
+def process_ref_args(fn):
+
+    f = open(fn, 'r')
+    line = f.readline()
+    refs = {}
+    while line != '':
+        ref_species, ref_name, ref_seq_name, ref_seq_location = line.strip().split(' ')
+        refs[ref_species] = (ref_name, ref_seq_name, ref_seq_location)
+        line = f.readline()
+    f.close()
+    return refs
+
+def process_strain_args(fn):
+    f = open(fn, 'r')
+    line = f.readline()
+    strains = {}
+    while line != '':
+        line = line.strip().split(' ')
+        species = line[0]
+        strain_seq_location = line[1]
+        strain_names = line[2:]
+        if not strains.has_key(species):
+            strains[species] = []
+        for strain in strain_names:
+            strains[species].append(strain, strain_seq_location)
+        line = f.readline()
+    f.close()
+    return strains
+
+def process_args(arg_list):
+
+    refs = process_ref_args(arg_list[1])
+    strains = process_strain_args(arg_list[2])
+    args = process_predict_args(arg_list[3:])
+    return refs, strains, args
+
+'''
+def read_seq(name, path, chrm):
 
     name, path = strain
     fn = path + '/' + name + '/' + name + 'chr' + chrm + '.fa'
@@ -78,10 +102,46 @@ def read_seq(strain, chrm):
 def read_ref_seqs(refs, chrm):
 
     ref_seqs = []
-    for ref in refs:
-        seq = read_seq(ref, chrm)
+    for species in refs:
+        seq = read_seq(refs[species][1], refs[species][2], chrm)
         ref_seqs.append(seq)
     return ref_seqs
+'''
+
+def read_aligned_seqs(fn, refs, strain):
+    headers, seqs = read_fasta.read_fasta(fn)
+    d = {}
+    for i in range(len(seqs)):
+        name = headers[i][1:].split(' ')[0]
+        d[name] = seqs[i]
+    ref_seqs = []
+    for species in refs:
+        ref_seqs.append(d[refs[species][0]]])
+    predict_seq = d[strain]
+
+    return ref_seqs, predict_seq
+
+def set_expectations(args, n):
+
+    species_to = args['species'][0]
+    species_from = copy.deepcopy(args['species'])
+    species_from.remove(species_to)
+
+    for s in species_from:
+        args['expected_num_tracts'][s] = \
+            args['expected_frac'] * n / args['expected_tract_lengths'][s]
+        args['expected_bases'] = args['expected_num_tracts'][s] * \
+                                 args['expected_tract_lengths'][s]
+
+    args['expected_bases'][species_to] = \
+        n - sum([args['expected_bases'][s] for s in species_from])
+
+    args['expected_num_tracts'][species_to] = \
+        sum([args['expected_num_tracts'][s] for s in species_from]) + 1
+
+    args['expected_tract_lengths'][species_to] = \
+        args['expected_bases'][species_to] / args['expected_num_tracts'][species_to]
+
 
 def ungap_and_code(predict_seq, ref_seqs, index_ref = 0):
     # assume the first reference is what we want to index from
@@ -121,18 +181,23 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args, \
     # code sequence by which reference it matches at each site
     seq_coded, ps = ungap_and_code(predict_seq, ref_seqs)
 
+    set_expectations(predict_args, len(predict_seq))
+
     # initial values for initial, emission, and transition
     # probabilities
-    init, emis, trans = initial_hmm_parameters([seq_coded], ['cer':[0]], \
-                                               'cer', \
-                                               len(seq_coded), \
-                                               predict_args)
+    predict_args['states'] = predict_args['species'] # hackity
+    predict_args['unknown_species'] = None # hack
+    predict_args['ref_inds'] = [1,2] # hack
+    init, emis, trans = sim_predict.initial_hmm_parameters([seq_coded], ['cer':[0]], \
+                                                           'cer', \
+                                                           len(seq_coded), \
+                                                           predict_args)
 
     ######
     # make predictions
     ######
 
-    default_state = sim_args['species_to']
+    default_state = predict_args['species'][0]
 
     # new Hidden Markov Model
     hmm = hmm_bw.HMM()
@@ -141,7 +206,7 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args, \
     hmm.set_obs([predict_seq])
 
     # set states and initial probabilties
-    hmm.set_states(predict_args['states'])
+    hmm.set_states(predict_args['species'])
     hmm.set_init(init)
     hmm.set_emis(emis)
     hmm.set_trans(trans)
@@ -163,18 +228,62 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args, \
                                                  predict_args['threshold'], \
                                                  default_state)
 
-        return path_t, probs[0], hmm, hmm_init
+        return path_t, probs[0], hmm, hmm_init, ps
         
     if method == 'viterbi':
         hmm.set_obs(predict_seq)
         predicted = convert_predictions(hmm.viterbi(), predict_args['states'])
-        return predicted, hmm, hmm_init
+        return predicted, hmm, hmm_init, ps
 
     else:
         print 'invalid method'
 
+def write_blocks(state_seq_blocks, ps, f_prefix, strain, chrm):
+    # one file for each species
+    # file format is:
+    # strain chrm start end number_non_gap
+    for species in state_seq_blocks:
+        f = open(f_prefix + species + '.txt', 'a')
+        for block in state_seq_blocks[species]:
+            f.write(strain + sep + chrm + sep + species + sep + \
+                    str(ps[start]) + sep + str(ps[end]) + sep + \
+                    str(end - start + 1) + '\n')
 
 
+def get_predicted_tracts(predicted, all_ps, master_ref, seq_inds):
+
+    blocks = []
+    # loop through all sequences
+    for s in xrange(len(predicted)):
+        print 'alignment block: ', all_ps[s]
+        alignment_block = all_ps[s]
+        # loop through all sites in that sequence, keeping track of
+        # introgressed blocks
+        prev_species = None
+        start_int = 0
+        end_int = 0
+        predicted[s] = predicted[s] + ['END']
+        for i in xrange(len(predicted[s])):
+            # staying in same species
+            if predicted[s][i] == prev_species:
+                end_int = i
+            # ending previous block
+            else:
+                if prev_species != None and prev_species != master_ref:
+                    blocks.append(list(alignment_block) + \
+                                      [prev_species, \
+                                           seq_inds[s][start_int], seq_inds[s][end_int], \
+                                           end_int - start_int + 1])
+                start_int = i
+                end_int = i
+                prev_species = predicted[s][i]
+                
+    return blocks
+
+def write_predicted_tracts(blocks, f):
+    for block in blocks:
+        block = [str(x) for x in block]
+        f.write('\t'.join(block) + '\n')
 
 
 """

@@ -9,38 +9,48 @@ import sim_predict
 # read in analysis parameters
 ##======
 
-predict_args = sim_predict.process_args(sys.argv, sim_args, i=2)
-species_order, refs, strains = predict.read_strains(sys.argv[last_read+1])
-# species_order = ['cer', 'par']
-# refs = [('S288c', '../../data/'), ...]
-# strains = [('strain1', '../../data/'), ...]
+refs, strains, args = predict.process_args(sys.argv)
 
+# refs = {'cer':('S288c', '../../data/', 'S288C-SGD_R64'), ...]
+# strains = {'cer':[('strain1', '../../data/'), ...], ...}
 
 ##======
 # loop through all sequences and predict introgression
 ##======
 
-for chrm in gp.chrms:
+gp_dir = '../'
 
-    ref_seqs = predict.read_ref_seqs(refs, chrm)
+out_f = open(gp.analysis_out_dir_absolute, 'w')
+introgression_f
+probs_f
+
+for chrm in gp.chrms:
 
     for strain in strains:
 
-        predict_seq = predict.read_seq(strain, chrm)
+        fn = fp_dir + gp.alignment_dir + '_'.join(args['species']) + '_' + strain + \
+             '_mafft' + gp.alignment_suffix
+        ref_seqs, predict_seq = read_aligned_seqs(fn, refs, strain)
 
         ##======
         # predict introgressed/non-introgressed tracts
         ##======
 
-        state_seq, probs, hmm, hmm_init = \
-            predict.predict_introgressed(ref_seqs, predict_seq, predict_args,\
+        state_seq, probs, hmm, hmm_init, ps = \
+            predict.predict_introgressed(predict_seq, ref_seqs, args,\
                                          train = True, method='posterior')
 
         state_seq_blocks = sim_process.convert_to_blocks(state_seq, \
-                                                         predict_args['states'])
+                                                         args['species'])
         ##======
         # output
         ##======
+        
+        # 
+        predict.write_positions(ps)
+
+        predict.write_blocks(state_seq_blocks, ps, , strain, chrm)
+        
 
         # summary info about HMM (before training)
         sim_predict.write_hmm_line(hmm_init, out_init_f, i==0) 
@@ -50,10 +60,10 @@ for chrm in gp.chrms:
 
         # locations of introgression
         sim_process.write_introgression_blocks(state_seq_blocks, introgression_f, \
-                                               i, predict_args['states'])
+                                               strain, args['species'])
 
         # probabilities at each site
-        sim_process.write_state_probs(probs, prob_f, i)
+        sim_process.write_state_probs(probs, prob_f, strain)
 
 out_f.close()
 introgression_f.close()
