@@ -317,7 +317,7 @@ def transition_probabilities(weighted_match_freqs, species_to, predict_args):
     # expected amount of migration?
 
     expected_length_not_introgressed = \
-        float(predict_args['expected_tract_lengths'][species_to]])
+        float(predict_args['expected_tract_lengths'][species_to])
 
     # fraction of time we should choose given species state over
     # others based on number of sites that match it
@@ -401,9 +401,9 @@ def initial_hmm_parameters(seqs_coded, species_to_indices, species_to, \
         d_freqs[species_to]
 
     p = {}
-    p['init'] = initial_probabilities(weighted_match_freqs, species_to, predict_args)
+    p['init'] = initial_probabilities(weighted_match_freqs, num_sites, predict_args)
     p['emis'] = emission_probabilities(d_freqs, .99, predict_args)
-    p['trans'] = transition_probabilities(weighted_match_freqs, num_sites, predict_args)
+    p['trans'] = transition_probabilities(weighted_match_freqs, species_to, predict_args)
 
     return p['init'], p['emis'], p['trans']
 
@@ -533,7 +533,7 @@ def write_hmm_headers(states, emis_symbols, f, sep):
 def write_hmm_line(hmm, f, header = False):
 
     sep = '\t'
-    emis_symbols = hmm.emis[0].keys()
+    emis_symbols = sorted(hmm.emis[0].keys())
 
     if header:
         write_hmm_headers(hmm.states, emis_symbols, f, sep)
