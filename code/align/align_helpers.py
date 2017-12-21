@@ -30,13 +30,14 @@ def get_strains(dirs):
         s += entries
     return s
 
-def concatenate_fasta(fns, f):
+def concatenate_fasta(fns, names, f):
     
     f = open(f, 'w')
-    for fn in fns:
+    for i in range(len(fns)):
+        fn = fns[i]
         f_current = open(fn, 'r')
         header = f_current.readline()[:-1]
-        f.write(header + ' ' + fn + '\n')
+        f.write(names[i] + ' ' + fn + '\n')
         f.write(f_current.read())
         f_current.close()
         f.write('\n')
