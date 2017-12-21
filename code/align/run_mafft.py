@@ -47,7 +47,8 @@ for chrm in gp.chrms:
         current_strain_fn_chrm = current_strain_fn.replace('?', chrm)
         combined_fn = 'run_mafft_' + strain + chrm + '.temp'
         
-        concatenate_fasta(ref_fns_chrm + [current_strain_fn_chrm], combined_fn)
+        concatenate_fasta(ref_fns_chrm + [current_strain_fn_chrm], \
+                          gp.alignment_ref_order + [strain], combined_fn)
         
         cmd_string += gp.mafft_install_path + '/mafft ' + \
             combined_fn + ' > ' + align_fn_abs + '; '
