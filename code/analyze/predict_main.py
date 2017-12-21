@@ -27,9 +27,11 @@ if not os.path.isdir(gp.analysis_out_dir_absolute + args['tag']):
 
 ps_f = open(gp.analysis_out_dir_absolute + args['tag'] + '/' + 'positions_' + \
                 args['tag'] + '.txt', 'w')
-blocks_f = open(gp.analysis_out_dir_absolute + args['tag'] + '/' + \
-                'introgressed_blocks_' + args['tag'] + '.txt', 'w')
-predict.write_blocks_header(blocks_f)
+blocks_f = {}
+for s in args['species']:
+    blocks_f[s] = open(gp.analysis_out_dir_absolute + args['tag'] + '/' + \
+                       'introgressed_blocks_' + s + '_' + args['tag'] + '.txt', 'w')
+    predict.write_blocks_header(blocks_f[s])
 hmm_init_f = open(gp.analysis_out_dir_absolute + args['tag'] + '/' + 'hmm_init_' + \
                 args['tag'] + '.txt', 'w')
 predict.write_hmm_header(args['species'], hmm_init_f)
@@ -46,7 +48,8 @@ for chrm in gp.chrms:
         ref_prefix = '_'.join([refs[s][0] for s in args['species']])
         fn = gp_dir + gp.alignments_dir + ref_prefix + '_' + strain + \
              '_chr' + chrm + '_mafft' + gp.alignment_suffix
-        ref_seqs, predict_seq = predict.read_aligned_seqs(fn, refs, strain)
+        ref_seqs, predict_seq = \
+            predict.read_aligned_seqs(fn, refs, strain, args['species'])
 
         ##======
         # predict introgressed/non-introgressed tracts
@@ -67,8 +70,9 @@ for chrm in gp.chrms:
         # columns with no gaps)
         predict.write_positions(ps, ps_f, strain, chrm)
 
-        # blocks predicted to be introgressed
-        predict.write_blocks(state_seq_blocks, ps, blocks_f, strain, chrm)        
+        # blocks predicted to be introgressed, separate files for each species
+        for s in state_seq_blocks:
+            predict.write_blocks(state_seq_blocks[s], ps, blocks_f[s], strain, chrm, s)        
 
         # summary info about HMM (before training)
         predict.write_hmm(hmm_init, hmm_init_f, strain, chrm)
