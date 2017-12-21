@@ -112,7 +112,7 @@ def read_ref_seqs(refs, chrm):
     return ref_seqs
 '''
 
-def read_aligned_seqs(fn, refs, strain):
+def read_aligned_seqs(fn, refs, strain, species_order):
     headers, seqs = read_fasta.read_fasta(fn)
     d = {}
     for i in range(len(seqs)):
@@ -120,8 +120,8 @@ def read_aligned_seqs(fn, refs, strain):
         d[name] = seqs[i]
 
     ref_seqs = []
-    for species in refs:
-        ref_seqs.append(d[refs[species][0]])
+    for s in species_order:
+        ref_seqs.append(d[refs[s][0]])
     predict_seq = d[strain]
 
     return ref_seqs, predict_seq
@@ -269,23 +269,22 @@ def write_blocks_header(f):
             'start' + sep + 'end' + sep + 'number_non_gap' + '\n')
     f.flush()
 
-def write_blocks(state_seq_blocks, ps, f, strain, chrm):
+def write_blocks(state_seq_blocks, ps, f, strain, chrm, species_pred):
     # one file for each species
     # file format is:
     # strain chrm predicted_species start end number_non_gap
     sep = '\t'
-    for species in state_seq_blocks:
-        for block in state_seq_blocks[species]:
-            start, end = block
-            f.write(strain + sep + chrm + sep + species + sep + \
-                    str(ps[start]) + sep + str(ps[end]) + sep + \
-                    str(end - start + 1) + '\n')
+    for block in state_seq_blocks:
+        start, end = block
+        f.write(strain + sep + chrm + sep + species_pred + sep + \
+                str(ps[start]) + sep + str(ps[end]) + sep + \
+                str(end - start + 1) + '\n')
     f.flush()
 
 def write_hmm_header(states, f):
 
     sep = '\t'
-    header_string = ''
+    header_string = 'strain' + sep + 'chromosome' + sep
 
     symbols = [gp.match_symbol, gp.mismatch_symbol, gp.unknown_symbol]
     emis_symbols = [''.join(x) for x in \
