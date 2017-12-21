@@ -3,10 +3,12 @@ import sys
 import copy
 import re
 import numpy.random
+import itertools
 sys.path.insert(0, '../hmm/')
-from hmm_bw import *
+import hmm_bw
 sys.path.insert(0, '../sim/')
 import sim_predict
+import sim_process
 sys.path.insert(0, '../')
 import global_params as gp
 sys.path.insert(0, '../misc')
@@ -15,14 +17,15 @@ import read_fasta
 def process_predict_args(arg_list):
 
     d = {}
+    i = 0
+
+    d['tag'] = arg_list[i]
+    i += 1
 
     d['improvement_frac'] = float(arg_list[i])
     i += 1
 
     d['threshold'] = float(arg_list[i])
-    i += 1
-
-    strain_fn = arg_list[i]
     i += 1
 
     # expected length of introgressed tracts and fraction of sequence
@@ -35,9 +38,10 @@ def process_predict_args(arg_list):
         species.append(arg_list[i])
         i += 1
         expected_tract_lengths[species[-1]] = float(arg_list[i])
-         i += 1
+        i += 1
         expected_frac[species[-1]] = float(arg_list[i])
         i += 1
+    d['species'] = species
 
     # TODO deal with noref
 
@@ -79,7 +83,7 @@ def process_strain_args(fn):
         if not strains.has_key(species):
             strains[species] = []
         for strain in strain_names:
-            strains[species].append(strain, strain_seq_location)
+            strains[species].append((strain, strain_seq_location))
         line = f.readline()
     f.close()
     return strains
@@ -114,9 +118,10 @@ def read_aligned_seqs(fn, refs, strain):
     for i in range(len(seqs)):
         name = headers[i][1:].split(' ')[0]
         d[name] = seqs[i]
+
     ref_seqs = []
     for species in refs:
-        ref_seqs.append(d[refs[species][0]]])
+        ref_seqs.append(d[refs[species][0]])
     predict_seq = d[strain]
 
     return ref_seqs, predict_seq
@@ -129,8 +134,8 @@ def set_expectations(args, n):
 
     for s in species_from:
         args['expected_num_tracts'][s] = \
-            args['expected_frac'] * n / args['expected_tract_lengths'][s]
-        args['expected_bases'] = args['expected_num_tracts'][s] * \
+            args['expected_frac'][s] * n / args['expected_tract_lengths'][s]
+        args['expected_bases'][s] = args['expected_num_tracts'][s] * \
                                  args['expected_tract_lengths'][s]
 
     args['expected_bases'][species_to] = \
@@ -142,9 +147,11 @@ def set_expectations(args, n):
     args['expected_tract_lengths'][species_to] = \
         args['expected_bases'][species_to] / args['expected_num_tracts'][species_to]
 
+def ungap_and_code_helper(predict_seq, ref_seqs, index_ref):
 
-def ungap_and_code(predict_seq, ref_seqs, index_ref = 0):
     # assume the first reference is what we want to index from
+    # and ref seqs are in general in correct order
+
     ps = []
     seq = []
     ind = 0
@@ -158,15 +165,15 @@ def ungap_and_code(predict_seq, ref_seqs, index_ref = 0):
         # determine which references the sequence matches at
         # this position
         symbol = ''
-        for ref in refs:
-            ri = ref_seqs[ref][i]
+        for r in range(len(ref_seqs)):
+            ri = ref_seqs[r][i]
             if ri == gp.gap_symbol:
                 keep = False
                 break
             elif xi == ri:
-                symbol += match_symbol
+                symbol += gp.match_symbol
             else:
-                symbol += mismatch_symbol
+                symbol += gp.mismatch_symbol
         if keep:
             seq.append(symbol)
             ps.append(ind)
@@ -174,12 +181,20 @@ def ungap_and_code(predict_seq, ref_seqs, index_ref = 0):
             ind += 1
     return seq, ps
         
+def ungap_and_code(predict_seq, ref_seqs, index_ref = 0):
+    
+    seq, ps = ungap_and_code_helper(predict_seq, ref_seqs, index_ref)
+    ref_seqs_coded = []
+    for r in ref_seqs:
+        ref_seq_coded, ps_r = ungap_and_code_helper(r, ref_seqs, index_ref)
+        ref_seqs_coded.append(ref_seq_coded)
+    return seq, ref_seqs_coded, ps
 
 def predict_introgressed(ref_seqs, predict_seq, predict_args, \
                          train=True, method='posterior'):
 
     # code sequence by which reference it matches at each site
-    seq_coded, ps = ungap_and_code(predict_seq, ref_seqs)
+    seq_coded, ref_seqs_coded, ps = ungap_and_code(predict_seq, ref_seqs)
 
     set_expectations(predict_args, len(predict_seq))
 
@@ -188,8 +203,13 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args, \
     predict_args['states'] = predict_args['species'] # hackity
     predict_args['unknown_species'] = None # hack
     predict_args['ref_inds'] = [1,2] # hack
-    init, emis, trans = sim_predict.initial_hmm_parameters([seq_coded], ['cer':[0]], \
-                                                           'cer', \
+    seqs_for_hmm_params = [ref_seqs_coded[0]] + [seq_coded] + ref_seqs_coded[1:]
+    species_to_indices = {predict_args['species'][0]:[0,1]}
+    for i in range(1, len(predict_args['species'])):
+        species_to_indices[predict_args['species'][i]] = [1+i]
+    init, emis, trans = sim_predict.initial_hmm_parameters(seqs_for_hmm_params, \
+                                                           species_to_indices, \
+                                                           predict_args['species'][0], \
                                                            len(seq_coded), \
                                                            predict_args)
 
@@ -203,7 +223,7 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args, \
     hmm = hmm_bw.HMM()
 
     # set obs
-    hmm.set_obs([predict_seq])
+    hmm.set_obs([seq_coded])
 
     # set states and initial probabilties
     hmm.set_states(predict_args['species'])
@@ -228,7 +248,7 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args, \
                                                  predict_args['threshold'], \
                                                  default_state)
 
-        return path_t, probs[0], hmm, hmm_init, ps
+        return path_t, p[0], hmm, hmm_init, ps
         
     if method == 'viterbi':
         hmm.set_obs(predict_seq)
@@ -238,52 +258,99 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args, \
     else:
         print 'invalid method'
 
-def write_blocks(state_seq_blocks, ps, f_prefix, strain, chrm):
+def write_positions(ps, f, strain, chrm):
+    sep = '\t'
+    f.write(strain + sep + chrm + sep + sep.join([str(x) for x in ps]) + '\n')
+    f.flush()
+
+def write_blocks_header(f):
+    sep = '\t'
+    f.write('strain' + sep + 'chromosome' + sep + 'predicted_species' + sep + \
+            'start' + sep + 'end' + sep + 'number_non_gap' + '\n')
+    f.flush()
+
+def write_blocks(state_seq_blocks, ps, f, strain, chrm):
     # one file for each species
     # file format is:
-    # strain chrm start end number_non_gap
+    # strain chrm predicted_species start end number_non_gap
+    sep = '\t'
     for species in state_seq_blocks:
-        f = open(f_prefix + species + '.txt', 'a')
         for block in state_seq_blocks[species]:
+            start, end = block
             f.write(strain + sep + chrm + sep + species + sep + \
                     str(ps[start]) + sep + str(ps[end]) + sep + \
                     str(end - start + 1) + '\n')
+    f.flush()
 
+def write_hmm_header(states, f):
 
-def get_predicted_tracts(predicted, all_ps, master_ref, seq_inds):
+    sep = '\t'
+    header_string = ''
 
-    blocks = []
-    # loop through all sequences
-    for s in xrange(len(predicted)):
-        print 'alignment block: ', all_ps[s]
-        alignment_block = all_ps[s]
-        # loop through all sites in that sequence, keeping track of
-        # introgressed blocks
-        prev_species = None
-        start_int = 0
-        end_int = 0
-        predicted[s] = predicted[s] + ['END']
-        for i in xrange(len(predicted[s])):
-            # staying in same species
-            if predicted[s][i] == prev_species:
-                end_int = i
-            # ending previous block
-            else:
-                if prev_species != None and prev_species != master_ref:
-                    blocks.append(list(alignment_block) + \
-                                      [prev_species, \
-                                           seq_inds[s][start_int], seq_inds[s][end_int], \
-                                           end_int - start_int + 1])
-                start_int = i
-                end_int = i
-                prev_species = predicted[s][i]
-                
-    return blocks
+    symbols = [gp.match_symbol, gp.mismatch_symbol, gp.unknown_symbol]
+    emis_symbols = [''.join(x) for x in \
+                           list(itertools.product(symbols, repeat=len(states)))]
+    emis_symbols.sort()
 
-def write_predicted_tracts(blocks, f):
-    for block in blocks:
-        block = [str(x) for x in block]
-        f.write('\t'.join(block) + '\n')
+    # initial
+    for s in states:
+        header_string += 'init_' + s + sep
+
+    # emission
+    for s in states:
+        for symbol in emis_symbols:
+            header_string += 'emis_' + s + '_' + symbol + sep
+
+    # transition
+    for s1 in states:
+        for s2 in states:
+            header_string += 'trans_' + s1 + '_' + s2 + sep
+    
+    f.write(header_string[:-(len(sep))] + '\n')
+    f.flush()
+
+def write_hmm(hmm, f, strain, chrm):
+    
+    sep = '\t'
+    emis_symbols = sorted(hmm.emis[0].keys())
+
+    line_string = strain + sep + chrm + sep
+
+    # initial
+    for i in range(len(hmm.states)):
+        line_string += str(hmm.init[i]) + sep
+
+    # emission
+    for i in range(len(hmm.states)):
+        for symbol in emis_symbols:
+            line_string += str(hmm.emis[i][symbol]) + sep
+
+    # transition
+    for i in range(len(hmm.states)):
+        for j in range(len(hmm.states)):
+            line_string += str(hmm.trans[i][j]) + sep
+
+    f.write(line_string[:-(len(sep))] + '\n')
+    f.flush()
+
+def write_state_probs(probs, f, strain, chrm):
+
+    # probs is list of sites, each site dic keyed by state
+    
+    # file format is:
+    # strain\tchrm\tcer:.1,.2,.3\tpar:.9,.8,.7
+    # strain\tchrm\tcer:.4,.2,.3\tpar:.6,.8,.7
+
+    sep  ='\t'
+    f.write(chrm + sep + chrm)
+
+    for state in probs[0].keys():
+        f.write(sep + state + ':')
+        probs_string = ','.join(["{0:.5f}".format(site[state]) \
+                                     for site in probs])
+        f.write(probs_string)
+    f.write('\n')
+    f.flush()
 
 
 """

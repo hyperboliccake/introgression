@@ -1,9 +1,11 @@
 import sys
-import analyze
+import os
+import predict
 sys.path.append('..')
 import global_params as gp
 sys.path.append('../sim')
 import sim_predict
+import sim_process
 
 ##======
 # read in analysis parameters
@@ -20,54 +22,68 @@ refs, strains, args = predict.process_args(sys.argv)
 
 gp_dir = '../'
 
-out_f = open(gp.analysis_out_dir_absolute, 'w')
-introgression_f
-probs_f
+if not os.path.isdir(gp.analysis_out_dir_absolute + args['tag']):
+    os.makedirs(gp.analysis_out_dir_absolute + args['tag'])
+
+ps_f = open(gp.analysis_out_dir_absolute + args['tag'] + '/' + 'positions_' + \
+                args['tag'] + '.txt', 'w')
+blocks_f = open(gp.analysis_out_dir_absolute + args['tag'] + '/' + \
+                'introgressed_blocks_' + args['tag'] + '.txt', 'w')
+predict.write_blocks_header(blocks_f)
+hmm_init_f = open(gp.analysis_out_dir_absolute + args['tag'] + '/' + 'hmm_init_' + \
+                args['tag'] + '.txt', 'w')
+predict.write_hmm_header(args['species'], hmm_init_f)
+hmm_f = open(gp.analysis_out_dir_absolute + args['tag'] + '/' + 'hmm_' + \
+                args['tag'] + '.txt', 'w')
+predict.write_hmm_header(args['species'], hmm_f)
+probs_f = open(gp.analysis_out_dir_absolute + args['tag'] + '/' + 'probs_' + \
+                args['tag'] + '.txt', 'w')
 
 for chrm in gp.chrms:
 
-    for strain in strains:
+    for strain, strain_dir in strains[args['species'][0]]:
 
-        fn = fp_dir + gp.alignment_dir + '_'.join(args['species']) + '_' + strain + \
-             '_mafft' + gp.alignment_suffix
-        ref_seqs, predict_seq = read_aligned_seqs(fn, refs, strain)
+        ref_prefix = '_'.join([refs[s][0] for s in args['species']])
+        fn = gp_dir + gp.alignments_dir + ref_prefix + '_' + strain + \
+             '_chr' + chrm + '_mafft' + gp.alignment_suffix
+        ref_seqs, predict_seq = predict.read_aligned_seqs(fn, refs, strain)
 
         ##======
         # predict introgressed/non-introgressed tracts
         ##======
 
         state_seq, probs, hmm, hmm_init, ps = \
-            predict.predict_introgressed(predict_seq, ref_seqs, args,\
+            predict.predict_introgressed(ref_seqs, predict_seq, args, \
                                          train = True, method='posterior')
 
-        state_seq_blocks = sim_process.convert_to_blocks(state_seq, \
-                                                         args['species'])
+        # hack
+        state_seq_blocks = sim_process.convert_to_blocks({1:state_seq}, \
+                                                         args['species'])[1]
         ##======
         # output
         ##======
         
-        # 
-        predict.write_positions(ps)
+        # the positions actually used in predictions (alignment
+        # columns with no gaps)
+        predict.write_positions(ps, ps_f, strain, chrm)
 
-        predict.write_blocks(state_seq_blocks, ps, , strain, chrm)
-        
+        # blocks predicted to be introgressed
+        predict.write_blocks(state_seq_blocks, ps, blocks_f, strain, chrm)        
 
         # summary info about HMM (before training)
-        sim_predict.write_hmm_line(hmm_init, out_init_f, i==0) 
+        predict.write_hmm(hmm_init, hmm_init_f, strain, chrm)
         
         # summary info about HMM (after training)
-        sim_predict.write_hmm_line(hmm, out_f, i==0) 
-
-        # locations of introgression
-        sim_process.write_introgression_blocks(state_seq_blocks, introgression_f, \
-                                               strain, args['species'])
+        predict.write_hmm(hmm, hmm_f, strain, chrm) 
 
         # probabilities at each site
-        sim_process.write_state_probs(probs, prob_f, strain)
+        predict.write_state_probs(probs, probs_f, strain, chrm)
 
-out_f.close()
-introgression_f.close()
-prob_f.close()
+blocks_f.close()
+ps_f.close()
+hmm_init_f.close()
+hmm_f.close()
+probs_f.close()
 
 
 """
