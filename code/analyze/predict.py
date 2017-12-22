@@ -263,6 +263,23 @@ def write_positions(ps, f, strain, chrm):
     f.write(strain + sep + chrm + sep + sep.join([str(x) for x in ps]) + '\n')
     f.flush()
 
+def read_positions(fn):
+    # dictionary keyed by strain and then chromsome
+    f = open(fn, 'r')
+    line = f.readline()
+    d = {}
+    while line != '':
+        line = line.strip().split('\t')
+        strain = line[0]
+        chrm = line[1]
+        ps = [int(x) for x in line[2:]]
+        if not d.has_key(strain):
+            d[strain] = {}
+        d[strain][chrm] = ps
+        line = f.readline()
+    f.close()
+    return d
+
 def write_blocks_header(f):
     sep = '\t'
     f.write('strain' + sep + 'chromosome' + sep + 'predicted_species' + sep + \
@@ -280,6 +297,23 @@ def write_blocks(state_seq_blocks, ps, f, strain, chrm, species_pred):
                 str(ps[start]) + sep + str(ps[end]) + sep + \
                 str(end - start + 1) + '\n')
     f.flush()
+
+def read_blocks(fn):
+    # return dictionary of (start, end, number_non_gap), keyed by strain
+    # and then chromosome
+    f = open(fn, 'r')
+    line = f.readline()
+    d = {}
+    while line != '':
+        strain, chrm, species, start, end, number_non_gap = line.strip().split('\t')
+        if not d.has_key(strain):
+            d[strain] = {}
+        if not d[strain].has_key(chrm):
+            d[strain][chrm] = []
+        d[strain][chrm].append((int(start), int(end), int(number_non_gap)))
+        line = f.readline()
+    f.close()
+    return d
 
 def write_hmm_header(states, f):
 
