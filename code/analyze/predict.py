@@ -1,6 +1,7 @@
 import os
 import sys
 import copy
+import gzip
 import re
 import numpy.random
 import itertools
@@ -155,6 +156,10 @@ def ungap_and_code_helper(predict_seq, ref_seqs, index_ref):
     ps = []
     seq = []
     ind = 0
+    
+    # TODO: move positions file to more general location, and here
+    # first see if we have this info stored in a file already
+
     for i in range(len(predict_seq)):
         xi = predict_seq[i]
         # only keep this position in sequence if no gaps in
@@ -264,8 +269,8 @@ def write_positions(ps, f, strain, chrm):
     f.flush()
 
 def read_positions(fn):
-    # dictionary keyed by strain and then chromsome
-    f = open(fn, 'r')
+    # dictionary keyed by strain and then chromosome
+    f = gzip.open(fn, 'rb')
     line = f.readline()
     d = {}
     while line != '':
@@ -298,19 +303,26 @@ def write_blocks(state_seq_blocks, ps, f, strain, chrm, species_pred):
                 str(end - start + 1) + '\n')
     f.flush()
 
-def read_blocks(fn):
-    # return dictionary of (start, end, number_non_gap), keyed by strain
+def read_blocks(fn, region_id=False):
+    # return dictionary of (start, end, number_non_gap, [region_id]), keyed by strain
     # and then chromosome
     f = open(fn, 'r')
+    f.readline() # header
     line = f.readline()
     d = {}
+    id_count = 1
     while line != '':
         strain, chrm, species, start, end, number_non_gap = line.strip().split('\t')
         if not d.has_key(strain):
             d[strain] = {}
         if not d[strain].has_key(chrm):
             d[strain][chrm] = []
-        d[strain][chrm].append((int(start), int(end), int(number_non_gap)))
+        if region_id:
+            d[strain][chrm].append((int(start), int(end), int(number_non_gap), \
+                                    'r' + str(id_count)))
+            id_count += 1
+        else:
+            d[strain][chrm].append((int(start), int(end), int(number_non_gap)))
         line = f.readline()
     f.close()
     return d
@@ -375,7 +387,7 @@ def write_state_probs(probs, f, strain, chrm):
     # strain\tchrm\tcer:.4,.2,.3\tpar:.6,.8,.7
 
     sep  ='\t'
-    f.write(chrm + sep + chrm)
+    f.write(strain + sep + chrm)
 
     for state in probs[0].keys():
         f.write(sep + state + ':')

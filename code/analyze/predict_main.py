@@ -1,6 +1,7 @@
 import sys
 import os
 import predict
+import gzip
 sys.path.append('..')
 import global_params as gp
 sys.path.append('../sim')
@@ -16,40 +17,95 @@ refs, strains, args = predict.process_args(sys.argv)
 # refs = {'cer':('S288c', '../../data/', 'S288C-SGD_R64'), ...]
 # strains = {'cer':[('strain1', '../../data/'), ...], ...}
 
+
 ##======
-# loop through all sequences and predict introgression
+# output files and if and where to resume
 ##======
+
+resume = True
+open_mode = 'a'
+if not resume:
+    open_mode = 'w'
 
 gp_dir = '../'
 
 if not os.path.isdir(gp.analysis_out_dir_absolute + args['tag']):
     os.makedirs(gp.analysis_out_dir_absolute + args['tag'])
 
-ps_f = open(gp.analysis_out_dir_absolute + args['tag'] + '/' + 'positions_' + \
-                args['tag'] + '.txt', 'w')
+# positions
+# TODO move this to more general location and make separate files for
+# each strain x chrm
+ps_fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + 'positions_' + \
+        args['tag'] + '.txt.gz'
+ps_f = gzip.open(ps_fn, open_mode + 'b')
+
+# introgressed blocks
 blocks_f = {}
 for s in args['species']:
     blocks_f[s] = open(gp.analysis_out_dir_absolute + args['tag'] + '/' + \
-                       'introgressed_blocks_' + s + '_' + args['tag'] + '.txt', 'w')
-    predict.write_blocks_header(blocks_f[s])
-hmm_init_f = open(gp.analysis_out_dir_absolute + args['tag'] + '/' + 'hmm_init_' + \
-                args['tag'] + '.txt', 'w')
-predict.write_hmm_header(args['species'], hmm_init_f)
-hmm_f = open(gp.analysis_out_dir_absolute + args['tag'] + '/' + 'hmm_' + \
-                args['tag'] + '.txt', 'w')
-predict.write_hmm_header(args['species'], hmm_f)
-probs_f = open(gp.analysis_out_dir_absolute + args['tag'] + '/' + 'probs_' + \
-                args['tag'] + '.txt', 'w')
+                       'introgressed_blocks_' + s + '_' + args['tag'] + '.txt', \
+                       open_mode)
+    if not resume:
+        predict.write_blocks_header(blocks_f[s])
+
+# HMM parameters
+hmm_init_fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + 'hmm_init_' + \
+              args['tag'] + '.txt'
+hmm_init_f = open(hmm_init_fn, open_mode)
+hmm_fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + 'hmm_' + \
+         args['tag'] + '.txt'
+hmm_f = open(hmm_fn, open_mode)
+if not resume:
+    predict.write_hmm_header(args['species'], hmm_init_f)
+    predict.write_hmm_header(args['species'], hmm_f)
+
+# posterior probabilities
+probs_fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + 'probs_' + \
+           args['tag'] + '.txt.gz'
+
+# figure out which species x chromosomes we've completed already
+probs_f = gzip.open(probs_fn, 'rb')
+line = probs_f.readline()
+completed = {} # keyed by chrm, list of strains
+print 'reading already completed:'
+while line != '':
+    x1 = line.find('\t')
+    strain = line[:x1]
+    x2 = line[x1+1:].find('\t') + x1 + 1
+    chrm = line[x1+1:x2]
+    if not completed.has_key(chrm):
+        completed[chrm] = []
+    completed[chrm].append(strain)
+    print strain, chrm
+    line = probs_f.readline()
+probs_f.close()
+
+probs_f = gzip.open(probs_fn, open_mode + 'b')
+
+##======
+# loop through all sequences and predict introgression
+##======
+
 
 for chrm in gp.chrms:
 
     for strain, strain_dir in strains[args['species'][0]]:
+
+        if resume and completed.has_key(chrm) and strain in completed[chrm]:
+            print 'already finished:', strain, chrm
+            continue
+
+        print 'working on:', strain, chrm
 
         ref_prefix = '_'.join([refs[s][0] for s in args['species']])
         fn = gp_dir + gp.alignments_dir + ref_prefix + '_' + strain + \
              '_chr' + chrm + '_mafft' + gp.alignment_suffix
         ref_seqs, predict_seq = \
             predict.read_aligned_seqs(fn, refs, strain, args['species'])
+
+        # TODO
+        #ps_fn = gp.analysis_out_dir_absolute + '/positions/positions_' + \
+        #        ref_prefix + '_' + strain + '_chr' + chrm + '.txt.gz'
 
         ##======
         # predict introgressed/non-introgressed tracts
@@ -83,7 +139,8 @@ for chrm in gp.chrms:
         # probabilities at each site
         predict.write_state_probs(probs, probs_f, strain, chrm)
 
-blocks_f.close()
+for k in blocks_f:
+    blocks_f[k].close()
 ps_f.close()
 hmm_init_f.close()
 hmm_f.close()
