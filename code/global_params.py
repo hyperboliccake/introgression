@@ -22,8 +22,9 @@ alignment_suffix = '.maf'
 #====
 
 ref_dir = {'S288c':'/tigress/AKEY/akey_vol2/aclark4/nobackup/100_genomes/genomes/S288c_SGD-R64/', \
-                'CBS432':'/tigress/anneec/projects/introgression/data/CBS432/'}
+           'CBS432':'/tigress/anneec/projects/introgression/data/CBS432/'}
 
+ref_gb_dir = {'S288c':'/tigress/AKEY/akey_vol2/aclark4/nobackup/S288c/'}
 
 # will look at all *.fa files in these directories; expects filenames
 # in the format strain_chrX.fa
