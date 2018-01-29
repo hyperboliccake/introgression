@@ -108,6 +108,7 @@ def code_seqs(seqs, ref_seqs):
         for i in range(nsites):
             si = ''
             for r in range(nrefs):
+                # TODO probably treat unsequenced like gaps
                 if ref_seqs[r][i] == gp.unsequenced_symbol:
                     si += gp.unknown_symbol
                 elif ref_seqs[r][i] == seq[i]:
@@ -147,6 +148,10 @@ def get_symbol_freqs_one(seqs, predict_args):
         individual_symbol_freqs.append(d_species)
 
     # for +++, ++-, +-+, etc
+
+    # TODO fix so that this makes more sense when we're only going off
+    # of reference sequence (shouldn't have freq(+-) = 0 just because
+    # it's par reference...but what would make more sense?
     symbol_combinations = [''.join(x) for x in \
                            list(itertools.product(symbols, repeat=len(known_states)))]
     symbol_freqs = dict(zip(symbol_combinations, [0]*len(symbol_combinations)))
@@ -156,7 +161,7 @@ def get_symbol_freqs_one(seqs, predict_args):
         for seq in seqs:
             num += seq.count(symbol)
             den += len(seq)
-        symbol_freqs[symbol] = float(num) / den
+        symbol_freqs[symbol] = float(num) / den 
 
     # weighted matches; for first species +-- gets 1 pt, +-+ and ++-
     # each get 1/2 pt, +++ gets 1/3 pt [treat ? like -] etc
@@ -204,11 +209,15 @@ def get_symbol_freqs(seqs_coded, species_to_indices, predict_args):
     d = {}
     for state in predict_args['states']:
         seqs_current = []
-        for i in species_to_indices[state]:
-            # exclude reference individuals unless that's all we've got...
-            if len(species_to_indices[state]) == 1 or \
-               i not in predict_args['ref_inds']:
-                seqs_current.append(seqs_coded[i])
+        # TODO what would be correct way to calculate this with no sequences?
+        if state == predict_args['unknown_species']:
+            seqs_current = seqs_coded
+        else:
+            for i in species_to_indices[state]:
+                # exclude reference individuals unless that's all we've got...
+                if len(species_to_indices[state]) == 1 or \
+                   i not in predict_args['ref_inds']:
+                    seqs_current.append(seqs_coded[i])
         d[state] = get_symbol_freqs_one(seqs_current, predict_args)
 
     return d
@@ -222,13 +231,15 @@ def initial_probabilities(weighted_match_freqs, num_sites, predict_args):
     # symbols for the state, but also factor in how often we expect to
     # be in each state
     init = []
+    weight_expected = 10
     for state in predict_args['states']:
         # add these two things because we want to average them instead
         # of letting one of them bring the total to zero [should we
         # really give them equal weight though?]
         init.append(weighted_match_freqs[state] + \
-                        float(predict_args['expected_tract_lengths'][state] * \
-                              predict_args['expected_num_tracts'][state]) / \
+                    weight_expected * \
+                    float(predict_args['expected_tract_lengths'][state] * \
+                          predict_args['expected_num_tracts'][state]) / \
                     num_sites + epsilon)
     scale = float(sum(init))
     for i in range(len(predict_args['states'])):
@@ -239,7 +250,7 @@ def initial_probabilities(weighted_match_freqs, num_sites, predict_args):
 # unlike for other parameters, calculate probabilities from the
 # appropriate species sequences instead of just the one being
 # predicted
-def emission_probabilities(d_freqs, own_bias, predict_args):
+def emission_probabilities(d_freqs, own_bias, num_sites, predict_args):
 
     # a small value to add so that no frequencies are actually 0
     epsilon = .001
@@ -251,19 +262,25 @@ def emission_probabilities(d_freqs, own_bias, predict_args):
     # complicated guessing; also note the frequencies we're looking at
     # are just from the sequences for the current species, not the ones
     # we're trying to predict
+    weight_expected = 2
     emis = []
     for i in range(len(predict_args['states'])):
+        state = predict_args['states'][i]
         emis_species = {}
         individual_symbol_freqs, symbol_freqs, weighted_match_freqs \
-            = d_freqs[predict_args['states'][i]]
+            = d_freqs[state]
         for symbol in symbol_freqs.keys():
-            p = symbol_freqs[symbol] + epsilon
-            if predict_args['states'][i] == predict_args['unknown_species']:
+            #print state, symbol, symbol_freqs[symbol], float(predict_args['expected_tract_lengths'][state] * predict_args['expected_num_tracts'][state]) / num_sites, predict_args['expected_tract_lengths'][state], predict_args['expected_num_tracts'][state], num_sites
+            p = symbol_freqs[symbol] * weight_expected * \
+                float(predict_args['expected_tract_lengths'][state] * \
+                      predict_args['expected_num_tracts'][state]) / \
+                num_sites + epsilon
+            if state == predict_args['unknown_species']:
                 # treat ? as - for now
                 if gp.match_symbol in symbol:
-                    p *= (1 - own_bias)
+                    p *= (1 - own_bias)**2 # TODO is this a good idea?
                 else:
-                    p *= own_bias
+                    p *= own_bias**2 # TODO
             elif symbol[i] == gp.match_symbol:
                 p *= own_bias
             else: #symbol[i] == mismatch_symbol:
@@ -274,7 +291,7 @@ def emission_probabilities(d_freqs, own_bias, predict_args):
             #else:
             #    p *= ((own_bias) * individual_symbol_freqs[i][match_symbol] + \
             #              (1 - own_bias) * individual_symbol_freqs[i][mismatch_symbol])
-            emis_species[symbol] = p
+            emis_species[symbol] = p 
         norm = float(sum(emis_species.values()))
         for symbol in emis_species:
             emis_species[symbol] /= norm
@@ -402,7 +419,7 @@ def initial_hmm_parameters(seqs_coded, species_to_indices, species_to, \
 
     p = {}
     p['init'] = initial_probabilities(weighted_match_freqs, num_sites, predict_args)
-    p['emis'] = emission_probabilities(d_freqs, .99, predict_args)
+    p['emis'] = emission_probabilities(d_freqs, .99, num_sites, predict_args)
     p['trans'] = transition_probabilities(weighted_match_freqs, species_to, predict_args)
 
     return p['init'], p['emis'], p['trans']
