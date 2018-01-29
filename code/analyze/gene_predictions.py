@@ -2,6 +2,7 @@ import re
 import sys
 import os
 import copy
+import gzip
 sys.path.insert(0, '..')
 import global_params as gp
 sys.path.insert(0, '../sim/')
@@ -127,7 +128,7 @@ def write_region_alignment(headers, seqs, fn, start, end, master_ind):
     
     region_seqs = [seq[relative_start:relative_end+1] for seq in seqs]
 
-    write_fasta.write_fasta(headers, region_seqs, fn)
+    write_fasta.write_fasta(headers, region_seqs, fn, gz=True)
 
 def get_genes_in_region(start, end, genes):
     
@@ -181,7 +182,7 @@ def write_region_alignment_annotated(labels, seqs, fn, start, end, \
         str(len(introgressed_string)) + ' ' + str(len(region_seqs[0]))
 
     # line labels
-    f = open(fn, 'w')
+    f = gzip.open(fn + '.gz', 'wb')
     for label in labels:
         f.write(label + '\n')
     # assume master ref comes first
@@ -285,6 +286,27 @@ def write_region_summary_line(region, strain, chrm, predicted_species, seqs, lab
     f.write(str(mismatch_all) + '\n')
     f.flush()
 
+def read_region_summary(fn):
+    # region_id [strain chromosome predicted_species start end number_non_gap]
+    # number_match_ref1 number_match_ref2 number_match_only_ref1
+    # number_match_ref2_not_ref1 number_mismatch_all_ref
+
+    f = open(fn, 'r')
+    line = f.readline()
+    d = {}
+    fields = ['strain', 'chromosome', 'predicted_species', 'start', 'end', \
+              'number_non_gap', 'number_match_ref1', 'number_match_ref2', \
+              'number_match_only_ref1', 'number_match_ref2_not_ref1', \
+              'number_mismatch_all_ref']
+    while line != '':
+        line = line[:-1].split('\t')
+        #TODO actually fix the multiple header lines scattered throughout
+        if line[0] != 'region_id':
+            d[line[0]] = dict(zip(fields, line[1:]))
+        line = f.readline()
+    f.close()
+    return d
+
 def write_genes_for_each_region_summary_line(region_id, genes_by_site, gene_summary, \
                                              start, end, seq, f):
     
@@ -315,6 +337,22 @@ def write_genes_for_each_region_summary_line(region_id, genes_by_site, gene_summ
 
     return frac_intd
 
+def read_genes_for_each_region_summary(fn):
+    # region_id num_genes gene frac_intd gene frac_intd
+
+    f = open(fn, 'r')
+    line = f.readline()
+    d = {}
+    while line != '':
+        line = line[:-1].split('\t')
+        gene_list = []
+        for i in range(2, len(line), 2):
+            gene_list.append((line[i], line[i+1]))
+        d[line[0]] = {'num_genes':line[1], 'gene_list':gene_list}
+        line = f.readline()
+    f.close()
+    return d
+
 def write_regions_for_each_strain(regions, f):
 
     # strain num_regions region length region length
@@ -330,6 +368,22 @@ def write_regions_for_each_strain(regions, f):
         f.write('\n')
     f.flush()
 
+def read_regions_for_each_strain(fn):
+    # strain num_regions region length region length
+
+    f = open(fn, 'r')
+    line = f.readline()
+    d = {}
+    while line != '':
+        line = line[:-1].split('\t')
+        region_list = []
+        for i in range(2, len(line), 2):
+            region_list.append((line[i], line[i+1]))
+        d[line[0]] = {'num_regions':line[1], 'region_list':region_list}
+        line = f.readline()
+    f.close()
+    return d
+    
 def write_genes_for_each_strain(strain_genes_dic, f):
 
     # strain num_genes gene frac_intd gene frac_intd
@@ -340,6 +394,22 @@ def write_genes_for_each_strain(strain_genes_dic, f):
             f.write(sep + gene + sep + str(strain_genes_dic[strain][gene]))
         f.write('\n')
     f.flush()
+
+def read_genes_for_each_strain(fn):
+    # strain num_genes gene frac_intd gene frac_intd
+
+    f = open(fn, 'r')
+    line = f.readline()
+    d = {}
+    while line != '':
+        line = line[:-1].split('\t')
+        gene_list = []
+        for i in range(2, len(line), 2):
+            gene_list.append((line[i], line[i+1]))
+        d[line[0]] = {'num_genes':line[1], 'gene_list':gene_list}
+        line = f.readline()
+    f.close()
+    return d
 
 def write_strains_for_each_gene_lines(gene_strains_dic, f):
 
@@ -354,6 +424,22 @@ def write_strains_for_each_gene_lines(gene_strains_dic, f):
             f.write(sep + strain + sep + str(gene_strains_dic[gene][strain]))
         f.write('\n')
     f.flush()
+
+def read_strains_for_each_gene(fn):
+    # gene num_strains strain frac_intd strain frac_intd
+
+    f = open(fn, 'r')
+    line = f.readline()
+    d = {}
+    while line != '':
+        line = line[:-1].split('\t')
+        strain_list = []
+        for i in range(2, len(line), 2):
+            strain_list.append((line[i], line[i+1]))
+        d[line[0]] = {'num_strains':line[1], 'strain_list':strain_list}
+        line = f.readline()
+    f.close()
+    return d
 
 def read_genes(fn, fn_genes):
 
