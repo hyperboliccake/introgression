@@ -22,7 +22,7 @@ refs, strains, args = predict.process_args(sys.argv)
 # output files and if and where to resume
 ##======
 
-resume = True
+resume = False
 open_mode = 'a'
 if not resume:
     open_mode = 'w'
@@ -37,11 +37,13 @@ if not os.path.isdir(gp.analysis_out_dir_absolute + args['tag']):
 # each strain x chrm
 ps_fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + 'positions_' + \
         args['tag'] + '.txt.gz'
-ps_f = gzip.open(ps_fn, open_mode + 'b')
+write_ps = True
+if write_ps:
+    ps_f = gzip.open(ps_fn, open_mode + 'b')
 
 # introgressed blocks
 blocks_f = {}
-for s in args['species']:
+for s in args['species'] + ['unknown']: # TODO unhack
     blocks_f[s] = open(gp.analysis_out_dir_absolute + args['tag'] + '/' + \
                        'introgressed_blocks_' + s + '_' + args['tag'] + '.txt', \
                        open_mode)
@@ -56,29 +58,30 @@ hmm_fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + 'hmm_' + \
          args['tag'] + '.txt'
 hmm_f = open(hmm_fn, open_mode)
 if not resume:
-    predict.write_hmm_header(args['species'], hmm_init_f)
-    predict.write_hmm_header(args['species'], hmm_f)
+    predict.write_hmm_header(args['species'] + ['unknown'], hmm_init_f) #TODO
+    predict.write_hmm_header(args['species'] + ['unknown'], hmm_f)
 
 # posterior probabilities
 probs_fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + 'probs_' + \
            args['tag'] + '.txt.gz'
 
 # figure out which species x chromosomes we've completed already
-probs_f = gzip.open(probs_fn, 'rb')
-line = probs_f.readline()
 completed = {} # keyed by chrm, list of strains
-print 'reading already completed:'
-while line != '':
-    x1 = line.find('\t')
-    strain = line[:x1]
-    x2 = line[x1+1:].find('\t') + x1 + 1
-    chrm = line[x1+1:x2]
-    if not completed.has_key(chrm):
-        completed[chrm] = []
-    completed[chrm].append(strain)
-    print strain, chrm
+if resume:
+    probs_f = gzip.open(probs_fn, 'rb')
     line = probs_f.readline()
-probs_f.close()
+    print 'reading already completed:'
+    while line != '':
+        x1 = line.find('\t')
+        strain = line[:x1]
+        x2 = line[x1+1:].find('\t') + x1 + 1
+        chrm = line[x1+1:x2]
+        if not completed.has_key(chrm):
+            completed[chrm] = []
+        completed[chrm].append(strain)
+        print strain, chrm
+        line = probs_f.readline()
+    probs_f.close()
 
 probs_f = gzip.open(probs_fn, open_mode + 'b')
 
@@ -113,18 +116,19 @@ for chrm in gp.chrms:
 
         state_seq, probs, hmm, hmm_init, ps = \
             predict.predict_introgressed(ref_seqs, predict_seq, args, \
-                                         train = True, method='posterior')
+                                         train = True)
 
         # hack
         state_seq_blocks = sim_process.convert_to_blocks({1:state_seq}, \
-                                                         args['species'])[1]
+                                                         args['states'])[1]
         ##======
         # output
         ##======
         
         # the positions actually used in predictions (alignment
         # columns with no gaps)
-        predict.write_positions(ps, ps_f, strain, chrm)
+        if write_ps:
+            predict.write_positions(ps, ps_f, strain, chrm)
 
         # blocks predicted to be introgressed, separate files for each species
         for s in state_seq_blocks:

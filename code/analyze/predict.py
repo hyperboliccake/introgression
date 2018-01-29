@@ -26,7 +26,11 @@ def process_predict_args(arg_list):
     d['improvement_frac'] = float(arg_list[i])
     i += 1
 
-    d['threshold'] = float(arg_list[i])
+    d['threshold'] = 'viterbi'
+    try:
+        d['threshold'] = float(arg_list[i])
+    except:
+        pass
     i += 1
 
     # expected length of introgressed tracts and fraction of sequence
@@ -165,14 +169,14 @@ def ungap_and_code_helper(predict_seq, ref_seqs, index_ref):
         # only keep this position in sequence if no gaps in
         # the alignment column
         keep = True
-        if xi == gp.gap_symbol:
+        if xi == gp.gap_symbol or xi == gp.unsequenced_symbol:
             keep = False
         # determine which references the sequence matches at
         # this position
         symbol = ''
         for r in range(len(ref_seqs)):
             ri = ref_seqs[r][i]
-            if ri == gp.gap_symbol:
+            if ri == gp.gap_symbol or ri == gp.unsequenced_symbol:
                 keep = False
                 break
             elif xi == ri:
@@ -195,18 +199,44 @@ def ungap_and_code(predict_seq, ref_seqs, index_ref = 0):
         ref_seqs_coded.append(ref_seq_coded)
     return seq, ref_seqs_coded, ps
 
+
+def poly_sites(seq, ref_seqs, ps):
+    ps_poly = []
+    seq_poly = []
+    ref_seqs_poly = [[] for r in ref_seqs]
+
+    for i in range(len(ps)):
+        if set(seq[i]) != set([gp.match_symbol]):
+            ps_poly.append(ps[i])
+            seq_poly.append(seq[i])
+            for j in range(len(ref_seqs)):
+                ref_seqs_poly[j].append(ref_seqs[j][i])
+    
+    return seq_poly, ref_seqs_poly, ps_poly
+
 def predict_introgressed(ref_seqs, predict_seq, predict_args, \
-                         train=True, method='posterior'):
+                         train=True):
+
+    # get rid of ++ sites?
+    only_poly_sites = True
+
+    method = 'posterior'
+    if predict_args['threshold'] == 'viterbi':
+        method = 'viterbi'
 
     # code sequence by which reference it matches at each site
     seq_coded, ref_seqs_coded, ps = ungap_and_code(predict_seq, ref_seqs)
+    if only_poly_sites:
+        seq_coded, ref_seqs_coded, ps = poly_sites(seq_coded, ref_seqs_coded, ps)
 
     set_expectations(predict_args, len(predict_seq))
 
     # initial values for initial, emission, and transition
     # probabilities
-    predict_args['states'] = predict_args['species'] # hackity
-    predict_args['unknown_species'] = None # hack
+    predict_args['states'] = predict_args['species'] + ['unknown'] # hackity
+    predict_args['unknown_species'] = 'unknown' # hack
+    predict_args['expected_tract_lengths']['unknown'] = predict_args['expected_tract_lengths'][predict_args['species'][1]] 
+    predict_args['expected_num_tracts']['unknown'] = predict_args['expected_num_tracts'][predict_args['species'][1]] * .1 # TODO obvs
     predict_args['ref_inds'] = [1,2] # hack
     seqs_for_hmm_params = [ref_seqs_coded[0]] + [seq_coded] + ref_seqs_coded[1:]
     species_to_indices = {predict_args['species'][0]:[0,1]}
@@ -222,7 +252,7 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args, \
     # make predictions
     ######
 
-    default_state = predict_args['species'][0]
+    default_state = predict_args['states'][0]
 
     # new Hidden Markov Model
     hmm = hmm_bw.HMM()
@@ -231,8 +261,10 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args, \
     hmm.set_obs([seq_coded])
 
     # set states and initial probabilties
-    hmm.set_states(predict_args['species'])
+    hmm.set_states(predict_args['states'])
     hmm.set_init(init)
+    if emis[0]['++'] <= emis[1]['++']:
+        print 'EMIS INIT PROBLEM'
     hmm.set_emis(emis)
     hmm.set_trans(trans)
 
@@ -242,23 +274,29 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args, \
     if train:
         hmm.go(predict_args['improvement_frac'])
 
+    #if method == "posterior":
+    predicted = {}
+    all_probs = {}
+    # for all obs sequences, each site is a dic with one prob for each
+    # state
+    p = hmm.posterior_decoding() # returns list but we're hacking
+    # this for just one species right
+    # now
+    path, path_probs = sim_process.get_max_path(p[0])
+
+    if hmm.emis[0]['++'] <= hmm.emis[1]['++']:
+        print 'EMIS FINAL PROBLEM'
+
     if method == "posterior":
-        predicted = {}
-        all_probs = {}
-        # for all obs sequences, each site is a dic with one prob for each
-        # state
-        p = hmm.posterior_decoding()
-        path, path_probs = sim_process.get_max_path(p[0])
         path_t = sim_process.threshold_predicted(path, path_probs, \
                                                  predict_args['threshold'], \
                                                  default_state)
-
         return path_t, p[0], hmm, hmm_init, ps
         
     if method == 'viterbi':
-        hmm.set_obs(predict_seq)
-        predicted = convert_predictions(hmm.viterbi(), predict_args['states'])
-        return predicted, hmm, hmm_init, ps
+        hmm.set_obs(seq_coded)
+        predicted = sim_predict.convert_predictions(hmm.viterbi(), predict_args['states'])
+        return predicted, p[0], hmm, hmm_init, ps
 
     else:
         print 'invalid method'
