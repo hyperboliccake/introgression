@@ -70,7 +70,7 @@ match_symbol = '+'
 mismatch_symbol = '-'
 unknown_symbol = '?'
 
-unsequenced_symbol = 'N'
+unsequenced_symbol = 'n'
 gap_symbol = '-'
 unaligned_symbol = '?'
 
@@ -120,7 +120,8 @@ sim_params.append({'tag':'1', \
 #====
 
 analysis_out_dir_absolute = \
-    '/tigress/anneec/projects/introgression/results/analysis/'
+    '/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/'
+    #'/tigress/anneec/projects/introgression/results/analysis/'
 
 regions_out_dir_absolute = analysis_out_dir_absolute + '/regions/'
 
