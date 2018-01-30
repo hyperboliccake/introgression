@@ -39,11 +39,14 @@ import os
 import copy
 from gene_predictions import *
 import predict
+import pickle
 sys.path.insert(0, '..')
 import global_params as gp
 sys.path.insert(0, '../misc/')
 import read_fasta
 
+
+sys.exit()
 
 ##======
 # read in analysis parameters
@@ -51,19 +54,32 @@ import read_fasta
 
 refs, strains, args = predict.process_args(sys.argv)
 
+resume = False
+open_mode = 'w'
+if resume:
+    open_mode = 'a'
+
 ##======
 # read in introgressed regions
 ##======
 
-species_from = args['species'][1]
+all_species_from = args['species'][1:] + ['unknown'] #TODO
 
 gp_dir = '../'
-blocks_fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + \
-            'introgressed_blocks_' + species_from + '_' + args['tag'] + '.txt'
+all_blocks_fn = {}
+for species_from in all_species_from:
+    blocks_fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + \
+                'introgressed_blocks_' + species_from + '_' + args['tag'] + '.txt'
+    all_blocks_fn[species_from] = blocks_fn
 # introgressed regions keyed by strain and then chromosome: 
 # (start, end, number_non_gap, region_id)
 # start and end indices are relative to (unaligned) master ref sequence
-regions = predict.read_blocks(blocks_fn, region_id=True)
+all_regions = {}
+for species_from in all_species_from:
+    regions = predict.read_blocks(all_blocks_fn[species_from], region_id=True)
+    all_regions[species_from] = regions
+regions = all_regions['par'] # TODO
+species_from = 'par'
 
 ##======
 # extract alignments and genes for introgressed regions
@@ -97,31 +113,55 @@ if not os.path.isdir(fn_region_prefix):
 fn_region_summary = gp.analysis_out_dir_absolute + '/' + args['tag'] + '/' + \
                    'introgressed_blocks_' + species_from + '_' + args['tag'] + \
                    '_summary.txt'
-f_region_summary = open(fn_region_summary, 'w')
-write_region_summary_header(refs, f_region_summary)
+f_region_summary = open(fn_region_summary, open_mode)
+# TODO fix this so that refs is ordered (instead of dic) and in correct order!
+refs_ordered = args['species']
+write_region_summary_header(refs_ordered, f_region_summary)
 
 fn_genes_regions = gp.analysis_out_dir_absolute + '/' + args['tag'] + '/' + \
                   'genes_for_each_region_' + args['tag'] + '.txt'
-f_genes_regions = open(fn_genes_regions, 'w')
+f_genes_regions = open(fn_genes_regions, open_mode)
 
 fn_regions_strains = gp.analysis_out_dir_absolute + '/' + args['tag'] + '/' + \
                   'regions_for_each_strain_' + args['tag'] + '.txt'
-f_regions_strains = open(fn_regions_strains, 'w')
+f_regions_strains = open(fn_regions_strains, open_mode)
 
 fn_genes_strains = gp.analysis_out_dir_absolute + '/' + args['tag'] + '/' + \
                   'genes_for_each_strain_' + args['tag'] + '.txt'
-f_genes_strains = open(fn_genes_strains, 'w')
+f_genes_strains = open(fn_genes_strains, open_mode)
 
 fn_strains_genes = gp.analysis_out_dir_absolute + '/' + args['tag'] + '/' + \
                   'strains_for_each_gene_' + args['tag'] + '.txt'
-f_strains_genes = open(fn_strains_genes, 'w')
+f_strains_genes = open(fn_strains_genes, open_mode)
 
 # for keeping track of all genes introgressed in each strain, and the
 # fraction introgressed
-# keyed by strain, then gene, total fraction ntrogressed
+# keyed by strain, then gene, total fraction introgressed
+# TODO maybe don't just pick par (and exclude unknown)
 strain_genes_dic = dict(zip(regions.keys(), [{} for strain in regions.keys()]))
 # the inverse of above
 gene_strains_dic = {}
+
+chrms_completed = []
+
+if resume:
+    try:
+        f_strain_genes_dic = open(gp.analysis_out_dir_absolute + '/' + args['tag'] + \
+                                  '/' + 'strain_genes_dic.pkl', 'rb')
+        strain_genes_dic = pickle.load(f_strain_genes_dic)
+        f_strain_genes_dic.close()
+
+        f_gene_strains_dic = open(gp.analysis_out_dir_absolute + '/' + args['tag'] + \
+                                  '/' + 'gene_strains_dic.pkl', 'rb')
+        gene_strains_dic = pickle.load(f_gene_strains_dic)
+        f_gene_strains_dic.close()
+
+        f_chrms_completed = open(gp.analysis_out_dir_absolute + '/' + args['tag'] + \
+                                  '/' + 'chrms_completed.pkl', 'rb')
+        chrms_completed =  pickle.load(f_chrms_completed)
+        f_chrms_completed.close()
+    except:
+        pass
 
 # just read genes from master reference (species[0]),
 # since that's how the introgressed regions are indexed
@@ -131,6 +171,9 @@ ref_labels = [refs[s][0] for s in args['species']]
 
 # deal with each chromosome separately because memory
 for chrm in gp.chrms:
+
+    if chrm in chrms_completed:
+        continue
 
     # genbank file to read from
     fn = gp.ref_gb_dir[master_ref] + master_ref + '_chr' + chrm + '.gb'
@@ -238,6 +281,25 @@ for chrm in gp.chrms:
                 if not gene_strains_dic[gene].has_key(strain):
                     gene_strains_dic[gene][strain] = 0
                 gene_strains_dic[gene][strain] += frac_intd[gene]
+
+    
+    f_strain_genes_dic = open(gp.analysis_out_dir_absolute + '/' + args['tag'] + \
+                              '/' + 'strain_genes_dic.pkl', 'wb')
+    pickle.dump(strain_genes_dic, f_strain_genes_dic)
+    f_strain_genes_dic.close()
+
+    f_gene_strains_dic = open(gp.analysis_out_dir_absolute + '/' + args['tag'] + \
+                              '/' + 'gene_strains_dic.pkl', 'wb')
+    pickle.dump(gene_strains_dic, f_gene_strains_dic)
+    f_gene_strains_dic.close()
+
+    chrms_completed.append(chrm)
+    f_chrms_completed = open(gp.analysis_out_dir_absolute + '/' + args['tag'] + \
+                             '/' + 'chrms_completed.pkl', 'wb')
+    pickle.dump(chrms_completed, f_chrms_completed)
+    f_chrms_completed.close()
+
+    print 'saving intermediate results completed successfully'
         
 #====
 # strains for each gene summary file
