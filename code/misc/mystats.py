@@ -36,4 +36,9 @@ def bootstrap(l, n = 100, alpha = .05):
     #print mean(a)
     return a[int(alpha * n * .5)], a[int((1 - alpha * .5) * n)]
 
-
+def median(l):
+    m = sorted(l)
+    x = len(m)
+    if x % 2 == 0:
+        return mean([m[x/2], m[x/2-1]])
+    return m[(x-1)/2]
