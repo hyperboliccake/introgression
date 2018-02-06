@@ -341,7 +341,7 @@ def write_blocks(state_seq_blocks, ps, f, strain, chrm, species_pred):
                 str(end - start + 1) + '\n')
     f.flush()
 
-def read_blocks(fn, region_id=False):
+def read_blocks(fn, region_id=None):
     # return dictionary of (start, end, number_non_gap, [region_id]), keyed by strain
     # and then chromosome
     f = open(fn, 'r')
@@ -355,9 +355,9 @@ def read_blocks(fn, region_id=False):
             d[strain] = {}
         if not d[strain].has_key(chrm):
             d[strain][chrm] = []
-        if region_id:
+        if region_id != 'None':
             d[strain][chrm].append((int(start), int(end), int(number_non_gap), \
-                                    'r' + str(id_count)))
+                                    region_id + str(id_count)))
             id_count += 1
         else:
             d[strain][chrm].append((int(start), int(end), int(number_non_gap)))

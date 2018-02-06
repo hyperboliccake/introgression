@@ -22,7 +22,7 @@ refs, strains, args = predict.process_args(sys.argv)
 # output files and if and where to resume
 ##======
 
-resume = False
+resume = True
 open_mode = 'a'
 if not resume:
     open_mode = 'w'
