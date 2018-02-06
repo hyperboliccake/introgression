@@ -359,9 +359,10 @@ def write_regions_for_each_strain(regions, f):
     sep = '\t'
     for strain in regions:
         f.write(strain + sep)
-        num_regions = sum([len(regions[strain][chrm]) for chrm in gp.chrms])
+        num_regions = sum([len(regions[strain][chrm]) \
+                           for chrm in regions[strain].keys()])
         f.write(str(num_regions))
-        for chrm in gp.chrms:
+        for chrm in regions[strain].keys():
             for region in regions[strain][chrm]:
                 region_length = region[1] - region[0] + 1
                 f.write(sep + region[3] + sep + str(region_length))

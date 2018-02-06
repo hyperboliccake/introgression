@@ -45,9 +45,6 @@ import global_params as gp
 sys.path.insert(0, '../misc/')
 import read_fasta
 
-
-sys.exit()
-
 ##======
 # read in analysis parameters
 ##======
@@ -62,8 +59,6 @@ if resume:
 ##======
 # read in introgressed regions
 ##======
-
-all_species_from = args['species'][1:] + ['unknown'] #TODO
 
 gp_dir = '../'
 all_blocks_fn = {}
