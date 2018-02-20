@@ -1,10 +1,15 @@
+import gzip
 
-def read_fasta(fn):
+def read_fasta(fn, gz=False):
 
     headers = []
     seqs = []
 
-    f = open(fn, 'r')
+    f = None
+    if gz:
+        f = gzip.open(fn, 'rb')
+    else:
+        f = open(fn, 'r')
     line = f.readline()
     while line[0] != '>':
         line = f.readline()
@@ -19,5 +24,6 @@ def read_fasta(fn):
         seqs.append(s)
         if line == '':
             break
+    f.close()
 
     return headers, seqs
