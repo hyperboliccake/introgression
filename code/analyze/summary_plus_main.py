@@ -68,6 +68,7 @@ for chrm in gp.chrms:
 
 fn_out = gp.analysis_out_dir_absolute + tag + '/' + \
         'introgressed_blocks' + suffix + '_par_' + tag + '_summary_plus.txt'
+fields.append('aligned_length')
 fields.append('number_genes')
 fields.append('number_gaps')
 fields.append('longest_gap')
@@ -84,6 +85,8 @@ for region_id in regions:
     fn_align = gp.analysis_out_dir_absolute + tag + '/' + \
                'regions/'  + region_id + '.maf.gz'
     headers, seqs = read_fasta.read_fasta(fn_align, gz=True)
+
+    regions[region_id]['aligned_length'] = len(seqs[0])
 
     number_gaps = gap_columns(seqs)
     regions[region_id]['number_gaps'] = number_gaps
