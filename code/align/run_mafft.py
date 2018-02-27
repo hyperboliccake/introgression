@@ -50,7 +50,7 @@ for chrm in gp.chrms:
         concatenate_fasta(ref_fns_chrm + [current_strain_fn_chrm], \
                           gp.alignment_ref_order + [strain], combined_fn)
         
-        cmd_string += gp.mafft_install_path + '/mafft ' + \
+        cmd_string += gp.mafft_install_path + '/mafft --ep 0.123 ' + \
             combined_fn + ' > ' + align_fn_abs + '; '
         
         cmd_string += 'rm ' + combined_fn + ';'

@@ -4,7 +4,7 @@
 # Or you can do something like this:
 # cd $GRID_HOME
 
-#SBATCH --array=0-0 --mem 8192
+#SBATCH --array=0-92 --mem 8192
 
 # We need 20 GB for each instance (must be a good estimate).
 # Note that SLURM assumes one core per task. For tasks using multiple
