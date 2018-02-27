@@ -37,7 +37,7 @@ def concatenate_fasta(fns, names, f):
         fn = fns[i]
         f_current = open(fn, 'r')
         header = f_current.readline()[:-1]
-        f.write(names[i] + ' ' + fn + '\n')
+        f.write('> ' + names[i] + ' ' + fn + '\n')
         f.write(f_current.read())
         f_current.close()
         f.write('\n')
