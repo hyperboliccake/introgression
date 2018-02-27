@@ -20,9 +20,12 @@ for chrm in gp.chrms:
     print chrm
     sys.stdout.flush()
 
+    if not os.path.isfile(fn_start + chrm + '_mafft.maf'):
+        continue
+
     headers, seqs = read_fasta.read_fasta(fn_start + chrm + '_mafft.maf')
     a = dict(zip(headers, seqs))
-    
+
     f_out = open(fn_start + chrm + '_mafft.stats', 'w')
 
     # number of sites where 3,2,1 genomes aligned
@@ -41,14 +44,14 @@ for chrm in gp.chrms:
     # length of chromosomes
     f_out.write('chromosome aligned lengths\n')
     for n in range(len(seqs)):
-        f_out.write(headers[n].split(' ')[0][1:] + ',' + str(seq_lengths[n]) + '\n')
+        f_out.write(headers[n][1:].strip().split(' ')[0] + ',' + str(seq_lengths[n]) + '\n')
     f_out.write('\n')
 
     # using each genome as reference, fraction of other genomes aligned
     f_out.write('fraction aligned to reference\n')
     frac_aligned_to_ref = frac_aligned_to_reference(seqs, seq_lengths)
     for ref in range(len(seqs)):
-        f_out.write(headers[ref].split(' ')[0][1:])
+        f_out.write(headers[ref][1:].strip().split(' ')[0])
         for other in range(len(seqs)): 
             f_out.write(',' + str(frac_aligned_to_ref[ref][other]))
         f_out.write('\n')
