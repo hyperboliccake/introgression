@@ -24,7 +24,8 @@ alignment_suffix = '.maf'
 ref_dir = {'S288c':'/tigress/AKEY/akey_vol2/aclark4/nobackup/100_genomes/genomes/S288c_SGD-R64/', \
            'CBS432':'/tigress/anneec/projects/introgression/data/CBS432/'}
 
-ref_gb_dir = {'S288c':'/tigress/AKEY/akey_vol2/aclark4/nobackup/S288c/'}
+ref_gb_dir = {'S288c':'/tigress/AKEY/akey_vol2/aclark4/nobackup/S288c/',\
+              'CBS432':'/tigress/AKEY/akey_vol2/aclark4/nobackup/CBS432/'}
 
 # will look at all *.fa files in these directories; expects filenames
 # in the format strain_chrX.fa
@@ -73,6 +74,7 @@ unknown_symbol = '?'
 unsequenced_symbol = 'n'
 gap_symbol = '-'
 unaligned_symbol = '?'
+masked_symbol = 'x'
 
 #====
 # simulations
@@ -138,6 +140,9 @@ tcoffee_install_path = '/tigress/anneec/software/T-COFFEE_installer_Version_11.0
 mafft_install_path = '/tigress/anneec/software/mafft/bin/'
 
 ms_install_path = '/tigress/anneec/software/msdir/'
+
+# including dustmasker
+blast_install_path = '/tigress/anneec/software/ncbi-blast-2.7.1+-src/c++/ReleaseMT/bin/'
 
 #====
 # other
