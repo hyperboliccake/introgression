@@ -4,7 +4,7 @@ require(grDevices)
 
 uncolor_mode = FALSE
 
-unknown = FALSE
+unknown = TRUE
 
 chrms = c('I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI')
 
@@ -28,14 +28,28 @@ if (uncolor_mode) {
    vcolors100 = rep('black', 100)
 }
 
-chrm_color = viridis(5)[2]
+chrm_color = viridis(5)[2] # at bottom
 unk_color = viridis(5)[3]
 
-tag = commandArgs(trailingOnly=TRUE)[1]
+######
+
+vcolors = viridis(7, option = 'inferno')
+chrm_color = 'gray70' # at bottom
+par_color = vcolors[5] # orange
+unk_color = vcolors[2] # purple
+
+######
+
+args = commandArgs(trailingOnly=TRUE)
+tag = args[1]
+suffix = ''
+if (length(args) == 2) {
+    suffix = args[2]
+}
 dir.create(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/',sep=''),showWarnings=FALSE)
 
 
-regions = read.table(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/', tag, '/introgressed_blocks_par_', tag, '_summary.txt', sep=''), sep='\t', header=T, stringsAsFactors=F)
+regions = read.table(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/', tag, '/introgressed_blocks', suffix, '_par_', tag, '_summary_plus.txt', sep=''), sep='\t', header=T, stringsAsFactors=F)
 
 regions_cer = read.table(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/', tag, '/introgressed_blocks_cer_', tag, '.txt', sep=''), sep='\t', header=T, stringsAsFactors=F)
 
@@ -45,7 +59,8 @@ if (unknown){
 regions_unk = read.table(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/', tag, '/introgressed_blocks_unknown_', tag, '.txt', sep=''), sep='\t', header=T, stringsAsFactors=F)
 }
 
-strains_list = unique(regions$strain)
+a_strain = read.table('strains.txt', header=F, stringsAsFactors=F)
+strains_list = as.character(a_strain[1,3:ncol(a_strain)])
 strains = data.frame(strain=strains_list, index=1:length(strains_list))
 
 row_height = 2
@@ -70,7 +85,7 @@ for (ci in 1:length(chrms))
     regions_cer_chrm = regions_cer[which(regions_cer$chromosome == chrm),]
     regions_unk_chrm = regions_unk[which(regions_unk$chromosome == chrm),]
 
-    png(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/', tag, '/plots/chrm', chrm, '_', tag, '.png', sep=''), 6400, 3600)
+    png(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/', tag, '/plots/chrm', chrm, suffix, '_', tag, '.png', sep=''), 6400, 3600)
 
     # set margins: bottom, left, top, right
     par(mar=c(5, 10, 4, 2))
@@ -159,18 +174,21 @@ for (ci in 1:length(chrms))
     regions_chrm = merge(strains, regions_chrm, by = 'strain', all.x = T)
     for (r in 1:nrow(regions_chrm)) {
     	mx = NULL 
-	if (unknown) { 
-	    mx = regions_chrm[r,]$number_match_only_par
-	} else {
-	    mx = regions_chrm[r,]$number_match_par_not_cer }
-    	if (mx > 0)
-	{
-	    	cx = vcolors100[log(mx)/log(m) * 100 + 1]
-	}
-	else
-	{
-		cx = 'black'
-	}
+	#if (unknown) { 
+	#    mx = regions_chrm[r,]$number_match_only_par
+	#} else {
+	#    mx = regions_chrm[r,]$number_match_par_not_cer }
+    	#if (mx > 0)
+	#{
+	#    	cx = vcolors100[log(mx)/log(m) * 100 + 1]
+	#}
+	#else
+	#{
+	#	cx = 'black'
+	#}
+        #######
+        cx = par_color
+        #######
         strain_index = regions_chrm[r,]$index
         region_start = regions_chrm[r,]$start
         region_end = regions_chrm[r,]$end
