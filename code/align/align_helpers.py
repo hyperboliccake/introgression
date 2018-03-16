@@ -24,8 +24,9 @@ def get_strains(dirs):
             print 'found no chromosome sequence files in', d, '(perhaps you should check the _chr naming convention?)'
         fns = list(set([x[:x.find('_chr')] for x in fns]))
         num_strains = len(fns)
-        assert num_files == num_strains * len(gp.chrms), \
-            'some strains in ' + d + ' have the wrong number of chromosome sequence files'
+        # might be greater because of masked sequence files
+        assert num_files >= num_strains * len(gp.chrms), \
+            'some strains in ' + d + ' are missing chromosome sequence files'
         entries = [(x, d) for x in fns]
         s += entries
     return s

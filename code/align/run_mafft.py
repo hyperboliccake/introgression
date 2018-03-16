@@ -4,6 +4,11 @@ from align_helpers import *
 sys.path.insert(0, '..')
 import global_params as gp
 
+masked = True
+mask_suffix = ''
+if masked:
+    mask_suffix = '_masked'
+
 # get all non-reference strains of cerevisiae and paradoxus
 s = get_strains(flatten(gp.non_ref_dirs.values()))
 
@@ -13,10 +18,11 @@ if gp.resume_alignment:
     a = os.listdir(gp_dir + gp.alignments_dir)
 
 ref_prefix = '_'.join(gp.alignment_ref_order) + '_'
-ref_fns = [gp.ref_dir[r] + gp.ref_fn_prefix[r] + '_chr' + '?' + gp.fasta_suffix \
-               for r in gp.alignment_ref_order]
+ref_fns = [gp.ref_dir[r] + gp.ref_fn_prefix[r] + '_chr' + '?' + \
+           mask_suffix + gp.fasta_suffix \
+           for r in gp.alignment_ref_order]
 
-strain_fn = '*_chr?' + gp.fasta_suffix
+strain_fn = '*_chr?' + mask_suffix + gp.fasta_suffix
 
 strain, d = s[int(sys.argv[1])]
 
