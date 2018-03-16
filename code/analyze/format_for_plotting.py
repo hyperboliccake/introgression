@@ -16,7 +16,11 @@ import mystats
 # read in analysis parameters
 ##======
 
-all_predict_args = [x.strip().split() for x in open(sys.argv[1], 'r').readlines()]
+suffix = ''
+if len(sys.argv == 3):
+    suffix = sys.argv[1]
+
+all_predict_args = [x.strip().split() for x in open(sys.argv[2], 'r').readlines()]
 all_predict_args = [{'tag':x[0], 'improvement_frac':x[1], 'threshold':x[2], \
                      'expected_length':x[-2], 'expected_frac':x[-1]} \
                     for x in all_predict_args]
@@ -62,9 +66,9 @@ for i in range(len(all_predict_args)):
     print '-', i
     args = all_predict_args[i]
     f_tag = open(gp.analysis_out_dir_absolute + args['tag'] + '/' + \
-                 'plot_region_lengths_' + args['tag'] + '.txt', 'w')
+                 'plot_region_lengths' + suffix + '_' + args['tag'] + '.txt', 'w')
     fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + \
-         'introgressed_blocks_par_' + args['tag'] + '_summary.txt'
+         'introgressed_blocks_par' + suffix + '_' + args['tag'] + '_summary_plus.txt'
     region_summary = gene_predictions.read_region_summary(fn)
     lengths_all = []
     for region in region_summary:

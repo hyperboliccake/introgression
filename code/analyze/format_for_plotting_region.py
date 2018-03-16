@@ -68,7 +68,7 @@ tag = sys.argv[1]
 region = sys.argv[2]
 
 blocks_fn = gp.analysis_out_dir_absolute + tag + '/' + \
-            'introgressed_blocks_' + 'par' + '_' + tag + '_summary.txt'
+            'introgressed_blocks_filtered_' + 'par' + '_' + tag + '_summary.txt'
 r = gene_predictions.read_region_summary(blocks_fn)
 strain = r[region]['strain']
 chrm = r[region]['chromosome']
