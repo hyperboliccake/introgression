@@ -1,10 +1,18 @@
-lines = [x.split(',') for x in open('/net/akey/vol2/aclark4/nobackup/introgression/data/Table_S5_introgressed_genes.csv', 'r').readlines()]
+import sys
+import os
+sys.path.insert(0, '..')
+import global_params as gp
+
+
+lines = [x.split(',') for x in open('/tigress/AKEY/akey_vol2/aclark4/nobackup/introgression/data/Table_S5_introgressed_genes.csv', 'r').readlines()]
 genes = []
 genes_verified = []
 for i in range(2, len(lines)):
     genes.append(lines[i][2])
     if lines[i][4] == 'Verified':
         genes_verified.append(lines[i][2])
+
+gp.analysis_out_dir_absolute
 
 lines = [x.split(' ') for x in open('../../results/introgressed_id_genes.txt', 'r').readlines()]
 my_genes = [x[0] for x in lines]
