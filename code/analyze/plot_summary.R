@@ -3,6 +3,63 @@ library(reshape2)
 library(RColorBrewer)
 library(viridis)
 
+
+args = commandArgs(trailingOnly=TRUE)
+tag = args[1]
+suffix = ''
+if (length(args) == 2) {
+    suffix = args[2]
+}
+
+
+regions = read.table(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/', tag, '/introgressed_blocks', suffix,'_par_', tag, '_summary_plus.txt', sep=''), sep='\t', header=T, stringsAsFactors=F)
+regions$variable = "variable" # make things a lil easier with dcast
+regions$overlap_gene = regions$number_genes >= 1
+regions$length = regions$end - regions$start + 1
+
+
+# bar chart: fraction genome introgressed per strain
+g = 12071326
+a = dcast(regions, strain ~ variable, value.var="length", fun.aggregate=sum)
+a$frac = a$variable/g
+ggplot(a, aes(x=reorder(strain, -frac), y=frac, fill='x')) + 
+    geom_bar(stat='identity',position='dodge') + 
+    xlab('strain') + ylab('fraction of genome introgressed') +
+    scale_fill_viridis(discrete=TRUE) +
+    guides(fill=FALSE) +
+    scale_y_continuous(expand = c(0,0), limits=c(0,max(a$frac))) +
+    theme(panel.background=element_rect(fill="white"),
+          panel.grid.minor=element_blank(), panel.grid.major=element_blank(),
+          axis.line=element_line(),
+          axis.text.x = element_text(angle = 45,vjust = 1,hjust=1,colour="black"), 
+          axis.text.y = element_text(colour="black"))
+ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/frac_bar',suffix,'_',tag,'.pdf',sep=''), width = 12, height = 7)
+
+
+# bar chart: genes introgressed per strain
+a = dcast(regions, strain ~ variable, value.var="number_genes", fun.aggregate=sum)
+ggplot(a, aes(x=reorder(strain, -variable), y=variable, fill='x')) + 
+    geom_bar(stat='identity',position='dodge') + 
+    xlab('strain') + ylab('number of genes introgressed') +
+    scale_fill_viridis(discrete=TRUE) +
+    guides(fill=FALSE) +
+    scale_y_continuous(expand = c(0,0), limits=c(0,max(a$variable))) +
+    theme(panel.background=element_rect(fill="white"),
+          panel.grid.minor=element_blank(), panel.grid.major=element_blank(),
+          axis.line=element_line(),
+          axis.text.x = element_text(angle = 45,vjust = 1,hjust=1,colour="black"), 
+          axis.text.y = element_text(colour="black"))
+ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/num_genes_bar',suffix,'_',tag,'.pdf',sep=''), width = 12, height = 7)
+
+
+# histogram: region lengths
+ggplot(regions, aes(x=length)) + geom_histogram(binwidth=100)
+ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/length_hist',suffix,'_',tag,'.pdf',sep=''), width = 12, height = 7)
+
+
+
+asdgasdg
+
 predict_args = read.table('predict_args.txt', sep=' ', stringsAsFactors=F)
 predict_args = predict_args[c(seq(1,19),seq(21,25),seq(27,36)),]
 tags = predict_args[,1]
