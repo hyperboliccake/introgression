@@ -53,9 +53,23 @@ ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/ana
 
 
 # histogram: region lengths
-ggplot(regions, aes(x=length)) + geom_histogram(binwidth=100)
+ggplot(regions, aes(x=length, fill='x')) + geom_histogram(binwidth=100) +
+    xlab('region length') + ylab('number of regions') +
+    scale_fill_viridis(discrete=TRUE) +
+    guides(fill=FALSE) +
+    scale_y_continuous(expand = c(0,0), limits=c(0,1500)) + 
+    scale_x_continuous(expand = c(0,0), limits=c(0,max(regions$length))) +
+    theme(panel.background=element_rect(fill="white"),
+          panel.grid.minor=element_blank(), panel.grid.major=element_blank(),
+          axis.line=element_line(),
+          axis.text.x = element_text(angle = 45,vjust = 1,hjust=1,colour="black"), 
+          axis.text.y = element_text(colour="black"))
 ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/length_hist',suffix,'_',tag,'.pdf',sep=''), width = 12, height = 7)
-
+print(mean(regions$length))
+print(median(regions$length))
+print(min(regions$length))
+print(max(regions$length))
+print(length(regions$length))
 
 
 asdgasdg

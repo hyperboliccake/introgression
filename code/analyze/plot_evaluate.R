@@ -20,15 +20,28 @@ if (length(args) == 2) {
 }
 
 
-regions = read.table(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/', tag, '/introgressed_blocks_par', suffix,'_', tag, '_summary_plus.txt', sep=''), sep='\t', header=T, stringsAsFactors=F)
+regions = read.table(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/', tag, '/introgressed_blocks', suffix,'_par_', tag, '_summary_plus.txt', sep=''), sep='\t', header=T, stringsAsFactors=F)
 regions$overlap_gene = regions$number_genes >= 1
 regions$length = regions$end - regions$start + 1
 regions$fraction_gap = regions$number_gaps / regions$aligned_length
 regions$fraction_gap_masked = (regions$number_gaps + regions$number_masked_non_gap) / regions$aligned_length
 regions$cer_id = regions$number_match_ref1 / (regions$aligned_length - regions$number_gaps)
+regions$par_id = regions$number_match_ref2 / (regions$aligned_length - regions$number_gaps)
 
 
 #regions_filtered = read.table(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/', tag, '/introgressed_blocks_filtered_par_', tag, '_summary_plus.txt', sep=''), sep='\t', header=T, stringsAsFactors=F)
+
+##=====
+# par id vs cer id
+##=====
+
+ggplot(regions, (aes(x=cer_id, y=par_id, label=region_id))) + geom_point(size=.2, alpha=.5) +  coord_cartesian(xlim=c(.6, 1),ylim=c(.6,1)) + geom_abline(slope=1,intercept=0)
+ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/par_id_vs_cer_id_',tag,'.pdf',sep=''), width = 8, height = 8)
+
+ggplot(regions, (aes(x=cer_id, y=par_id, label=region_id))) + geom_point(size=.2, alpha=.5) +  coord_cartesian(xlim=c(.6, 1),ylim=c(.6,1)) + geom_abline(slope=1,intercept=0) + geom_text(aes(label=as.character(region_id)),hjust=0,vjust=0, cex=.2)
+ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/par_id_vs_cer_id_labeled_',tag,'.pdf',sep=''), width = 8, height = 8)
+
+asdg
 
 ##=====
 # comparing patterns in regions different distances from telomeres
