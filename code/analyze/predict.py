@@ -353,7 +353,13 @@ def read_blocks(fn, region_id=None):
     d = {}
     id_count = 1
     while line != '':
-        strain, chrm, species, start, end, number_non_gap = line.strip().split('\t')
+        # hack because i fucked the file up
+        i1 = 0
+        i2 = 6
+        if line[0] == 'r':
+            i1 = 1
+            i2 = 7
+        strain, chrm, species, start, end, number_non_gap = line.strip().split('\t')[i1:i2]
         if not d.has_key(strain):
             d[strain] = {}
         if not d[strain].has_key(chrm):
