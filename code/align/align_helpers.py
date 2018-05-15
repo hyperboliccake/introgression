@@ -29,7 +29,7 @@ def get_strains(dirs):
             'some strains in ' + d + ' are missing chromosome sequence files'
         entries = [(x, d) for x in fns]
         s += entries
-    return s
+    return sorted(s)
 
 def concatenate_fasta(fns, names, f):
     
