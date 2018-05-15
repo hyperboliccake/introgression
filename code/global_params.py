@@ -35,6 +35,9 @@ non_ref_dirs = {'S288c':['/tigress/AKEY/akey_vol2/aclark4/nobackup/100_genomes/g
 # genbank file for _all_ species/strains
 gb_all = '/tigress/AKEY/akey_vol2/aclark4/nobackup/100_genomes/sequence.gb'
 
+# location of all orf files
+# orf_dir = '/tigress/AKEY/akey_vol2/aclark4/nobackup/100_genomes/genomes_gb/orfs/'
+
 #master_ref = 'S288c'
 
 # gb master
@@ -143,6 +146,8 @@ ms_install_path = '/tigress/anneec/software/msdir/'
 
 # including dustmasker
 blast_install_path = '/tigress/anneec/software/ncbi-blast-2.7.1+-src/c++/ReleaseMT/bin/'
+
+orffinder_install_path = '/tigress/anneec/software/'
 
 #====
 # other
