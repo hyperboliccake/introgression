@@ -9,19 +9,10 @@ sys.path.insert(0, '../sim/')
 import sim_analyze_hmm_bw as sim
 sys.path.insert(0, '../misc/')
 import mystats
-
-# TODO make this more general table reading method
-def read_region_summary_plus(fn):
-    f = open(fn, 'r')
-    labels = f.readline()[:-1].split('\t')
-    regions = [line[:-1].split('\t') for line in f.readlines()]
-    d = {}
-    for region in regions:
-        d[region[0]] = dict(zip(labels[1:], region[1:]))
-    return labels[1:], d
+import read_table
 
 def write_region_summary_plus_line(f, region_id, region, fields):
-    f.write(region_id + '\t' + '\t'.join([region[field] for field in fields]))
+    f.write(region_id + '\t' + '\t'.join([region[field] for field in fields[1:]]))
     f.write('\n')
 
 def passes_filters(region):
@@ -54,12 +45,12 @@ tag = sys.argv[1]
 
 fn = gp.analysis_out_dir_absolute + tag + '/' + \
      'introgressed_blocks_par_' + tag + '_summary_plus.txt'
-fields, region_summary = read_region_summary_plus(fn)
+region_summary, fields = read_table.read_table_rows(fn, '\t')
 
 fn_out = gp.analysis_out_dir_absolute + tag + '/' + \
          'introgressed_blocks_filtered_par_' + tag + '_summary_plus.txt'
 f_out = open(fn_out, 'w')
-f_out.write('region_id\t' + '\t'.join(fields) + '\n')
+f_out.write('\t'.join(fields) + '\n')
 
 for region_id in region_summary:
     region = region_summary[region_id]
