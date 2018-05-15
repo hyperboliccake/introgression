@@ -8,10 +8,11 @@ def write_fasta(headers, seqs, fn, gz=False):
     else:
         f = open(fn, 'w')
     for i in range(len(headers)):
-        if headers[i][0] != '>':
-            headers[i] = '>' + headers[i]
-        if headers[i][-1] != '\n':
-            headers[i] += '\n'
-        f.write(headers[i])
+        header = headers[i]
+        if header[0] != '>':
+            header = '>' + header
+        if header[-1] != '\n':
+            header += '\n'
+        f.write(header)
         f.write(seqs[i] + '\n')
     f.close()
