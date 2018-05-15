@@ -45,7 +45,8 @@ for chrm in gp.chrms:
     align_fn_abs = gp_dir + gp.alignments_dir + align_fn
     # if we don't already have an alignment for this strain/chromosome
     # (or that alignment file is empty), then make one
-    if (align_fn not in a) or (os.stat(align_fn_abs).st_size == 0):
+    #if (align_fn not in a) or (os.stat(align_fn_abs).st_size == 0):
+    if True:
         cmd_string = ''
 
         # first put all sequences in same (temporary) file
@@ -56,7 +57,8 @@ for chrm in gp.chrms:
         concatenate_fasta(ref_fns_chrm + [current_strain_fn_chrm], \
                           gp.alignment_ref_order + [strain], combined_fn)
         
-        cmd_string += gp.mafft_install_path + '/mafft --ep 0.123 ' + \
+        # add --ep 0.123 to maybe get shorter alignment
+        cmd_string += gp.mafft_install_path + '/mafft ' + \
             combined_fn + ' > ' + align_fn_abs + '; '
         
         cmd_string += 'rm ' + combined_fn + ';'
