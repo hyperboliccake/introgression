@@ -34,3 +34,16 @@ def contained_any(i, coords):
         if contained(i, start2, end2):
             return True
     return False
+
+def contained_any_named(i, coords):
+    for start2, end2 in coords.keys():
+        if contained(i, start2, end2):
+            return coords[(start2, end2)]
+    return None
+
+def overlap_region(start1, end1, start2, end2):
+    o_start = max(start1, start2)
+    o_end = min(end1, end2)
+    if o_start > o_end:
+        return -1, -1 # disjoint ranges
+    return o_start, o_end
