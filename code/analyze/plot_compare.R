@@ -5,6 +5,7 @@ library(ggplot2)
 library(reshape2)
 library(RColorBrewer)
 library(viridis)
+source('../my_color_palette.R')
 
 
 args = commandArgs(trailingOnly=TRUE)
@@ -37,9 +38,15 @@ gt = read.table(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/re
 gt$strope_found = gt$gene %in% genes_strope[,1]
 
 ggplot(gt, (aes(x=avg_region_length, y=avg_frac_intd, colour=strope_found, label=gene))) + geom_point(size=1, alpha=.5)+
+    xlab('average region length') +
+    ylab('average fraction of gene introgressed') + 
         theme(panel.background=element_rect(fill="white"),
           panel.grid.minor=element_line(colour="gray92"), panel.grid.major=element_line(colour="gray92"),
           axis.line=element_line(),
+          legend.title = element_blank(),
+          legend.text = element_text(size=18), 
+          axis.title.x = element_text(size=18), 
+          axis.title.y = element_text(size=18), 
           axis.text.x = element_text(colour="black"), 
           axis.text.y = element_text(colour="black"))
 
@@ -49,11 +56,12 @@ ggplot(gt, (aes(x=avg_region_length, y=avg_frac_intd, colour=strope_found, label
         theme(panel.background=element_rect(fill="white"),
           panel.grid.minor=element_line(colour="gray92"), panel.grid.major=element_line(colour="gray92"),
           axis.line=element_line(),
+          axis.title.x = element_text(size=18), 
+          axis.title.y = element_text(size=18), 
           axis.text.x = element_text(colour="black"), 
           axis.text.y = element_text(colour="black"))
 
 ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/intd_vs_region_length_by_strope_found_labeled_',tag,'.pdf',sep=''), width = 12, height = 7)
-
 
 
 ##=====
@@ -62,9 +70,16 @@ ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/ana
 ##=====
 
 ggplot(gt, (aes(x=avg_region_length, y=average_cer_ref_id, colour=strope_found, label=gene))) + geom_point(size=1, alpha=.5) + geom_text(aes(label=gene),hjust=0,vjust=0, cex=.6) +
+    xlab('average region length') +
+    ylab('average introgressed gene identity to cerevisiae reference') + 
+    scale_color_hue(labels = c("not found by Strope et al.", "found by Strope et al.")) +
         theme(panel.background=element_rect(fill="white"),
           panel.grid.minor=element_line(colour="gray92"), panel.grid.major=element_line(colour="gray92"),
           axis.line=element_line(),
+          legend.title = element_blank(),
+          legend.text = element_text(size=18), 
+          axis.title.x = element_text(size=18), 
+          axis.title.y = element_text(size=18), 
           axis.text.x = element_text(colour="black"), 
           axis.text.y = element_text(colour="black"))
 
@@ -78,9 +93,7 @@ ggplot(gt, (aes(x=avg_region_length, y=average_cer_ref_id, colour=strope_found, 
           axis.text.x = element_text(colour="black"), 
           axis.text.y = element_text(colour="black"))
 
-
 ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/cer_ref_id_vs_region_length_by_strope_found_labeled_',tag,'.pdf',sep=''), width = 12, height = 7)
-
 
 
 
@@ -89,16 +102,26 @@ ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/ana
 # labeled by whether or not called by strope et al
 ##=====
 
-ggplot(gt, (aes(x=avg_frac_intd, y=average_cer_ref_id, colour=strope_found, label=gene))) + geom_point(size=1, alpha=.5) +
-    ylab('average identity with cerevisiae reference') + xlab('average fraction of gene I call introgressed') + 
-            theme(panel.background=element_rect(fill="white"),
-          panel.grid.minor=element_line(colour="gray92"), panel.grid.major=element_line(colour="gray92"),
+ggplot(gt, (aes(x=avg_frac_intd, y=average_cer_ref_id, colour=strope_found, shape=strope_found))) + geom_point(size=2, alpha=1) +
+    ylab('Average identity with cerevisiae reference') + xlab('Average fraction of gene we call introgressed') +
+    labs(colour="Also found by\nStrope et al.?", shape="Also found by\nStrope et al.?") +
+    scale_color_manual(values = c(my_color_palette[['misc1']],my_color_palette[['misc2']]), labels = c("no", "yes")) +
+        scale_shape_manual(values=c(19,17),labels=c("no","yes")) +
+        theme(panel.background=element_rect(fill="white"),
+          panel.grid.minor=element_line(colour="gray92"),
+          panel.grid.major=element_line(colour="gray92"),
           axis.line=element_line(),
+          legend.title = element_text(size=18),
+          legend.text = element_text(size=16),
+          legend.key = element_rect(fill = "transparent"),
+          axis.title.x = element_text(size=18), 
+          axis.title.y = element_text(size=18), 
           axis.text.x = element_text(colour="black"), 
           axis.text.y = element_text(colour="black"))
 
-
 ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/cer_ref_id_vs_intd_by_strope_found_',tag,'.pdf',sep=''), width = 12, height = 7)
+
+stop here
 
 ggplot(gt, (aes(x=avg_frac_intd, y=average_cer_ref_id, colour=strope_found, label=gene))) + geom_point(size=1, alpha=.5) + geom_text(aes(label=gene),hjust=0,vjust=0, cex=.6) +
     ylab('average identity with cerevisiae reference') + xlab('average fraction of gene I call introgressed') + 
@@ -110,6 +133,9 @@ ggplot(gt, (aes(x=avg_frac_intd, y=average_cer_ref_id, colour=strope_found, labe
 
 
 ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/cer_ref_id_vs_intd_by_strope_found_labeled_',tag,'.pdf',sep=''), width = 12, height = 7)
+
+sagdasg
+
 
 ##=====
 # not really for comparison but uses the same data: histrogram of average fraciton of gene introgressed

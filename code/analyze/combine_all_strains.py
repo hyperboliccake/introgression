@@ -45,13 +45,11 @@ def get_ref_gene_seq(gene, gene_coords_fn, seq_fn):
     assert gene_start < gene_end
     return gene_seq, gene_start, gene_end, strand
 
-def get_inds_from_alignment(fn, flip_ref):
+def get_inds_from_alignment(fn, flip_ref, rind=0, sind=1):
     headers, seqs = read_fasta.read_fasta(fn)
     n = len(seqs[0])
     ri = -1
     si = -1
-    rind = 0
-    sind = 1
     pr = []
     ps = []
     if flip_ref:
@@ -194,6 +192,7 @@ def choose_best_hit(hits, start, end, tag, strain, chrm, headers, seqs,\
             strand_max = strand
             seq_max = seq # don't need to reverse complement (blast does this)
 
+    print greatest_overlap
     return best_hit, x_max, seq_max, orf_start_max, orf_end_max, strand_max
 
 # by blasting ORFs
@@ -206,6 +205,9 @@ def get_gene_seqs(query_fn, strains, chrm, ref_chrm_fn, start, end, strand, tag,
     strain_gene_seqs = {}
     out_fn = 'blast_chr' + chrm + '.out'
     for strain, d in strains:
+        if strain != 'yjm1332':
+            continue
+
         print '-', strain
         sys.stdout.flush()
         fn = d + 'orfs/' + strain + '_chr' + chrm + '_orfs' +  gp.fasta_suffix
@@ -226,6 +228,11 @@ def get_gene_seqs(query_fn, strains, chrm, ref_chrm_fn, start, end, strand, tag,
         best_orf_id, x, seq, orf_start, orf_end, orf_strand = \
             choose_best_hit(hits, start, end, tag, strain, chrm, headers, seqs, \
                             strain_ind_to_ref_ind[strain])
+        print hits
+        print best_orf_id
+        print orf_strand, strand
+        sys.exit()
+
         if best_orf_id == None or orf_strand != strand:
             strain_gene_seqs[strain] = ('nohit', '', -1, -1, '')
             continue

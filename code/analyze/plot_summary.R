@@ -2,12 +2,13 @@ library(ggplot2)
 library(reshape2)
 library(RColorBrewer)
 library(viridis)
-
+source('../my_color_palette.R')
 
 args = commandArgs(trailingOnly=TRUE)
 tag = args[1]
 suffix = ''
-if (length(args) == 2) {
+if (length(args) == 2)
+{
     suffix = args[2]
 }
 
@@ -24,52 +25,108 @@ a = dcast(regions, strain ~ variable, value.var="length", fun.aggregate=sum)
 a$frac = a$variable/g
 ggplot(a, aes(x=reorder(strain, -frac), y=frac, fill='x')) + 
     geom_bar(stat='identity',position='dodge') + 
-    xlab('strain') + ylab('fraction of genome introgressed') +
-    scale_fill_viridis(discrete=TRUE) +
+    xlab('Strain') + ylab('Fraction of genome introgressed') +
+    scale_fill_manual(values =c(my_color_palette[['introgressed']]) ) +
     guides(fill=FALSE) +
     scale_y_continuous(expand = c(0,0), limits=c(0,max(a$frac))) +
     theme(panel.background=element_rect(fill="white"),
           panel.grid.minor=element_blank(), panel.grid.major=element_blank(),
+          axis.ticks=element_line(colour="black"),
           axis.line=element_line(),
-          axis.text.x = element_text(angle = 45,vjust = 1,hjust=1,colour="black"), 
+          axis.title.x = element_text(size=18), 
+          axis.title.y = element_text(size=18), 
+          axis.text.x = element_text(size=8,angle = 45,vjust = 1,hjust=1,colour="black"), 
           axis.text.y = element_text(colour="black"))
-ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/frac_bar',suffix,'_',tag,'.pdf',sep=''), width = 12, height = 7)
+ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/frac_bar',suffix,'_',tag,'.pdf',sep=''), width = 12, height = 6)
+print(mean(a$frac))
+print(median(a$frac))
+print(min(a$frac))
+print(max(a$frac))
 
 
 # bar chart: genes introgressed per strain
 a = dcast(regions, strain ~ variable, value.var="number_genes", fun.aggregate=sum)
 ggplot(a, aes(x=reorder(strain, -variable), y=variable, fill='x')) + 
     geom_bar(stat='identity',position='dodge') + 
-    xlab('strain') + ylab('number of genes introgressed') +
-    scale_fill_viridis(discrete=TRUE) +
+    xlab('Strain') + ylab('Number of genes introgressed') +
+    scale_fill_manual(values =c(my_color_palette[['introgressed']]) ) +
     guides(fill=FALSE) +
     scale_y_continuous(expand = c(0,0), limits=c(0,max(a$variable))) +
     theme(panel.background=element_rect(fill="white"),
           panel.grid.minor=element_blank(), panel.grid.major=element_blank(),
+          axis.ticks=element_line(colour="black"),
           axis.line=element_line(),
-          axis.text.x = element_text(angle = 45,vjust = 1,hjust=1,colour="black"), 
+          axis.title.x = element_text(size=18), 
+          axis.title.y = element_text(size=18), 
+          axis.text.x = element_text(size=8,angle = 45,vjust = 1,hjust=1,colour="black"), 
           axis.text.y = element_text(colour="black"))
-ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/num_genes_bar',suffix,'_',tag,'.pdf',sep=''), width = 12, height = 7)
+ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/num_genes_bar',suffix,'_',tag,'.pdf',sep=''), width = 12, height = 6)
 
 
 # histogram: region lengths
 ggplot(regions, aes(x=length, fill='x')) + geom_histogram(binwidth=100) +
-    xlab('region length') + ylab('number of regions') +
-    scale_fill_viridis(discrete=TRUE) +
+    xlab('Region length') + ylab('Number of regions') +
+    scale_fill_manual(values =c(my_color_palette[['introgressed']]) ) +
     guides(fill=FALSE) +
     scale_y_continuous(expand = c(0,0), limits=c(0,1500)) + 
-    scale_x_continuous(expand = c(0,0), limits=c(0,max(regions$length))) +
+    scale_x_continuous(expand = c(0,0), limits=c(0,max(regions$length)*1.05)) +
     theme(panel.background=element_rect(fill="white"),
           panel.grid.minor=element_blank(), panel.grid.major=element_blank(),
           axis.line=element_line(),
-          axis.text.x = element_text(angle = 45,vjust = 1,hjust=1,colour="black"), 
-          axis.text.y = element_text(colour="black"))
-ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/length_hist',suffix,'_',tag,'.pdf',sep=''), width = 12, height = 7)
+          axis.ticks=element_line(colour="black"),
+          axis.title.x = element_text(size=18), 
+          axis.title.y = element_text(size=18), 
+          axis.text.x = element_text(colour="black",size=12), 
+          axis.text.y = element_text(colour="black",size=12))
+ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/length_hist',suffix,'_',tag,'.pdf',sep=''), width = 9, height = 6)
 print(mean(regions$length))
 print(median(regions$length))
 print(min(regions$length))
 print(max(regions$length))
 print(length(regions$length))
+
+# region lengths zoomed
+ggplot(regions, aes(x=length, fill='x')) + geom_histogram(binwidth=100) +
+    xlab('Region length') + ylab('Number of regions') +
+    scale_fill_manual(values =c(my_color_palette[['introgressed']]) ) +
+    guides(fill=FALSE) +
+    scale_y_continuous(expand = c(0,0), limits=c(0,42)) + 
+    scale_x_continuous(expand = c(0,0), limits=c(0,max(regions$length)*1.05)) +
+    theme(panel.background=element_rect(fill="white"),
+          panel.grid.minor=element_blank(), panel.grid.major=element_blank(),
+          axis.line=element_line(),
+          axis.ticks=element_line(colour="black"),
+          axis.title.x = element_text(size=18), 
+          axis.title.y = element_text(size=18), 
+          axis.text.x = element_text(colour="black",size=12), 
+          axis.text.y = element_text(colour="black",size=12))
+ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/length_hist_zoomed',suffix,'_',tag,'.pdf',sep=''), width = 9, height = 6)
+
+
+# histogram: region lengths (log scale)
+ggplot(regions, aes(x=length, fill='x')) + geom_histogram(binwidth=50) +
+    xlab('Region length') + ylab('Number of regions') +
+    scale_fill_manual(values =c(my_color_palette[['introgressed']]) ) +
+    guides(fill=FALSE) +
+    #scale_y_continuous(expand = c(0,0), limits=c(-1,750)) + 
+    scale_y_log10(limits=c(1,1000)) +
+    scale_x_continuous(expand = c(0,0), limits=c(0,max(regions$length)*1.05)) +
+    theme(panel.background=element_rect(fill="white"),
+          panel.grid.minor=element_blank(), panel.grid.major=element_blank(),
+          axis.line=element_line(),
+          axis.ticks=element_line(colour="black"),
+          axis.title.x = element_text(size=18), 
+          axis.title.y = element_text(size=18), 
+          axis.text.x = element_text(colour="black",size=12), 
+          axis.text.y = element_text(colour="black",size=12))
+ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/length_hist_log',suffix,'_',tag,'.pdf',sep=''), width = 9, height = 6)
+print(mean(regions$length))
+print(median(regions$length))
+print(min(regions$length))
+print(max(regions$length))
+print(length(regions$length))
+
+
 
 
 asdgasdg

@@ -1,4 +1,7 @@
+library(ggplot2)
+library(viridis)
 require(grDevices)
+source('../my_color_palette.R')
 
 gene ='SUL1'
 chrm = 'II'
@@ -19,11 +22,12 @@ fn = paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analy
 gene_coords = read.table(fn)
 
 context_length = 200
-gene_height = 10
+gene_height = 17
 num_strains = nrow(strains)
 strain_height = 2
 padding = 1
 genome_width = 2
+hmargin = 5 # for top and bottom
 
 #for (i in 1:nrow(gene_summary)) {
 
@@ -33,7 +37,7 @@ i = which(gene_coords[,1]==gene)
 gene_start = gene_coords[i,2]#$start
 gene_end = gene_coords[i,3]#$end
 gene_length = gene_end - gene_start + 1
-    #gene_name = gene_summary[i,]$gene
+#gene_name = gene_summary[i,]$gene
 
 
     print(gene_name)
@@ -45,29 +49,47 @@ fn = paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analy
     ## type n doesn't produce any points or lines
     ## first strain is at padding
     plot(c(-context_length + gene_start, gene_end + context_length),
-         c(-gene_height + 1 - padding * 2, num_strains * (padding + strain_height)),
-         type = "n", xlab = paste("chromosome", chrm),
-         ylab = "", main = gene_name, yaxt='n')
+         c(-gene_height + 1 - padding * 2 - hmargin, num_strains * (padding + strain_height) + hmargin),
+         type = "n", xlab = "", 
+	 ylab = "", main = "", xaxt='n', yaxt='n', xaxs='i', yaxs='i')
 
-    ## plot genome line
-    rect(-context_length + gene_start,
-         -gene_height/2 - padding - genome_width/2,
-         gene_end + context_length,
-         -gene_height/2 - padding + genome_width/2,
-         col = "black", border = "black")
+    # move x axis label and title closer to axis
+    title(xlab = paste("position on chromosome", chrm), line = 1.8)
 
-    ## plot gene
+    # plot intergenic lines
+    rect(-context_length + gene_start, 
+         -gene_height/2 - padding - genome_width/2, 
+         gene_start, 
+         -gene_height/2 - padding + genome_width/2, 
+         col = "gray50", border = "gray50")
+    rect(gene_end, 
+         -gene_height/2 - padding - genome_width/2, 
+         gene_end + context_length, 
+         -gene_height/2 - padding + genome_width/2, 
+         col = "gray50", border = "gray50")
+
+
+    # plot gene
     rect(gene_start,
          -gene_height - padding,
          gene_end,
          -padding,
-         col = "darkorchid1", border = "darkorchid4")
+         col = alpha(my_color_palette[['nonintrogressed']],.4), border = my_color_palette[['nonintrogressed']])
+    # gene name
+    text((gene_start + gene_end) / 2, -gene_height/2-padding, labels = gene_name, adj=c(.5,.5), cex=1.3)
 
+    # move position labels closer
+    axis(1, mgp=c(3, .5, 0))
 
-    ## plot strain labels
+    # plot strain labels
     positions = seq(padding + strain_height/2, (num_strains*(padding + strain_height)),
-    (padding+strain_height))
-    axis(2, at=positions, labels=strains$strain, las=1, cex.axis=.35)
+    	        (padding+strain_height))
+    axis(2, at=positions, labels=strains$strain[order(strains$index)], las=1, cex.axis=.35, mgp=c(3, .1, 0), tick=FALSE)
+    # plot gridlines for strains
+    for (p in positions)
+    {   
+        abline(a=p, b=0, col=alpha(my_color_palette[['nonintrogressed']],.3))
+    }
 
     ##=======
     ## plot strain introgressed regions
@@ -86,9 +108,21 @@ fn = paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analy
         (strain_index - 1) * strain_height + strain_index * padding,
         region_end,
         (strain_index - 1) * strain_height + strain_index * padding + strain_height,
-        col = 'dodgerblue3')
+        col = alpha(my_color_palette[['introgressed']],.8), border=my_color_palette[['introgressed']])
     }
-    
+
+# plot variants
+
+
+
+    # overall outline on top
+    rect(-context_length + gene_start, 
+         -gene_height + 1 - padding * 2 - hmargin,
+         gene_end + context_length, 
+	 num_strains * (padding + strain_height) + hmargin,	 
+         col = FALSE, border = "black")
+
+
     dev.off()
     ## plot sites that match introgressed reference
 #}

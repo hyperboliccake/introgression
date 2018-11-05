@@ -16,7 +16,7 @@ cen_starts = c(151465, 238207, 114385, 449711, 151987, 148510, 496920, 105586, 3
 
 cen_ends = c(151582,238323,114501,449821,152104,148627,497038,105703,355745,436425,440246,150947,268149,628875,326702,556073) - 1
 
-tel_coords = c(1,801,229411,230218,1,6608,812379,813184,1,1098,315783,316620,1,904,1524625,1531933,1,6473,569599,576874,1,5530,269731,270161,1,781,1083635,1090940,1,5505,556105,562643,1,7784,439068,439888,1,7767,744902,745751,1,807,665904,666816,1,12085,1064281,1078177,1,6344,923541,924431,1,7428,783278,784333,1,847,1083922,1091291,1,7223,942396,948010) - 1
+tel_coords = c(1,801,229411,230218,1,6608,812379,813184,1,1098,315783,316620,1,904,1524625,1531933,1,6473,569599,576874,1,5530,269731,270161,1,781,1083635,1090940,1,5505,556105,562643,1,7784,439068,439888,1,7767,744902,745751,1,807,665904,666816,1,12085,1064281,1463177,1,6344,923541,924431,1,7428,783278,784333,1,847,1083922,1091291,1,7223,942396,948010) - 1
 
 tel_left_starts = tel_coords[seq(1, 64, 4)]
 tel_left_ends = tel_coords[seq(2, 64, 4)]
@@ -51,7 +51,7 @@ regions_unk = read.table(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgr
 
 # all strains, in arbitrary order
 strains_list = unique(regions$strain)
-strains_list = c('yjm1252', 'yjm1078', 'yjm248')
+strains_list = c('yjm1433', 'yjm1463', 'yjm1355')
 strains = data.frame(strain=strains_list, index=1:length(strains_list))
 
 # row/spacing parameters
@@ -60,7 +60,7 @@ padding = 3 # between chromosomes
 vmargin = 3 # for top and bottom
 
 # plot png file
-png(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/', tag, '/plots/all_chrms_3strains', suffix, '_', tag, '.png', sep=''), 6400, 3600)
+png(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/', tag, '/plots/all_chrms_3strains_2', suffix, '_', tag, '.png', sep=''), 6400, 3600)
 
 # set margins: bottom, left, top, right
 par(mar=c(5, 10, 4, 2))

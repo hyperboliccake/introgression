@@ -1,9 +1,10 @@
-# this is the same deal as plot_genome_composite, but only for those 3
-# strains with lots of introgression
+# pretty much the same as plot_genome, but instead of separate rows
+# for all strains, plots them on top of each other; darker regions
+# have more introgression
+# also, plot all chromosomes at once
 
 library(ggplot2)
 library(viridis)
-library(RColorBrewer)
 require(grDevices)
 
 unknown = TRUE
@@ -24,7 +25,19 @@ tel_right_starts = tel_coords[seq(3, 64, 4)]
 tel_right_ends = tel_coords[seq(4, 64, 4)]
 
 # colors
-vcolors = brewer.pal(3, 'Dark2')
+vcolors = viridis(7, option = 'inferno')
+par_color_dark = vcolors[5]
+unk_color_dark = vcolors[2]
+add.alpha <- function(col, alpha=.1) {
+    if(missing(col))
+        stop("Please provide a vector of colours.")
+    apply(sapply(col, col2rgb)/255, 2,
+          function(x)
+              rgb(x[1], x[2], x[3], alpha=alpha))
+}
+vcolors = add.alpha(vcolors)
+par_color = vcolors[5]
+unk_color = vcolors[2]
 
 # create plots directory for this tag (might already exist)
 args = commandArgs(trailingOnly=TRUE)
@@ -51,7 +64,6 @@ regions_unk = read.table(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgr
 
 # all strains, in arbitrary order
 strains_list = unique(regions$strain)
-strains_list = c('yjm1252', 'yjm1078', 'yjm248')
 strains = data.frame(strain=strains_list, index=1:length(strains_list))
 
 # row/spacing parameters
@@ -60,7 +72,7 @@ padding = 3 # between chromosomes
 vmargin = 3 # for top and bottom
 
 # plot png file
-png(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/', tag, '/plots/all_chrms_3strains', suffix, '_', tag, '.png', sep=''), 6400, 3600)
+png(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/', tag, '/plots/all_chrms_unknown', suffix, '_', tag, '.png', sep=''), 6400, 3600)
 
 # set margins: bottom, left, top, right
 par(mar=c(5, 10, 4, 2))
@@ -94,20 +106,30 @@ for (ci in 1:length(chrms))
 
     row_bottom = vmargin + (ci - 1) * (row_height + padding)
     row_top = row_bottom + row_height
-    row_third = row_height / 3
     row_middle = (row_bottom + row_top) / 2
     
+    # plot unknown regions (unknown state as opposed to just uncalled)
+    regions_unk_chrm = merge(strains, regions_unk_chrm, by = 'strain', all.x = T)
+    for (r in 1:nrow(regions_unk_chrm)) {
+        region_start = regions_unk_chrm[r,]$start
+        region_end = regions_unk_chrm[r,]$end
+        rect(region_start, 
+             row_bottom,
+             region_end, 
+             row_middle,
+             col = unk_color, border=unk_color)
+    }
+
     # plot par regions
     regions_chrm = merge(strains, regions_chrm, by = 'strain', all.x = T)
     for (r in 1:nrow(regions_chrm)) {
         region_start = regions_chrm[r,]$start
         region_end = regions_chrm[r,]$end
-        si = regions_chrm[r,]$index
-        rect(region_start,
-             row_bottom + (si - 1) * row_third,
+        rect(region_start, 
+             row_middle,
              region_end, 
-             row_bottom + si * row_third,
-             col = vcolors[si], border=vcolors[si])
+             row_top,
+             col = par_color, border=par_color)
     }
 
     # plot chromosome
@@ -117,26 +139,26 @@ for (ci in 1:length(chrms))
          row_top,
          col = NULL, border = 'black')
     feature_height = 0
-    feature_color= 'black'
+    feature_color = 'black'
     # plot centromere box and point
     rect(cen_starts[ci],
          row_bottom-feature_height,
          cen_ends[ci],
          row_top+feature_height,
-         col = 'black', border = 'black')
+         col = feature_color, border = feature_color)
     points((cen_starts[ci]+cen_ends[ci])/2, row_middle, cex=5,col=feature_color)
     # plot telomere boxes and point
     rect(tel_left_starts[ci],
          row_bottom-feature_height,
          tel_left_ends[ci],
          row_top+feature_height,
-         col = 'black', border = 'black')
+         col = feature_color, border = feature_color)
     #points(tel_left_ends[ci], row_middle, pch=19)
     rect(tel_right_starts[ci],
          row_bottom-feature_height,
          tel_right_ends[ci],
          row_top+feature_height,
-         col = 'black', border = 'black')
+         col = feature_color, border = feature_color)
     #points(tel_right_starts[ci], row_middle, pch=19)
 
 }
@@ -152,10 +174,8 @@ positions = seq(seq_start, seq_end+1, 100000)
 axis(1, at=positions, las=1, mgp=c(3,4,0), cex.axis=6, line = 0)
 
 # write color meanings
-for (si in strains$index)
-    {
-        text(seq_start + 30000 * si, total_height-.5, strains$strain[si], cex=2, pos=4, col=vcolors[si])
-    }
+text(seq_start + 50000, total_height-.5, 'paradoxus', cex=2, pos=4, col=par_color_dark)
+text(seq_start + 10000, total_height-.5, 'unknown', cex=2, pos=4, col=unk_color_dark)
 
 dev.off()
 

@@ -10,6 +10,8 @@ library(ggplot2)
 library(reshape2)
 library(RColorBrewer)
 library(viridis)
+library(hexbin)
+source('../my_color_palette.R')
 
 
 args = commandArgs(trailingOnly=TRUE)
@@ -35,7 +37,65 @@ regions$par_id = regions$number_match_ref2 / (regions$aligned_length - regions$n
 # par id vs cer id
 ##=====
 
-ggplot(regions, (aes(x=cer_id, y=par_id, label=region_id))) + geom_point(size=.2, alpha=.5) +  coord_cartesian(xlim=c(.6, 1),ylim=c(.6,1)) + geom_abline(slope=1,intercept=0)
+ggplot(regions, (aes(x=cer_id, y=par_id, label=region_id, colour='x'))) + geom_hex(bins=100) +  coord_cartesian(xlim=c(.6, 1),ylim=c(.6,1)) + geom_abline(slope=1,intercept=0, linetype='dashed') +
+    xlab('Identity with cerevisiae reference') + 
+    ylab('Identity with paradoxus reference') + 
+    scale_colour_manual(values = c(my_color_palette[['introgressed']])) +
+    theme(panel.background=element_rect(fill="white"),
+          panel.grid.minor=element_line(colour="gray92"), panel.grid.major=element_line(colour="gray92"),
+          axis.line=element_line(),
+          legend.position = "none",
+          axis.title.x = element_text(size=18), 
+          axis.title.y = element_text(size=18), 
+          axis.text.x = element_text(colour="black"), 
+          axis.text.y = element_text(colour="black"))
+ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/par_id_vs_cer_id_hex_',tag,'.pdf',sep=''), width = 8, height = 8)
+
+ggplot(regions, (aes(x=cer_id, y=par_id, label=region_id, colour='x', size=end-start))) + geom_point(alpha=.15) +
+    scale_size_continuous(range = c(1, 5)) +
+    coord_cartesian(xlim=c(.6, 1),ylim=c(.6,1)) + geom_abline(slope=1,intercept=0, linetype='dashed') +
+    xlab('Identity with cerevisiae reference') + 
+    ylab('Identity with paradoxus reference') + 
+    scale_colour_manual(values = c(my_color_palette[['introgressed']])) +
+    theme(panel.background=element_rect(fill="white"),
+          panel.grid.minor=element_line(colour="gray92"), panel.grid.major=element_line(colour="gray92"),
+          axis.line=element_line(),
+          legend.position = "none",
+          axis.title.x = element_text(size=18), 
+          axis.title.y = element_text(size=18), 
+          axis.text.x = element_text(colour="black"), 
+          axis.text.y = element_text(colour="black"))
+ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/par_id_vs_cer_id_prez2_',tag,'.pdf',sep=''), width = 8, height = 8)
+
+ggplot(regions, (aes(x=cer_id, y=par_id, label=region_id, colour='x'))) + geom_point(alpha=.15, size=3.5) +
+    #scale_size_continuous(range = c(1, 5)) +
+    coord_cartesian(xlim=c(.6, 1),ylim=c(.6,1)) + geom_abline(slope=1,intercept=0, linetype='dashed') +
+    xlab('Identity with cerevisiae reference') + 
+    ylab('Identity with paradoxus reference') + 
+    scale_colour_manual(values = c(my_color_palette[['introgressed']])) +
+    theme(panel.background=element_rect(fill="white"),
+          panel.grid.minor=element_line(colour="gray92"), panel.grid.major=element_line(colour="gray92"),
+          axis.line=element_line(),
+          legend.position = "none",
+          axis.title.x = element_text(size=18), 
+          axis.title.y = element_text(size=18), 
+          axis.text.x = element_text(colour="black"), 
+          axis.text.y = element_text(colour="black"))
+ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/par_id_vs_cer_id_prez1_',tag,'.pdf',sep=''), width = 8, height = 8)
+
+
+ggplot(regions, (aes(x=cer_id, y=par_id, label=region_id, colour='x'))) + geom_point(size=.5, alpha=.4) +  coord_cartesian(xlim=c(.6, 1),ylim=c(.6,1)) + geom_abline(slope=1,intercept=0, linetype='dashed') +
+    xlab('Identity with cerevisiae reference') + 
+    ylab('Identity with paradoxus reference') + 
+    scale_colour_manual(values = c(my_color_palette[['introgressed']])) +
+    theme(panel.background=element_rect(fill="white"),
+          panel.grid.minor=element_line(colour="gray92"), panel.grid.major=element_line(colour="gray92"),
+          axis.line=element_line(),
+          legend.position = "none",
+          axis.title.x = element_text(size=18), 
+          axis.title.y = element_text(size=18), 
+          axis.text.x = element_text(colour="black"), 
+          axis.text.y = element_text(colour="black"))
 ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/par_id_vs_cer_id_',tag,'.pdf',sep=''), width = 8, height = 8)
 
 ggplot(regions, (aes(x=cer_id, y=par_id, label=region_id))) + geom_point(size=.2, alpha=.5) +  coord_cartesian(xlim=c(.6, 1),ylim=c(.6,1)) + geom_abline(slope=1,intercept=0) + geom_text(aes(label=as.character(region_id)),hjust=0,vjust=0, cex=.2)

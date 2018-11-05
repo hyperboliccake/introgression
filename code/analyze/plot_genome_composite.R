@@ -1,13 +1,14 @@
 # pretty much the same as plot_genome, but instead of separate rows
 # for all strains, plots them on top of each other; darker regions
 # have more introgression
-# also, plot all chromsomes at once
+# also, plot all chromosomes at once
 
 library(ggplot2)
 library(viridis)
 require(grDevices)
+source('../my_color_palette.R')
 
-unknown = TRUE
+unknown = FALSE
 
 chrms = c('I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI')
 num_chrms = length(chrms)
@@ -25,19 +26,12 @@ tel_right_starts = tel_coords[seq(3, 64, 4)]
 tel_right_ends = tel_coords[seq(4, 64, 4)]
 
 # colors
-vcolors = viridis(7, option = 'inferno')
-par_color_dark = vcolors[5]
-unk_color_dark = vcolors[2]
-add.alpha <- function(col, alpha=.1) {
-    if(missing(col))
-        stop("Please provide a vector of colours.")
-    apply(sapply(col, col2rgb)/255, 2,
-          function(x)
-              rgb(x[1], x[2], x[3], alpha=alpha))
-}
-vcolors = add.alpha(vcolors)
-par_color = vcolors[5]
-unk_color = vcolors[2]
+par_color_dark = my_color_palette[['introgressed']]
+unk_color_dark = 'gray50'
+r=col2rgb(par_color_dark)/255
+par_color = rgb(r[1],r[2],r[3],alpha=.1)
+r=col2rgb(unk_color_dark)/255
+unk_color = rgb(r[1],r[2],r[3],alpha=.1)
 
 # create plots directory for this tag (might already exist)
 args = commandArgs(trailingOnly=TRUE)
@@ -108,17 +102,6 @@ for (ci in 1:length(chrms))
     row_top = row_bottom + row_height
     row_middle = (row_bottom + row_top) / 2
     
-    # plot unknown regions (unknown state as opposed to just uncalled)
-    regions_unk_chrm = merge(strains, regions_unk_chrm, by = 'strain', all.x = T)
-    for (r in 1:nrow(regions_unk_chrm)) {
-        region_start = regions_unk_chrm[r,]$start
-        region_end = regions_unk_chrm[r,]$end
-        rect(region_start, 
-             row_bottom,
-             region_end, 
-             row_middle,
-             col = unk_color, border=unk_color)
-    }
 
     # plot par regions
     regions_chrm = merge(strains, regions_chrm, by = 'strain', all.x = T)
@@ -126,7 +109,7 @@ for (ci in 1:length(chrms))
         region_start = regions_chrm[r,]$start
         region_end = regions_chrm[r,]$end
         rect(region_start, 
-             row_middle,
+             row_bottom,
              region_end, 
              row_top,
              col = par_color, border=par_color)
@@ -138,26 +121,27 @@ for (ci in 1:length(chrms))
          tel_right_ends[ci],
          row_top,
          col = NULL, border = 'black')
-    feature_height = .5
+    feature_height = 0
+    feature_color = 'black'
     # plot centromere box and point
     rect(cen_starts[ci],
          row_bottom-feature_height,
          cen_ends[ci],
          row_top+feature_height,
-         col = 'black', border = 'black')
-    #points((cen_starts[ci]/cen_ends[ci])/2, row_middle, pch=19)
+         col = feature_color, border = feature_color)
+    points((cen_starts[ci]+cen_ends[ci])/2, row_middle, cex=5,col=feature_color)
     # plot telomere boxes and point
     rect(tel_left_starts[ci],
          row_bottom-feature_height,
          tel_left_ends[ci],
          row_top+feature_height,
-         col = 'black', border = 'black')
+         col = feature_color, border = feature_color)
     #points(tel_left_ends[ci], row_middle, pch=19)
     rect(tel_right_starts[ci],
          row_bottom-feature_height,
          tel_right_ends[ci],
          row_top+feature_height,
-         col = 'black', border = 'black')
+         col = feature_color, border = feature_color)
     #points(tel_right_starts[ci], row_middle, pch=19)
 
 }
@@ -166,15 +150,11 @@ for (ci in 1:length(chrms))
 positions = seq(vmargin + row_height/2,
                 num_chrms*(padding + row_height) - padding + vmargin,
                 padding+row_height)
-axis(2, at=positions, labels=chrms, las=1, cex.axis=3, tick=FALSE, line=-.5)
+axis(2, at=positions, labels=chrms, las=1, cex.axis=6, tick=FALSE, line=-.5)
 
 # plot position labels
-positions = seq(seq_start, seq_end+1, 50000)
-axis(1, at=positions, las=1, cex.axis=2.5, line = 0)
-
-# write color meanings
-text(seq_start + 50000, total_height-.5, 'paradoxus', cex=2, pos=4, col=par_color_dark)
-text(seq_start + 10000, total_height-.5, 'unknown', cex=2, pos=4, col=unk_color_dark)
+positions = seq(seq_start, seq_end+1, 100000)
+axis(1, at=positions, labels=positions/1000000, las=1, mgp=c(3,4,0), cex.axis=6, line = 0)
 
 dev.off()
 
