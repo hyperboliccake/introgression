@@ -33,7 +33,11 @@ def write_combined_file(f, rep, codings, introgressed, \
         f.write('\t' + introgressed_ref[actual_block_type][i])
         for prob_type in prob_types:
             for state in probs[prob_type].keys():
-                f.write('\t' + str(probs[prob_type][state][i]))
+                try:
+                    f.write('\t' + str(probs[prob_type][state][i]))
+                except:
+                    print prob_type, state, i, len(probs[prob_type][state])
+                    sys.exit()
         f.write('\n')
 
 def write_combined_files(files, inds, rep, codings, introgressed, probs, \

@@ -41,11 +41,11 @@ block_types = predict_prob_block_types + predict_path_block_types + [actual_bloc
 
 gp_dir = '../'
 # for reading output from ms
-ms_f = open(gp_dir + gp.sim_out_dir + '/ms/' + gp.sim_out_prefix + \
-               sim_args['tag'] + '.txt', 'r')
+ms_f = open(gp.sim_out_dir_absolute + '/ms/' + gp.sim_out_prefix + \
+            sim_args['tag'] + '.txt', 'r')
 
 # all introgressed block files to read
-introgression_fn_prefix = gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
+introgression_fn_prefix = gp.sim_out_dir_absolute + gp.sim_out_prefix + \
                           sim_args['tag'] + '_introgressed_'
 introgression_files = dict(zip(block_types, \
                                [open(introgression_fn_prefix + t + '.txt', 'r') \
@@ -55,8 +55,8 @@ introgression_file_lines = dict(zip(block_types, \
                                      for k in introgression_files]))
 
 # all prob files to read
-prob_fn_prefix = gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
-                          sim_args['tag'] + '_introgressed_probs_'
+prob_fn_prefix = gp.sim_out_dir_absolute + gp.sim_out_prefix + \
+                 sim_args['tag'] + '_introgressed_probs_'
 prob_files = dict(zip(predict_prob_block_types, \
                       [open(prob_fn_prefix + t + '.txt', 'r') \
                        for t in predict_prob_block_types]))
@@ -70,7 +70,7 @@ ref_ind = predict_args['ref_inds'][0]
 inds.remove(ref_ind)
 
 # combined output files, one per predicted strain and rep
-combined_dir = gp_dir + gp.sim_out_dir + sim_args['tag'] + '/' + \
+combined_dir = gp.sim_out_dir_absolute + sim_args['tag'] + '/' + \
                predict_args['predict_tag'] + '/'
 combined_fn_prefix = combined_dir + gp.sim_out_prefix + \
                      sim_args['tag'] + '_' + predict_args['predict_tag'] + \
