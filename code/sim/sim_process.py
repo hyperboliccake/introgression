@@ -123,13 +123,18 @@ def convert_to_blocks_one(state_seq, states):
     if prev_species not in blocks:
         blocks[prev_species] = []
     blocks[prev_species].append((block_start, block_end))
+    # make first block extend to first position, and last to last
+    # (for the case that we're only considering a subset of sites)
+    #first_block = blocks[state_seq[0]][0]
+    #blocks[state_seq[0]][0] = (seq_start, first_block[1])
     return blocks
+
 
 def convert_to_blocks(state_seqs, states):
     blocks = {}
     for ind in state_seqs.keys():
         blocks[ind] = convert_to_blocks_one(state_seqs[ind], states)
-    return blocks    
+    return blocks
 
 def write_introgression(state_seq, f, rep, states):
     # file format is:
@@ -293,16 +298,20 @@ def threshold_predicted(predicted, probs, threshold, default_state):
             predicted_thresholded.append(default_state)
     return predicted_thresholded
 
+def fill_seq(seq, polymorphic_sites, nsites, fill):
+    s = [fill for x in range(nsites)]
+    for i in range(len(polymorphic_sites)):
+        s[polymorphic_sites[i]] = seq[i]
+    return s
+
 # add in the nonpolymorphic sites
 def fill_seqs(polymorphic_seqs, polymorphic_sites, nsites, fill):
     
     # note that polymorphic sites can have duplicates
     seqs_filled = []
     for seq in polymorphic_seqs:
-        s = [fill for x in range(nsites)]
-        for i in range(len(polymorphic_sites)):
-            s[polymorphic_sites[i]] = seq[i]
-        seqs_filled.append(''.join(s))
+        s = fill_seq(seq, polymorphic_sites, nsites, fill)
+        seqs_filled.append(''.join(s)) # TODO should return this as list instead
     return seqs_filled
 
 def get_max_path(p):
