@@ -1,5 +1,40 @@
-# takes output from process_main.py and sorts genes to sort of
-# prioritize interesting ones
+# put introgressed genes in a file with relevant info to prioritize
+# which ones look interesting
+
+import sys
+import os
+sys.path.insert(0, '..')
+import global_params as gp
+sys.path.insert(0, '../misc/')
+import read_table
+
+tag = sys.argv[1]
+suffix = '_filtered'
+
+# read in filtered regions
+fn_regions = gp.analysis_out_dir_absolute + tag + '/' + \
+             'introgressed_blocks' + suffix + '_par_' + tag + '_summary_plus.txt'
+regions, l = read_table.read_table_rows(fn_regions, '\t')
+
+# read in genes for each region
+genes_for_each_region = 
+
+# create dictionary keyed by gene to keep track of strains its
+# introgressed in, and corresponding fraction introgressed, and
+# regions
+
+# order genes by sum of fractions introgressed
+
+# read in paralogs
+
+# write genes to file
+
+    
+    
+
+
+
+
 
 import sys
 from process import *
