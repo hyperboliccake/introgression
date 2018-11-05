@@ -18,13 +18,13 @@ args, last_read = process_args.process_args(sys.argv)
 
 gp_dir = '../'
 # for reading output from ms
-ms_f = open(gp_dir + gp.sim_out_dir + '/ms/' + gp.sim_out_prefix + \
+ms_f = open(gp.sim_out_dir_absolute + '/ms/' + gp.sim_out_prefix + \
                 args['tag'] + '.txt', 'r')
 # summary output
-out_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
+out_f = open(gp.sim_out_dir_absolute + gp.sim_out_prefix + \
                 args['tag'] + '_summary.txt', 'w')
 # introgression output
-introgression_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
+introgression_f = open(gp.sim_out_dir_absolute + gp.sim_out_prefix + \
                            args['tag'] + '_introgressed_actual.txt', 'w')
 
 for i in range(args['num_reps']):
