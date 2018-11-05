@@ -8,6 +8,9 @@
 import sys
 import os
 import re
+sys.path.insert(0, '../misc/')
+import read_fasta
+
 
 def seq_id(a, b, l = -1, use_gaps = False):
     assert len(a) == len(b)
@@ -29,7 +32,15 @@ def seq_id(a, b, l = -1, use_gaps = False):
 def mean(a):
     return float(sum(a))/len(a)
 
-def maf_id(fn, only_threeway, ref1 = 'S288c', ref2 = 'CBS432'):
+
+def maf_id(fn, ref1 = 'S288c', ref2 = 'CBS432'):
+    headers, seqs = read_fasta.read_fasta(fn)
+    id1, den1 = seq_id(seqs[2], seqs[0])
+    id2, den2 = seq_id(seqs[2], seqs[1])
+    return id1, id2, den1, den2
+
+# for muscle output
+def maf_id_old(fn, only_threeway, ref1 = 'S288c', ref2 = 'CBS432'):
     assert only_threeway, 'reading non-threeway parts of the alignment not yet implemented'
     f = open(fn, 'r')
     line = f.readline()
@@ -78,10 +89,14 @@ if sys.argv[1] == '100':
     alignment_dir = '../../alignments/genbank/'
     prefix = 'S288c_CBS432_'
     fns = os.listdir(alignment_dir)
+    fns = filter(lambda fn: fn.endswith('mafft.maf'), fns)
     strains = set()
     for fn in fns:
-        m = re.match(prefix + '(?P<strain>[a-zA-Z0-9]+)_chr', fn)
-        strains.add(m.group('strain'))
+        try:
+            m = re.match(prefix + '(?P<strain>[a-zA-Z0-9]+)_chr', fn)
+            strains.add(m.group('strain'))
+        except:
+            pass
     # process alignments for each strain and chromosome
     id_cer = []
     id_par = []
@@ -94,7 +109,7 @@ if sys.argv[1] == '100':
         len_strain_cer = []
         len_strain_par = []
         for chrm in chrms:
-            id_chrm_cer, id_chrm_par, len_chrm_cer, len_chrm_par = maf_id(alignment_dir + prefix + strain + '_chr' + chrm + '.maf', True)
+            id_chrm_cer, id_chrm_par, len_chrm_cer, len_chrm_par = maf_id(alignment_dir + prefix + strain + '_chr' + chrm + '_mafft.maf')
             id_strain_cer.append(id_chrm_cer)
             id_strain_par.append(id_chrm_par)
             len_strain_cer.append(len_chrm_cer)
@@ -107,6 +122,7 @@ if sys.argv[1] == '100':
         id_par.append(num_strain_par/den_strain_par)
         len_cer.append(den_strain_cer)
         len_par.append(den_strain_par)
+        print id_cer, id_par
     num_cer = sum([id_cer[i] * len_cer[i] for i in xrange(len(id_cer))])
     num_par = sum([id_par[i] * len_par[i] for i in xrange(len(id_par))])
     den_cer = float(sum(len_cer))
