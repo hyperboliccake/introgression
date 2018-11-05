@@ -4,6 +4,7 @@ import copy
 import itertools
 import random
 import sim_process
+import sim_predict
 sys.path.append('..')
 import global_params as gp
 
@@ -70,7 +71,7 @@ def read_predicted_viterbi(fn, trees_to_states):
 def process_phylo_viterbi_output(trees_to_states, tag, rep, filtered_sites_fn):
 
     # read predicted state sequence
-    viterbi_fn = '../../results/sim/phylo-hmm/optimized.viterbi.sequence.'  + \
+    viterbi_fn = gp.sim_out_dir_absolute + '/phylo-hmm/optimized.viterbi.sequence.'  + \
         tag + '.' + str(rep)
     predicted = read_predicted_viterbi(viterbi_fn, trees_to_states)
 
@@ -82,7 +83,7 @@ def process_phylo_viterbi_output(trees_to_states, tag, rep, filtered_sites_fn):
         print 'looks like none of the sites passed filtering'
         sys.exit()
 
-    os.system('mv ' + filtered_sites_fn + ' ../' + gp.sim_out_dir + '/phylo-hmm/' + \
+    os.system('mv ' + filtered_sites_fn + ' ' + gp.sim_out_dir_absolute + '/phylo-hmm/' + \
                   'filtered_sites_' + tag + '_rep' + str(rep) + '.txt')
 
     # TODO implement getting hmm params
@@ -124,15 +125,17 @@ def process_phylo_posterior_decoding_output(state_index_to_species, tag, rep, \
 
     # read predicted state sequence
     posterior_decoding_fn = \
-        '../../results/sim/phylo-hmm/optimized.posterior.decoding.probabilities.' + \
+        gp.sim_out_dir_absolute + '/phylo-hmm/optimized.posterior.decoding.probabilities.' + \
         tag + '.' + str(rep)
     predicted, all_probs = \
         read_predicted_posterior_decoding(posterior_decoding_fn, \
                                           state_index_to_species, \
                                           predict_args, default_state)
 
+    ps = [int(x) for x in open(filtered_sites_fn, 'r').readline().strip().split(' ')]
+
     # TODO implement getting hmm params
-    return predicted, all_probs, None, None, None
+    return predicted, all_probs, None, None, None, ps
 
 
 def predict_introgressed(sim, sim_args, predict_args, i, gp_dir):
@@ -146,12 +149,12 @@ def predict_introgressed(sim, sim_args, predict_args, i, gp_dir):
     seqs_filled = convert_binary_to_nucleotides(seqs_filled)
 
     # and write to file
-    seq_fn = gp_dir + gp.sim_out_dir + '/ms/' + gp.sim_out_prefix + \
+    seq_fn = gp.sim_out_dir_absolute + '/ms/' + gp.sim_out_prefix + \
              'sequence_' + sim_args['tag'] + '_rep' + str(i) + '.fasta'
     write_fasta(seqs_filled, ['C1', 'C2', 'P', 'OUTGROUP'], seq_fn) # TODO unhardcode
 
     # create input file for phylo-hmm
-    input_fn = gp_dir + gp.sim_out_dir + '/phylo-hmm/' + 'autoinput_' + \
+    input_fn = gp.sim_out_dir_absolute + '/phylo-hmm/' + 'autoinput_' + \
         sim_args['tag'] + '_rep' + str(i) + '.txt'
     working_dir = gen_input_file(seq_fn, input_fn, sim_args['tag'], i)
 
@@ -172,17 +175,20 @@ def predict_introgressed(sim, sim_args, predict_args, i, gp_dir):
     """
     state_index_to_species = {0:'cer',1:'cer',2:'cer',3:'par',4:'par',5:'par'} 
     default_state = sim_args['species_to']
-    state_seq, probs, init, emis, trans = \
+    state_seq, probs, init, emis, trans, ps = \
         process_phylo_posterior_decoding_output(state_index_to_species, \
                                                 sim_args['tag'], i, \
                                                 working_dir + '/filtered_sites.txt',
                                                 predict_args, default_state)
+    state_seq = sim_predict.fill_prediction(state_seq, ps, 0, \
+                                            sim_args['num_sites'] - 1, \
+                                            predict_args['states'])
 
     # TODO gah
     state_seq_dic = {'1': state_seq}
     probs_dic = {'1': probs}
 
-    return state_seq_dic, probs_dic, init, emis, trans
+    return state_seq_dic, probs_dic, init, emis, trans, ps
 
 def gen_input_file(sequence_fn, fn, tag, rep):
     """
@@ -304,18 +310,18 @@ def gen_input_file(sequence_fn, fn, tag, rep):
     parental_trees_fn = 'phylohmm_inputs/parental.trees'
     gene_trees_fn = 'phylohmm_inputs/gene.trees'
     outgroup_name = 'OUTGROUP'
-    working_dir = '../../results/sim/phylo-hmm/working/' + tag # don't need one for every rep because we do one at a time
+    working_dir = gp.sim_out_dir_absolute + '/phylo-hmm/working/' + tag # don't need one for every rep because we do one at a time
     if not os.path.exists(working_dir):
-        os.mkdir(working_dir)
+        os.makedirs(working_dir)
     substitution_rates = '1 1 1 1 1' # <AG> <AC> <AT> <GC> <GT>
     base_frequencies = '0.25 0.25 0.25 0.25' # <A> <G> <C> <T>
     parental_tree_switching_freq = '.1'
     gene_tree_switching_fn = 'phylohmm_inputs/switching-frequency-ratio-terms'
     operate_mode = '0' # run viterbi
     # operate_mode = '1' # learn with Baum-Welch
-    output_file_path = '../../results/sim/phylo-hmm/initial.viterbi.sequence.' + tag + '.' + str(rep)
+    output_file_path = gp.sim_out_dir_absolute + '/phylo-hmm/initial.viterbi.sequence.' + tag + '.' + str(rep)
     observation_sequence_option = '1' # read new sequence
-    keep_uninformative_sites = 'true' # referred to as "optional filter step" later
+    keep_uninformative_sites = 'false' # referred to as "optional filter step" later
     #sequence_fn = 'sequence.fasta'
     operate_mode_2 = '3' # learn with "a multivariate optimization heuristic that incorporates Brent's method"
     observation_sequence_option_2 = '0' # reuse previously read sequence
@@ -323,10 +329,10 @@ def gen_input_file(sequence_fn, fn, tag, rep):
     length_params_inequality_constraints_fn = 'phylohmm_inputs/length-parameter-inequality-constraints'
     length_params_constraint_sets_fn = 'phylohmm_inputs/length-parameter-constraint-sets'
     restore_fn = '' # blank for no file
-    output_posterior_decoding_fn = '../../results/sim/phylo-hmm/optimized.posterior.decoding.probabilities.' + tag + '.' + str(rep)
-    output_viterbi_optimized_fn = '../../results/sim/phylo-hmm/optimized.viterbi.sequence.'  + tag + '.' + str(rep)
-    output_model_likelihoods_fn = '../../results/sim/phylo-hmm/optimized.model.likelihoods.'  + tag + '.' + str(rep)
-    output_optimized_params_fn = '../../results/sim/phylo-hmm/optimized.model.parameters.' + tag + '.' + str(rep)
+    output_posterior_decoding_fn = gp.sim_out_dir_absolute + '/phylo-hmm/optimized.posterior.decoding.probabilities.' + tag + '.' + str(rep)
+    output_viterbi_optimized_fn = gp.sim_out_dir_absolute + '/phylo-hmm/optimized.viterbi.sequence.'  + tag + '.' + str(rep)
+    output_model_likelihoods_fn = gp.sim_out_dir_absolute + '/phylo-hmm/optimized.model.likelihoods.'  + tag + '.' + str(rep)
+    output_optimized_params_fn = gp.sim_out_dir_absolute + '/phylo-hmm/optimized.model.parameters.' + tag + '.' + str(rep)
     initial_search_settings = 'CURRENT DEFAULT'
     enable_optimization = 'true true true true' # <enable parental tree optimization flag> <enable gene genealogy optimization flag> <enable switching frequency optimization flag> <enable substitution model optimization flag>
     operate_mode_3='4' # exit

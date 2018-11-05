@@ -430,8 +430,38 @@ def convert_predictions(path, states):
         new_path.append(states[p])
     return new_path
 
+def fill_prediction(path, ps, seq_start, seq_end, fill_order):
+    
+    path_filled = [None for i in range(seq_start, seq_end + 1)]
+    num_sites = len(path_filled)
+    for i in range(len(ps)):
+        path_filled[ps[i]-seq_start] = path[i]
+    for state in fill_order:
+        # extend forward
+        in_current_state = path_filled[0] == state
+        for i in range(num_sites):
+            if path_filled[i] == None:
+                if in_current_state:
+                    path_filled[i] = state
+            elif path_filled[i] == state:
+                in_current_state = True
+            else:
+                in_current_state = False
+
+        # extend backward
+        in_current_state = path_filled[-1] == state
+        for i in range(num_sites-1, -1, -1):
+            if path_filled[i] == None:
+                if in_current_state:
+                    path_filled[i] = state
+            elif path_filled[i] == state:
+                in_current_state = True
+            else:
+                in_current_state = False
+    return path_filled
+
 def run_hmm(seqs, sim_args, predict_args, init, emis, trans, train, default_state, \
-            method):
+            method, ps, seq_start, seq_end):
 
     # sanity checks
     if predict_args['unknown_species'] != None:
@@ -483,6 +513,9 @@ def run_hmm(seqs, sim_args, predict_args, init, emis, trans, train, default_stat
                                                  default_state)
             predicted[predict_inds[i]] = path_t
             all_probs[predict_inds[i]] = p[i]
+            predicted[predict_inds[i]] = fill_prediction(predicted[predict_inds[i]], \
+                                                         ps, seq_start, seq_end, \
+                                                         predict_args['states'])
 
         return predicted, all_probs, hmm, hmm_init
         
@@ -491,8 +524,11 @@ def run_hmm(seqs, sim_args, predict_args, init, emis, trans, train, default_stat
         for i in predict_inds:
             hmm.set_obs(seqs[i])
             predicted[i] = convert_predictions(hmm.viterbi(), predict_args['states'])
+            predicted[predict_inds[i]] = fill_prediction(predicted[predict_inds[i]], \
+                                                         ps, seq_start, seq_end, \
+                                                         predict_args['states'])
 
-        return predicted, hmm, hmm_init
+        return predicted, None, hmm, hmm_init
 
     else:
         print 'invalid method'
@@ -506,13 +542,22 @@ def set_up_seqs(sim, sim_args, predict_args):
 
     # code sequences by which references they match at each position
     ref_seqs = [seqs_filled[r] for r in predict_args['ref_inds']]
-    seqs_coded = code_seqs(seqs_filled, sim_args['num_sites'], ref_seqs)
+    seqs_coded = code_seqs(seqs_filled, ref_seqs)
 
     return seqs_coded
 
-def predict_introgressed(sim, sim_args, predict_args, train, method):
+def predict_introgressed(sim, sim_args, predict_args, train, method, only_poly=True):
     
-    seqs_coded = set_up_seqs(sim, sim_args, predict_args)
+    ref_seqs = [sim['seqs'][r] for r in predict_args['ref_inds']]
+    seqs_coded = code_seqs(sim['seqs'], ref_seqs)
+    ps = sim['positions'] 
+
+    if not only_poly:
+        fill_symbol = gp.match_symbol * len(ref_seqs)
+        for i in range(len(seqs_coded)):
+            seqs_coded[i] = sim_process.fill_seq(seqs_coded[i], sim['positions'], \
+                                                 sim_args['num_sites'], fill_symbol)
+        ps = range(0, sim_args['num_sites'])
 
     # initial values for initial, emission, and transition
     # probabilities
@@ -523,8 +568,12 @@ def predict_introgressed(sim, sim_args, predict_args, train, method):
 
     # make predictions
     default_state = sim_args['species_to']
-    return run_hmm(seqs_coded, sim_args, predict_args,\
-                   init, emis, trans, train, default_state, method)
+    predicted, probs, hmm, hmm_init = \
+        run_hmm(seqs_coded, sim_args, predict_args,\
+                init, emis, trans, train, default_state, method, ps,
+                0, sim_args['num_sites']-1)
+
+    return predicted, probs, hmm, hmm_init, ps
     
 def write_hmm_headers(states, emis_symbols, f, sep):
 
