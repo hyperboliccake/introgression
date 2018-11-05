@@ -8,6 +8,7 @@ import sim_process
 import sim_predict
 import sim_predict_phylohmm
 import roc
+import gzip
 sys.path.append('..')
 import global_params as gp
 sys.path.append('../misc')
@@ -34,16 +35,16 @@ else:
 ##======
 
 gp_dir = '../'
-f_probs = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + \
+f_probs = open(gp.sim_out_dir_absolute + gp.sim_out_prefix + \
                sim_tag + '_introgressed_probs_' + method + '_' + \
                predict_args['predict_tag'] + '.txt','r')
-actual_f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + sim_tag + \
+actual_f = open(gp.sim_out_dir_absolute + gp.sim_out_prefix + sim_tag + \
                 '_introgressed_actual.txt', 'r')
-f = open(gp_dir + gp.sim_out_dir + gp.sim_out_prefix + sim_tag + \
+f = open(gp.sim_out_dir_absolute + gp.sim_out_prefix + sim_tag + \
          '_roc_' + method + '_' + predict_args['predict_tag'] + '.txt', 'w')
 
 ##======
-# read in probabilties
+# read in probabilties and positions
 ##======
 
 print 'reading in posterior probabilities'
@@ -63,6 +64,17 @@ for rep in range(sim_args['num_reps']):
     probs.append(d)
 print
 f_probs.close()
+
+
+ps_fn = gp.sim_out_dir_absolute + gp.sim_out_prefix + sim_tag + \
+        '_positions_' + method + '_' + predict_args['predict_tag'] + \
+        '.txt.gz'
+ps_f = gzip.open(ps_fn, 'rb')
+ps = []
+for rep in range(sim_args['num_reps']):
+    x = [int(i) for i in ps_f.readline().strip().split('\t')[2:]]
+    ps.append(x)
+ps_f.close()
 
 ##======
 # read in actual introgressed blocks
@@ -84,8 +96,9 @@ for rep in range(sim_args['num_reps']):
 
 print 'generating ROC file'
 
-x = 100
-thresholds = [float(i) / x for i in range(0, x + 2)]
+#x = 20
+#thresholds = [float(i) / x for i in range(0, x + 2)]
+thresholds = [0, .00001, .00005, .0001, .0005, .001, .005, .01, .05, .1, .5, .6, .7, .8, .9, .99, 1, 1.1]
 header = True
 for threshold in thresholds:
     print 'threshold:', threshold
@@ -95,7 +108,9 @@ for threshold in thresholds:
         for ind in probs[rep]:
             paths_t[ind] = roc.threshold_probs(probs[rep][ind], \
                                                threshold, \
-                                               sim_args['species_to'])
+                                               sim_args['species_to'], \
+                                               ps[rep], 0, \
+                                               sim_args['num_sites']-1)
         predicted = sim_process.convert_to_blocks(paths_t, predict_args['states'])
         stats = roc.get_stats(actual[rep], predicted, sim_args)
         all_stats.append(stats)

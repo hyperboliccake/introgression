@@ -1,4 +1,5 @@
 import compare_introgressed
+import sim_predict
 
 def reformat_probs(probs):
     # convert probabilities from {1:{cer:.9,.9,..., par:.1,.1,...}}
@@ -21,7 +22,7 @@ def get_stats(actual, predicted, sim_args):
                                                 sim_args['species_from1'])
     return d_avg
 
-def threshold_probs(probs, threshold, default_state):
+def threshold_probs(probs, threshold, default_state, ps, seq_start, seq_end):
 
     # when there's just one non-default state, choose that one if
     # it's over the threshold (though not necessarily over .5);
@@ -47,6 +48,10 @@ def threshold_probs(probs, threshold, default_state):
                     max_positive_state = state
                     max_positive_prob = probs[i][state]
             predicted_thresholded.append(max_positive_state)
+    predicted_thresholded = sim_predict.fill_prediction(predicted_thresholded, \
+                                                        ps, seq_start, seq_end, \
+                                                        [default_state] + \
+                                                        positive_states)
     return predicted_thresholded
     
 def write_roc_header(f, stats, sep):
