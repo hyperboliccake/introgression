@@ -30,7 +30,7 @@ ref_gb_dir = {'S288c':'/tigress/AKEY/akey_vol2/aclark4/nobackup/S288c/',\
 # will look at all *.fa files in these directories; expects filenames
 # in the format strain_chrX.fa
 non_ref_dirs = {'S288c':['/tigress/AKEY/akey_vol2/aclark4/nobackup/100_genomes/genomes_gb/'], \
-                    'CBS432':[]}
+                    'CBS432':['/tigress/AKEY/akey_vol2/aclark4/nobackup/para_sgrp/strains/']}
 
 # genbank file for _all_ species/strains
 gb_all = '/tigress/AKEY/akey_vol2/aclark4/nobackup/100_genomes/sequence.gb'
@@ -84,7 +84,7 @@ masked_symbol = 'x'
 #====
 
 # output directory for simulpations
-sim_out_dir = '../results/sim/'
+sim_out_dir_absolute = '/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/sim/'
 
 # prefix for simulation output
 sim_out_prefix = 'sim_out_'
@@ -155,3 +155,4 @@ orffinder_install_path = '/tigress/anneec/software/'
 
 chrms = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI']
 
+chrms_ara = dict(zip(chrms, range(1, len(chrms)+1)))
