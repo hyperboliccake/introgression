@@ -26,4 +26,4 @@
 
 ARGS=$(head -n $SLURM_ARRAY_TASK_ID predict_phylohmm_compare_args.txt | tail -n 1)
 
-python sim_predict_phylohmm_main.py sim_compare_args.txt $ARGS
+time python sim_predict_phylohmm_main.py sim_compare_args.txt $ARGS

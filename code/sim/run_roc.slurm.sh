@@ -24,8 +24,8 @@
 # You can use SLURM_PROCID to distinguish different tasks.
 # It will have a value between 0 and 31 in this example.
 
-ARGS=$(head -n $SLURM_ARRAY_TASK_ID predict_args.txt | tail -n 1)
-python roc_main.py predicted sim_args.txt $ARGS
+ARGS=$(head -n $SLURM_ARRAY_TASK_ID predict_compare_args.txt | tail -n 1)
+python roc_main.py predicted sim_compare_args.txt $ARGS
 
-#ARGS=$(head -n $SLURM_ARRAY_TASK_ID predict_phylohmm_compare_args.txt | tail -n 1)
-#python roc_main.py predicted_phylohmm sim_compare_args.txt $ARGS
+ARGS=$(head -n $SLURM_ARRAY_TASK_ID predict_phylohmm_compare_args.txt | tail -n 1)
+python roc_main.py predicted_phylohmm sim_compare_args.txt $ARGS
