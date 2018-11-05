@@ -4,6 +4,7 @@ def find_in_blocks(i, blocks):
         for block in blocks[state]:
             if i >= block[0] and i <= block[1]:
                 return state
+    print 'not found', i, blocks
 
 def count_bases_one(d1, d2, args, suffix1, suffix2):
     # for one individual
