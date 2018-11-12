@@ -1,3 +1,6 @@
+# combine all chromosomal alignments into one master, indexed relative
+# to one reference
+
 import sys
 from master_alignment import *
 sys.path.insert(0, '..')

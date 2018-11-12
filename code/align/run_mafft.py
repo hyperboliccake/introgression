@@ -4,7 +4,7 @@ from align_helpers import *
 sys.path.insert(0, '..')
 import global_params as gp
 
-masked = True
+masked = False
 mask_suffix = ''
 if masked:
     mask_suffix = '_masked'

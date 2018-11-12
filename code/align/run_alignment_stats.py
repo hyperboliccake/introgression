@@ -5,7 +5,7 @@ sys.path.insert(0, '..')
 import global_params as gp
 
 # gives info related to how good an alignment is:
-# - number of sites where 3, 2, 1, genomes aligned
+# - number of sites where n, ..., 3, 2, 1, genomes aligned
 # - percent of each genome contained in alignment (hopefully 100%)
 # - using each genome as reference, percentage of other genomes aligned
 
@@ -28,7 +28,7 @@ for chrm in gp.chrms:
 
     f_out = open(fn_start + chrm + '_mafft.stats', 'w')
 
-    # number of sites where 3,2,1 genomes aligned
+    # number of sites where n,...,3,2,1 genomes aligned
     num_strains_by_site = num_strains_aligned_by_site(seqs)
     f_out.write(\
         '# histogram of number of strains aligned across all alignment columns\n')

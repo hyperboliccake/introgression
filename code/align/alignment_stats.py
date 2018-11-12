@@ -4,7 +4,7 @@ import global_params as gp
 sys.path.insert(0, '../misc')
 import read_fasta
 
-# count sites where 3, 2, 1 genomes aligned, etc.
+# count sites where n, ..., 3, 2, 1 genomes aligned, etc.
 def num_strains_aligned_by_site(seqs):
     nseqs = len(seqs)
     nsites = len(seqs[0])
