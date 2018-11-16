@@ -40,48 +40,125 @@ import copy
 from gene_predictions import *
 import predict
 import pickle
+from collections import defaultdict
 sys.path.insert(0, '..')
 import global_params as gp
 sys.path.insert(0, '../misc/')
 import read_fasta
+import overlap
 
 ##======
 # read in analysis parameters
 ##======
 
-refs, strains, args = predict.process_args(sys.argv[1:])
+args = predict.process_predict_args(sys.argv[1:])
 
-chrm = sys.argv[1]
-
+gp_dir = '../'
 open_mode = 'w'
 
 ##======
-# read in introgressed regions
+# read in reference gene coordinates
 ##======
 
-all_species_from = args['species'][1:] + ['unknown'] #TODO
+genes = {}
+for chrm in gp.chrms:
+    fn_genes = gp.analysis_out_dir_absolute + '/' + \
+               gp.master_ref + '_chr' + chrm + '_genes.txt'
+    # 
+    genes[chrm] = read_gene_file(fn_genes)
 
-gp_dir = '../'
-all_blocks_fn = {}
-for species_from in all_species_from:
+##======
+# do all the stuff
+##======
+
+for species_from in args['states']:
+
+    ##======
+    # read in introgressed regions for current state
+    ##======
+
+    # strain chromosome predicted_species start end number_non_gap
     blocks_fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + \
-                'introgressed_blocks_' + species_from + '_' + args['tag'] + '.txt'
-    all_blocks_fn[species_from] = blocks_fn
-# introgressed regions keyed by strain and then chromosome: 
-# (start, end, number_non_gap, region_id)
-# start and end indices are relative to (unaligned) master ref sequence
-all_regions = {}
-for species_from in all_species_from:
-    regions = predict.read_blocks(all_blocks_fn[species_from], region_id=True)
-    all_regions[species_from] = regions
-regions = all_regions['par'] # TODO
-species_from = 'par'
+                'introgressed_blocks_' + species_from + '_' + args['tag'] + \
+                '_labeled.txt'
 
-##======
-# extract alignments and genes for introgressed regions
-##======
+    # introgressed regions keyed by strain and then chromosome: 
+    # (region_id, start, end, number_non_gap)
+    regions = predict.read_blocks(blocks_fn, labeled=True)
+
+    ##======
+    # extract alignments and genes for introgressed regions
+    ##======
+
+    fn_genes_regions = gp.analysis_out_dir_absolute + '/' + args['tag'] + '/' + \
+                       'genes_for_each_region_' + species_from + '_' + \
+                       args['tag'] + '.txt'
+    f_genes_regions = open(fn_genes_regions, open_mode)
+    f_genes_regions.write('region_id\tnumber_genes\tgenes\tfracs\n')
+    d_regions_to_genes = defaultdict(lambda: defaultdict(float))
+
+    #fn_regions_strains = gp.analysis_out_dir_absolute + '/' + args['tag'] + '/' + \
+    #                     'regions_for_each_strain_' species_from + '_' + \
+    #                     args['tag'] + '.txt'
+    #f_regions_strains = open(fn_regions_strains, open_mode)
+    #f_regions_strains.write('strain\tregions\n')
+    #d_strains_to_regions = defaultdict(list)
+
+    fn_genes_strains = gp.analysis_out_dir_absolute + '/' + args['tag'] + '/' + \
+                       'genes_for_each_strain_' + species_from + '_' + \
+                       args['tag'] + '.txt'
+    f_genes_strains = open(fn_genes_strains, open_mode)
+    f_genes_strains.write('strain\tnumber_genes\tgenes\tfracs\n')
+    d_strains_to_genes = defaultdict(lambda: defaultdict(float))
+
+    fn_strains_genes = gp.analysis_out_dir_absolute + '/' + args['tag'] + '/' + \
+                       'strains_for_each_gene_' + species_from + '_' + \
+                       args['tag'] + '.txt'
+    f_strains_genes = open(fn_strains_genes, open_mode)
+    f_strains_genes.write('gene\tnum_strains\tstrains\tfracs\n')
+    d_genes_to_strains = defaultdict(lambda: defaultdict(float))
+
+    for strain in regions.keys():
+        for chrm in regions[strain].keys():
+            for entry in regions[strain][chrm]:
+                region_id, start, end, number_non_gap = entry
+                for gene in genes[chrm]:
+                    o = overlap.overlap(start, end, \
+                                        genes[chrm][gene][0], genes[chrm][gene][1])
+                    if o > 0:
+                        gene_length = float(genes[chrm][gene][1] - \
+                                            genes[chrm][gene][0] + 1)
+                        frac_o = o / gene_length
+                        d_regions_to_genes[region_id][gene] += frac_o
+                        d_strains_to_genes[strain][gene] += frac_o
+                        d_genes_to_strains[gene][strain] += frac_o
 
 
+    for region in sorted(d_regions_to_genes.keys(), key=lambda x: int(x[1:])):
+        g = sorted(d_regions_to_genes[region].keys())
+        f_genes_regions.write(region + '\t' + str(len(g)) + '\t')
+        f_genes_regions.write(','.join(g) + '\t')
+        f_genes_regions.write(','.join([str(d_regions_to_genes[region][x]) \
+                                        for x in g]) + '\n')
+
+    for strain in sorted(d_strains_to_genes.keys()):
+        g = sorted(d_strains_to_genes[strain].keys())
+        f_genes_strains.write(strain + '\t' + str(len(g)) + '\t')
+        f_genes_strains.write(','.join(g) + '\t')
+        f_genes_strains.write(','.join([str(d_strains_to_genes[strain][x]) \
+                                        for x in g]) + '\n')
+
+    for gene in sorted(d_genes_to_strains.keys()):
+        s = sorted(d_genes_to_strains[gene].keys())
+        f_strains_genes.write(gene + '\t' + str(len(s)) + '\t')
+        f_strains_genes.write(','.join(s) + '\t')
+        f_strains_genes.write(','.join([str(d_genes_to_strains[gene][x]) \
+                                        for x in s]) + '\n')
+
+    f_genes_regions.close()
+    f_genes_strains.close()
+    f_strains_genes.close()
+"""    
 # produce region summmary file with all the same info, but also with
 # region ids (r1-rn), and with genes overlapping each region
 
@@ -289,3 +366,4 @@ f_strains_genes.close()
         
 
             
+"""
