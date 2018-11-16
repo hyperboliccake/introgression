@@ -7,22 +7,27 @@ import global_params as gp
 sys.path.append('../sim')
 import sim_predict
 import sim_process
+sys.path.append('../align')
+import align_helpers
+sys.path.append('../misc')
+import read_fasta
 
 ##======
 # read in analysis parameters
 ##======
 
-refs, strains, args = predict.process_args(sys.argv)
+args = predict.process_predict_args(sys.argv[1:])
 
 # refs = {'cer':('S288c', '../../data/', 'S288C-SGD_R64'), ...]
 # strains = {'cer':[('strain1', '../../data/'), ...], ...}
-
+strain_dirs = align_helpers.get_strains(align_helpers.flatten(gp.non_ref_dirs.values()))
+strain_dirs = strain_dirs[0:1] + strain_dirs[2:81] + strain_dirs[83:]
 
 ##======
 # output files and if and where to resume
 ##======
 
-resume = True
+resume = False
 open_mode = 'a'
 if not resume:
     open_mode = 'w'
@@ -43,7 +48,7 @@ if write_ps:
 
 # introgressed blocks
 blocks_f = {}
-for s in args['species'] + ['unknown']: # TODO unhack
+for s in args['states']:
     blocks_f[s] = open(gp.analysis_out_dir_absolute + args['tag'] + '/' + \
                        'introgressed_blocks_' + s + '_' + args['tag'] + '.txt', \
                        open_mode)
@@ -58,8 +63,9 @@ hmm_fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + 'hmm_' + \
          args['tag'] + '.txt'
 hmm_f = open(hmm_fn, open_mode)
 if not resume:
-    predict.write_hmm_header(args['species'] + ['unknown'], hmm_init_f) #TODO
-    predict.write_hmm_header(args['species'] + ['unknown'], hmm_f)
+    predict.write_hmm_header(args['known_states'], args['unknown_states'], hmm_init_f)
+    emis_symbols = predict.write_hmm_header(args['known_states'], \
+                                            args['unknown_states'], hmm_f)
 
 # posterior probabilities
 probs_fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + 'probs_' + \
@@ -92,20 +98,22 @@ probs_f = gzip.open(probs_fn, open_mode + 'b')
 
 for chrm in gp.chrms:
 
-    for strain, strain_dir in strains[args['species'][0]]:
+    for strain, strain_dir in strain_dirs:
 
         if resume and completed.has_key(chrm) and strain in completed[chrm]:
             print 'already finished:', strain, chrm
             continue
 
         print 'working on:', strain, chrm
-
-        ref_prefix = '_'.join([refs[s][0] for s in args['species']])
+        
+        ref_prefix = '_'.join(gp.alignment_ref_order)
         fn = gp_dir + gp.alignments_dir + ref_prefix + '_' + strain + \
              '_chr' + chrm + '_mafft' + gp.alignment_suffix
-        ref_seqs, predict_seq = \
-            predict.read_aligned_seqs(fn, refs, strain, args['species'])
+        headers, seqs = read_fasta.read_fasta(fn)
 
+        ref_seqs = seqs[:-1]
+        predict_seq = seqs[-1]
+        
         # TODO
         #ps_fn = gp.analysis_out_dir_absolute + '/positions/positions_' + \
         #        ref_prefix + '_' + strain + '_chr' + chrm + '.txt.gz'
@@ -135,10 +143,10 @@ for chrm in gp.chrms:
             predict.write_blocks(state_seq_blocks[s], ps, blocks_f[s], strain, chrm, s)        
 
         # summary info about HMM (before training)
-        predict.write_hmm(hmm_init, hmm_init_f, strain, chrm)
+        predict.write_hmm(hmm_init, hmm_init_f, strain, chrm, emis_symbols)
         
         # summary info about HMM (after training)
-        predict.write_hmm(hmm, hmm_f, strain, chrm) 
+        predict.write_hmm(hmm, hmm_f, strain, chrm, emis_symbols) 
 
         # probabilities at each site
         predict.write_state_probs(probs, probs_f, strain, chrm)

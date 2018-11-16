@@ -5,6 +5,7 @@ import gzip
 import re
 import numpy.random
 import itertools
+from collections import defaultdict
 sys.path.insert(0, '../hmm/')
 import hmm_bw
 sys.path.insert(0, '../sim/')
@@ -38,86 +39,39 @@ def process_predict_args(arg_list):
     expected_tract_lengths = {}
     expected_frac = {}
 
-    species = []
+    d['known_states'] = gp.alignment_ref_order
+    for ref in gp.alignment_ref_order[1:]:
+        expected_tract_lengths[ref] = float(arg_list[i])
+        i += 1
+        expected_frac[ref] = float(arg_list[i])
+        i += 1
+
+    d['unknown_states'] = []
     while i < len(arg_list):
-        species.append(arg_list[i])
+        state = arg_list[i]
+        d['unknown_states'].append(state)
         i += 1
-        expected_tract_lengths[species[-1]] = float(arg_list[i])
+        expected_tract_lengths[state] = float(arg_list[i])
         i += 1
-        expected_frac[species[-1]] = float(arg_list[i])
+        expected_frac[state] = float(arg_list[i])
         i += 1
-    d['species'] = species
 
-    # TODO deal with noref
+    d['states'] = d['known_states'] + d['unknown_states']
 
-    expected_frac[species[0]] = 0
-    expected_frac[species[0]] = 1 - sum(expected_frac.values())
+    expected_frac[d['states'][0]] = 0
+    expected_frac[d['states'][0]] = 1 - sum(expected_frac.values())
     d['expected_frac'] = expected_frac
 
     # calculate these based on remaining bases, but after we know
     # which chromosome we're looking at
-    expected_tract_lengths[species[0]] = 0    
+    expected_tract_lengths[d['states'][0]] = 0    
     d['expected_tract_lengths'] = expected_tract_lengths
     d['expected_num_tracts'] = {}
     d['expected_bases'] = {}
 
     return d
 
-
-def process_ref_args(fn):
-
-    f = open(fn, 'r')
-    line = f.readline()
-    refs = {}
-    while line != '':
-        ref_species, ref_name, ref_seq_name, ref_seq_location = line.strip().split(' ')
-        refs[ref_species] = (ref_name, ref_seq_name, ref_seq_location)
-        line = f.readline()
-    f.close()
-    return refs
-
-def process_strain_args(fn):
-    f = open(fn, 'r')
-    line = f.readline()
-    strains = {}
-    while line != '':
-        line = line.strip().split(' ')
-        species = line[0]
-        strain_seq_location = line[1]
-        strain_names = line[2:]
-        if not strains.has_key(species):
-            strains[species] = []
-        for strain in strain_names:
-            strains[species].append((strain, strain_seq_location))
-        line = f.readline()
-    f.close()
-    return strains
-
-def process_args(arg_list):
-
-    refs = process_ref_args(arg_list[1])
-    strains = process_strain_args(arg_list[2])
-    args = process_predict_args(arg_list[3:])
-    return refs, strains, args
-
-'''
-def read_seq(name, path, chrm):
-
-    name, path = strain
-    fn = path + '/' + name + '/' + name + 'chr' + chrm + '.fa'
-    headers, seqs = read_fasta.read_fasta(fn)
-    return seqs[0]
-
-def read_ref_seqs(refs, chrm):
-
-    ref_seqs = []
-    for species in refs:
-        seq = read_seq(refs[species][1], refs[species][2], chrm)
-        ref_seqs.append(seq)
-    return ref_seqs
-'''
-
-def read_aligned_seqs(fn, refs, strain, species_order):
+def read_aligned_seqs(fn, strain):
     headers, seqs = read_fasta.read_fasta(fn)
     d = {}
     for i in range(len(seqs)):
@@ -125,17 +79,16 @@ def read_aligned_seqs(fn, refs, strain, species_order):
         d[name] = seqs[i]
 
     ref_seqs = []
-    for s in species_order:
-        ref_seqs.append(d[refs[s][0]])
+    for ref in gp.alignment_ref_order:
+        ref_seqs.append(d[ref])
     predict_seq = d[strain]
 
     return ref_seqs, predict_seq
 
 def set_expectations(args, n):
 
-    species_to = args['species'][0]
-    species_from = copy.deepcopy(args['species'])
-    species_from.remove(species_to)
+    species_to = gp.alignment_ref_order[0]
+    species_from = gp.alignment_ref_order[1:]
 
     for s in species_from:
         args['expected_num_tracts'][s] = \
@@ -154,15 +107,16 @@ def set_expectations(args, n):
 
 def ungap_and_code_helper(predict_seq, ref_seqs, index_ref):
 
-    # assume the first reference is what we want to index from
-    # and ref seqs are in general in correct order
+    # index_ref is index of reference strain to index relative to 
 
-    ps = []
-    seq = []
-    ind = 0
+    ps = [] # positions that we're keeping in analysis
+    seq = [] # sequence of emitted symbols, e.g. '++-++'
+    ind = 0 # current position in reference strain
     
-    # TODO: move positions file to more general location, and here
-    # first see if we have this info stored in a file already
+    # TODO: move positions file to more general location (maybe? but
+    # it can change based on references so unless there's a deeper
+    # organizational structure it needs to be for the specific run),
+    # and here first see if we have this info stored in a file already
 
     for i in range(len(predict_seq)):
         xi = predict_seq[i]
@@ -214,6 +168,146 @@ def poly_sites(seq, ref_seqs, ps):
     
     return seq_poly, ref_seqs_poly, ps_poly
 
+def get_symbol_freqs(seq):
+
+    num_states = len(seq[0])
+    num_sites = len(seq)
+
+    individual_symbol_freqs = []
+    for s in range(num_states):
+        d = defaultdict(int)
+        for i in range(num_sites):
+            d[seq[i][s]] += 1
+        for sym in d:
+            d[sym] /= float(num_sites)
+        individual_symbol_freqs.append(d)
+
+    symbol_freqs = defaultdict(int)
+    for i in range(num_sites):
+        symbol_freqs[seq[i]] += 1
+    for sym in symbol_freqs:
+        symbol_freqs[sym] /= float(num_sites)
+
+    # for each state, how often seq matches that state relative to
+    # others
+    weighted_match_freqs = []
+    for s in range(num_states):
+        weighted_match_freqs.append(individual_symbol_freqs[s][gp.match_symbol])
+    weighted_match_freqs = norm_list(weighted_match_freqs)
+
+    return individual_symbol_freqs, symbol_freqs, weighted_match_freqs
+
+def norm_list(l):
+    scale = float(sum(l))
+    for i in range(len(l)):
+        l[i] /= scale
+    return l
+            
+
+def norm_dict(d):
+    scale = float(sum(d.values()))
+    for k in d:
+        d[k] /= scale
+    return d
+
+def initial_probabilities(known_states, unknown_states, \
+                          expected_frac, weighted_match_freqs):
+    
+    init = []
+    expectation_weight = .9
+    for s in range(len(known_states)):
+        state = known_states[s]
+        expected = expected_frac[state]
+        estimated = weighted_match_freqs[s]
+        init.append(expected * expectation_weight + \
+                    estimated * (1 - expectation_weight))
+    for s in range(len(unknown_states)):
+        state = unknown_states[s]
+        expected_frac = expected_frac[state]
+        init.append(expected_frac)
+        
+    return norm_list(init)
+
+def emission_probabilities(known_states, unknown_states, symbol_freqs):
+
+    # doesn't use prior expectations, but probably should if we ever
+    # want to include multiple unknown states
+
+    own_bias = .99
+    
+    emis = []
+    for s in range(len(known_states)):
+        state = known_states[s]
+        emis.append(defaultdict(float))
+        for symbol in symbol_freqs:
+            f = symbol_freqs[symbol]
+            match = symbol[s] == gp.match_symbol
+            if match:
+                emis[s][symbol] = f * own_bias
+            else:
+                emis[s][symbol] = f * (1 - own_bias)
+        emis[s] = norm_dict(emis[s])
+    for s in range(len(unknown_states)):
+        state = unknown_states[s]
+        emis.append(defaultdict(float))
+        for symbol in symbol_freqs:
+            f = symbol_freqs[symbol]
+            match_count = symbol.count(gp.match_symbol)
+            mismatch_count = symbol.count(gp.mismatch_symbol)
+            emis[s + len(known_states)][symbol] = f
+            emis[s + len(known_states)][symbol] *= (match_count * (1 - own_bias) + \
+                                                    mismatch_count * own_bias)
+        emis[s + len(known_states)] = norm_dict(emis[s + len(known_states)])
+
+    return emis
+
+def transition_probabilities(known_states, unknown_states, \
+                             expected_frac, expected_tract_lengths):
+
+    # doesn't depend on sequence observations but maybe it should?
+
+    # also should we care about number of tracts rather than fraction
+    # of genome? maybe theoretically, but that number is a lot more
+    # suspect
+
+    # trans[i][j!=i] = 
+    # prob(transition) * frac(j) = 
+    # 1/expected tract length(i) * expected frac(j)|not i
+
+    states = known_states + unknown_states
+
+    trans = []
+    for i in range(len(states)):
+        state_from = states[i]
+        trans.append([])
+        scale_other = 1 / (1 - expected_frac[state_from])
+        for j in range(len(states)):
+            state_to = states[j]
+            if state_from == state_to:
+                trans[i].append(1 - 1./expected_tract_lengths[state_from])
+            else:
+                trans[i].append(1./expected_tract_lengths[state_from] * \
+                                expected_frac[state_to] * scale_other)
+
+        trans[i] = norm_list(trans[i])
+
+    return trans
+
+def initial_hmm_parameters(seq, known_states, unknown_states, \
+                           expected_frac, expected_tract_lengths):
+
+    # get frequencies of individual symbols (e.g. '+') and all full
+    # combinations of symbols (e.g. '+++-')
+    individual_symbol_freqs, symbol_freqs, weighted_match_freqs = get_symbol_freqs(seq)
+
+    init = initial_probabilities(known_states, unknown_states, \
+                                 expected_frac, weighted_match_freqs)
+    emis = emission_probabilities(known_states, unknown_states, symbol_freqs)
+    trans = transition_probabilities(known_states, unknown_states, \
+                                     expected_frac, expected_tract_lengths)
+
+    return init, emis, trans
+
 def predict_introgressed(ref_seqs, predict_seq, predict_args, \
                          train=True):
 
@@ -221,7 +315,7 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args, \
     only_poly_sites = True
 
     method = 'posterior'
-    if predict_args['threshold'] == 'viterbi':
+    if not type(predict_args['threshold']) is float:
         method = 'viterbi'
 
     # code sequence by which reference it matches at each site
@@ -229,24 +323,20 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args, \
     if only_poly_sites:
         seq_coded, ref_seqs_coded, ps = poly_sites(seq_coded, ref_seqs_coded, ps)
 
+    # sets expected number of tracts and bases for each reference
+    # based on expected length of introgressed tracts and expected
+    # total fraction of genome
     set_expectations(predict_args, len(predict_seq))
 
-    # initial values for initial, emission, and transition
-    # probabilities
-    predict_args['states'] = predict_args['species'] + ['unknown'] # hackity
-    predict_args['unknown_species'] = 'unknown' # hack
-    predict_args['expected_tract_lengths']['unknown'] = predict_args['expected_tract_lengths'][predict_args['species'][1]] 
-    predict_args['expected_num_tracts']['unknown'] = predict_args['expected_num_tracts'][predict_args['species'][1]] * .1 # TODO obvs
-    predict_args['ref_inds'] = [1,2] # hack
-    seqs_for_hmm_params = [ref_seqs_coded[0]] + [seq_coded] + ref_seqs_coded[1:]
-    species_to_indices = {predict_args['species'][0]:[0,1]}
-    for i in range(1, len(predict_args['species'])):
-        species_to_indices[predict_args['species'][i]] = [1+i]
-    init, emis, trans = sim_predict.initial_hmm_parameters(seqs_for_hmm_params, \
-                                                           species_to_indices, \
-                                                           predict_args['species'][0], \
-                                                           len(seq_coded), \
-                                                           predict_args)
+    # set initial hmm parameters based on combination of (1) initial
+    # expectations (length of introgressed tract and fraction of
+    # genome/total number tracts and bases) and (2) number of sites at
+    # which predict seq matches each reference
+    init, emis, trans = initial_hmm_parameters(seq_coded, \
+                                               predict_args['known_states'], \
+                                               predict_args['unknown_states'], \
+                                               predict_args['expected_frac'], \
+                                               predict_args['expected_tract_lengths'])
 
     ######
     # make predictions
@@ -263,8 +353,8 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args, \
     # set states and initial probabilties
     hmm.set_states(predict_args['states'])
     hmm.set_init(init)
-    if emis[0]['++'] <= emis[1]['++']:
-        print 'EMIS INIT PROBLEM'
+    #if emis[0]['++'] <= emis[1]['++']:
+    #    print 'EMIS INIT PROBLEM'
     hmm.set_emis(emis)
     hmm.set_trans(trans)
 
@@ -279,13 +369,9 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args, \
     all_probs = {}
     # for all obs sequences, each site is a dic with one prob for each
     # state
-    p = hmm.posterior_decoding() # returns list but we're hacking
-    # this for just one species right
-    # now
+    p = hmm.posterior_decoding() # returns list but we're hackin this
+                                 # for just one species right now
     path, path_probs = sim_process.get_max_path(p[0])
-
-    if hmm.emis[0]['++'] <= hmm.emis[1]['++']:
-        print 'EMIS FINAL PROBLEM'
 
     if method == "posterior":
         path_t = sim_process.threshold_predicted(path, path_probs, \
@@ -344,45 +430,37 @@ def write_blocks(state_seq_blocks, ps, f, strain, chrm, species_pred):
                 str(end - start + 1) + '\n')
     f.flush()
 
-def read_blocks(fn, region_id=None):
-    # return dictionary of (start, end, number_non_gap, [region_id]), keyed by strain
-    # and then chromosome
+def read_blocks(fn, labeled=False):
+    # return dictionary of (start, end, number_non_gap, [region_id]),
+    # keyed by strain and then chromosome
     f = open(fn, 'r')
     f.readline() # header
     line = f.readline()
-    d = {}
-    id_count = 1
+    d = defaultdict(lambda: defaultdict(list))
     while line != '':
-        # hack because i fucked the file up
-        i1 = 0
-        i2 = 6
-        if line[0] == 'r':
-            i1 = 1
-            i2 = 7
-        strain, chrm, species, start, end, number_non_gap = line.strip().split('\t')[i1:i2]
-        if not d.has_key(strain):
-            d[strain] = {}
-        if not d[strain].has_key(chrm):
-            d[strain][chrm] = []
-        if region_id != 'None':
-            d[strain][chrm].append((int(start), int(end), int(number_non_gap), \
-                                    region_id + str(id_count)))
-            id_count += 1
+        if labeled: 
+            region_id, strain, chrm, species, start, end, number_non_gap = \
+                line.strip().split('\t')
+            d[strain][chrm].append((region_id, int(start), int(end), \
+                                    int(number_non_gap)))
         else:
+            strain, chrm, species, start, end, number_non_gap = line.strip().split('\t')
             d[strain][chrm].append((int(start), int(end), int(number_non_gap)))
         line = f.readline()
     f.close()
     return d
 
-def write_hmm_header(states, f):
+def write_hmm_header(known_states, unknown_states, f):
 
     sep = '\t'
     header_string = 'strain' + sep + 'chromosome' + sep
 
-    symbols = [gp.match_symbol, gp.mismatch_symbol, gp.unknown_symbol]
+    symbols = [gp.match_symbol, gp.mismatch_symbol]
     emis_symbols = [''.join(x) for x in \
-                           list(itertools.product(symbols, repeat=len(states)))]
+                           list(itertools.product(symbols, repeat=len(known_states)))]
     emis_symbols.sort()
+
+    states = known_states + unknown_states
 
     # initial
     for s in states:
@@ -401,10 +479,11 @@ def write_hmm_header(states, f):
     f.write(header_string[:-(len(sep))] + '\n')
     f.flush()
 
-def write_hmm(hmm, f, strain, chrm):
+    return emis_symbols
+
+def write_hmm(hmm, f, strain, chrm, emis_symbols):
     
     sep = '\t'
-    emis_symbols = sorted(hmm.emis[0].keys())
 
     line_string = strain + sep + chrm + sep
 
@@ -416,7 +495,6 @@ def write_hmm(hmm, f, strain, chrm):
     for i in range(len(hmm.states)):
         for symbol in emis_symbols:
             line_string += str(hmm.emis[i][symbol]) + sep
-
     # transition
     for i in range(len(hmm.states)):
         for j in range(len(hmm.states)):
