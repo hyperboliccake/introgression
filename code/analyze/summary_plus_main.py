@@ -1,20 +1,103 @@
 import sys
 import os
 import gzip
+import predict
 from summary_plus import *
 import gene_predictions
 sys.path.insert(0, '..')
 import global_params as gp
 sys.path.insert(0, '../misc/')
 import read_fasta
+import read_table
+import seq_functions
 
-# this is for adding a few columns to introgressed_blocks_par_summary file:
-# - number of genes it overlaps
-# - longest stretch of gaps
+args = predict.process_predict_args(sys.argv[1:])
+gp_dir = '../'
 
+regions_all = {}
+strains = set([])
+for species_from in args['states']:
 
-tag = sys.argv[1]
+    fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + \
+         'introgressed_blocks_' + species_from + \
+         '_' + args['tag'] + '_labeled.txt'
 
+    # region_id strain chromosome predicted_species start end number_non_gap
+    d, labels = read_table.read_table_columns(fn, '\t')
+
+    for s in args['known_states']:
+        d['id_' + s] = [0 for i in range(len(d['region_id']))]
+
+    regions_all[species_from] = d
+
+    strains = strains.union(set(d['strain']))
+
+# loop through chromosomes and strains, followed by species of
+# introgression so that we only have to read each alignment in once
+for chrm in gp.chrms[:1]:
+
+    for strain in strains:
+
+        fn = gp_dir + gp.alignments_dir + \
+             '_'.join(gp.alignment_ref_order) + '_' + strain + \
+             '_chr' + chrm + '_mafft' + gp.alignment_suffix
+        headers, seqs = read_fasta.read_fasta(fn)
+
+        ind_align = index_alignment_by_reference(seqs[0])
+
+        for si in range(len(args['states'])):
+            
+            species_from = args['states'][si]
+            regions = regions_all[species_from]
+
+            for i in range(len(regions['region_id'])):
+
+                if regions['chromosome'][i] != chrm or regions['strain'][i] != strain:
+                    continue
+
+                fn_region = gp.analysis_out_dir_absolute + args['tag'] + '/' \
+                            'regions/' + regions['region_id'][i] + \
+                            gp.fasta_suffix + '.gz'
+                f_region = gzip.open(fn_region, 'wb')
+                    
+                # calculate:
+                # - identity with each reference
+                # - fraction of region that is gapped/masked
+
+                slice_start = ind_align[int(regions['start'][i])]
+                slice_end = ind_align[int(regions['end'][i])] + 1
+
+                seqx = seqs[-1][slice_start:slice_end]
+
+                for sj in range(len(args['known_states'])):
+                    seqj = seqs[sj][slice_start:slice_end]
+                    sid = seq_functions.seq_id(seqj, seqx)
+                    regions_all[species_from]['id_' + args['known_states'][sj]][i] = sid
+                    f_region.write('> ' + args['known_states'][sj] + '\n')
+                    f_region.write(seqj + '\n')
+
+                f_region.write('> ' + strain + '\n')
+                f_region.write(seqx + '\n')
+
+labels = labels + ['id_' + x for x in args['known_states']]
+
+for species_from in args['states']:
+
+    fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + \
+         'introgressed_blocks_' + species_from + \
+         '_' + args['tag'] + '_quality.txt'
+
+    f = open(fn, 'w')
+    f.write('\t'.join(labels) + '\n')
+
+    for i in range(len(regions_all[species_from]['region_id'])):
+        if regions_all[species_from]['chromosome'][i] != 'I':
+            continue
+        f.write('\t'.join([str(regions_all[species_from][label][i]) for label in labels]))
+        f.write('\n')
+    f.close()
+
+"""
 # copy pasta :(
 fields = ['strain', 'chromosome', 'predicted_species', 'start', 'end', \
           'number_non_gap', 'number_match_ref1', 'number_match_ref2', \
@@ -24,7 +107,7 @@ regions = {}
 for chrm in gp.chrms:
     fn = gp.analysis_out_dir_absolute + tag + '/' + \
          'introgressed_blocks_chr' + chrm + \
-         '_par_' + tag + '_summary.txt'
+         '_par_' + tag + '_quality.txt'
     d = gene_predictions.read_region_summary(fn)
     regions.update(d)
 
@@ -92,3 +175,4 @@ for region_id in regions:
                                  regions[region_id]['chromosome'])
     
 write_region_summary_plus(fn_out, regions, fields)
+"""

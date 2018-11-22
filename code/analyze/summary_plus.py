@@ -117,3 +117,31 @@ def masked_columns(seqs):
                 mask_non_gap_total += 1
     return mask_total, mask_non_gap_total
 
+def index_by_reference(ref_seq, seq):
+    # return dictionary keyed by reference index, with value the
+    # corresponding index in non-reference sequence
+
+    d = {}
+    ri = 0
+    si = 0
+    for i in range(len(ref_seq)):
+        if ref_seq[i] != gp.gap_symbol:
+            d[ri] = si
+            ri += 1
+        if seq[i] != gp.gap_symbol:
+            si += 1
+    return d
+
+def index_alignment_by_reference(ref_seq):
+    # want a way to go from reference sequence coordinate to index in
+    # alignment
+    l = []
+    for i in range(len(ref_seq)):
+        if ref_seq[i] != gp.gap_symbol:
+            l.append(i)
+    return l
+    
+
+#def slice_alignment_by_reference(seq, ref_seq, ref_start, ref_end):
+    
+    
