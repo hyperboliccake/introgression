@@ -2,7 +2,7 @@ import sys
 import os
 import gzip
 import predict
-from summary_plus import *
+from summarize_region_quality import *
 import gene_predictions
 sys.path.insert(0, '..')
 import global_params as gp
@@ -11,7 +11,7 @@ import read_fasta
 import read_table
 import seq_functions
 
-args = predict.process_predict_args(sys.argv[1:])
+args = predict.process_predict_args(sys.argv[2:])
 gp_dir = '../'
 
 regions_all = {}
@@ -26,60 +26,150 @@ for species_from in args['states']:
     d, labels = read_table.read_table_columns(fn, '\t')
 
     for s in args['known_states']:
-        d['id_' + s] = [0 for i in range(len(d['region_id']))]
+        d['match_nongap_' + s] = [0 for i in range(len(d['region_id']))]
+        d['num_sites_nongap_' + s] = [0 for i in range(len(d['region_id']))]
+        d['match_hmm_' + s] = [0 for i in range(len(d['region_id']))]
+        #d['num_sites_hmm_' + s] = [0 for i in range(len(d['region_id']))]
+        d['match_nonmask_' + s] = [0 for i in range(len(d['region_id']))]
+        d['num_sites_nonmask_' + s] = [0 for i in range(len(d['region_id']))]
+    
+    d['num_sites_hmm'] = [0 for i in range(len(d['region_id']))]
 
     regions_all[species_from] = d
 
     strains = strains.union(set(d['strain']))
 
+masked_sites_refs = {}
+for species_from in args['known_states']:
+    masked_sites_refs[species_from] = {}
+    for chrm in gp.chrms:
+        species_from_prefix = gp.ref_fn_prefix[species_from]
+        masked_sites_refs[species_from][chrm] = \
+            convert_intervals_to_sites(read_masked_intervals(gp_dir + \
+                                                             gp.alignments_dir + \
+                                                             'masked/' + \
+                                                             species_from_prefix + \
+                                                             '_chr' + chrm + \
+                                                             '_intervals.txt'))
+
+
 # loop through chromosomes and strains, followed by species of
 # introgression so that we only have to read each alignment in once
-for chrm in gp.chrms[:1]:
+ps_fn = gp.analysis_out_dir_absolute + args['tag'] + \
+        '/positions_' + args['tag'] + '.txt.gz'
+ps_f = gzip.open(ps_fn, 'rb')
 
-    for strain in strains:
+for line in ps_f:
+    line = line.split('\t')
+    strain = line[0]
+    chrm = line[1]
+    print strain, chrm
+    ps = [int(x) for x in line[2:]]
 
-        fn = gp_dir + gp.alignments_dir + \
-             '_'.join(gp.alignment_ref_order) + '_' + strain + \
-             '_chr' + chrm + '_mafft' + gp.alignment_suffix
-        headers, seqs = read_fasta.read_fasta(fn)
+    fn = gp_dir + gp.alignments_dir + \
+         '_'.join(gp.alignment_ref_order) + '_' + strain + \
+         '_chr' + chrm + '_mafft' + gp.alignment_suffix
+    headers, seqs = read_fasta.read_fasta(fn)
+        
+    ind_align = index_alignment_by_reference(seqs[0])
 
-        ind_align = index_alignment_by_reference(seqs[0])
+    masked_sites = \
+        convert_intervals_to_sites(read_masked_intervals(gp_dir + gp.alignments_dir + \
+                                                         'masked/' + strain + \
+                                                         '_chr' + chrm + \
+                                                         '_intervals.txt'))
 
-        for si in range(len(args['states'])):
+    for si in range(len(args['states'])):
             
-            species_from = args['states'][si]
-            regions = regions_all[species_from]
+        species_from = args['states'][si]
+        regions = regions_all[species_from]
 
-            for i in range(len(regions['region_id'])):
+        print '*', species_from
 
-                if regions['chromosome'][i] != chrm or regions['strain'][i] != strain:
-                    continue
+        for i in range(len(regions['region_id'])):
 
-                fn_region = gp.analysis_out_dir_absolute + args['tag'] + '/' \
-                            'regions/' + regions['region_id'][i] + \
-                            gp.fasta_suffix + '.gz'
-                f_region = gzip.open(fn_region, 'wb')
+            if regions['chromosome'][i] != chrm or regions['strain'][i] != strain:
+                continue
+
+            print ' ', regions['region_id'][i]
+
+            fn_region = gp.analysis_out_dir_absolute + args['tag'] + '/' \
+                        'regions/' + regions['region_id'][i] + \
+                        gp.fasta_suffix + '.gz'
+            f_region = gzip.open(fn_region, 'wb')
                     
-                # calculate:
-                # - identity with each reference
-                # - fraction of region that is gapped/masked
+            # calculate:
+            # - identity with each reference
+            # - fraction of region that is gapped/masked
 
-                slice_start = ind_align[int(regions['start'][i])]
-                slice_end = ind_align[int(regions['end'][i])] + 1
+            slice_start = ind_align[int(regions['start'][i])]
+            slice_end = ind_align[int(regions['end'][i])] + 1
+            
+            num_sites_hmm, shmm = num_sites_between(ps, int(regions['start'][i]), \
+                                                    int(regions['end'][i]))
 
-                seqx = seqs[-1][slice_start:slice_end]
+            seqx = seqs[-1][slice_start:slice_end]
 
-                for sj in range(len(args['known_states'])):
-                    seqj = seqs[sj][slice_start:slice_end]
-                    sid = seq_functions.seq_id(seqj, seqx)
-                    regions_all[species_from]['id_' + args['known_states'][sj]][i] = sid
-                    f_region.write('> ' + args['known_states'][sj] + '\n')
-                    f_region.write(seqj + '\n')
+            for sj in range(len(args['known_states'])):
+                seqj = seqs[sj][slice_start:slice_end]
+                statej = args['known_states'][sj]
 
-                f_region.write('> ' + strain + '\n')
-                f_region.write(seqx + '\n')
+                # all alignment columns, excluding ones with gaps in
+                # these two sequences
+                total_match_nongap, total_sites_nongap = \
+                    seq_functions.seq_id(seqj, seqx)
+                regions_all[species_from]['match_nongap_' + statej][i] = \
+                    total_match_nongap
+                regions_all[species_from]['num_sites_nongap_' + statej][i] = \
+                    total_sites_nongap
+                
+                # only alignment columns used by HMM (polymorphic, no
+                # gaps in any strain)
+                total_match_hmm, total_sites_hmm = \
+                    seq_id_hmm(seqj, seqx, seqs[0][slice_start:slice_end], \
+                               int(regions['start'][i]), ps, shmm)
+
+                regions_all[species_from]['match_hmm_' + statej][i] = \
+                    total_match_hmm
+                #regions_all[species_from]['num_sites_hmm_' + statej][i] = \
+                #    total_sites_hmm
+                assert num_sites_hmm == total_sites_hmm, \
+                    str(num_sites_hmm) + ' ' + str(total_sites_hmm) #+ '\n' + \
+                    #seqj + '\n' + seqx + '\n' + regions['start'][i] #+ '\n' + str(ps)
+
+                # all alignment columns, excluding ones with gaps or
+                # masked bases in these two sequences
+                masked_union = \
+                    set(masked_sites).union(set(masked_sites_refs[statej][chrm]))
+                total_match_nonmask, total_sites_nonmask = \
+                    seq_id_unmasked(seqj, seqx, int(regions['start'][i]), masked_union)
+
+                regions_all[species_from]['match_nonmask_' + statej][i] = \
+                    total_match_nonmask
+                regions_all[species_from]['num_sites_nonmask_' + statej][i] = \
+                    total_sites_nonmask
+
+                f_region.write('> ' + statej + '\n')
+                f_region.write(seqj + '\n')
+
+            f_region.write('> ' + strain + '\n')
+            f_region.write(seqx + '\n')
+
+            #regions_all[species_from]['num_sites'][i] = int(regions['end'][i]) - \
+            #                                            int(regions['start'][i]) + 1
+            regions_all[species_from]['num_sites_hmm'][i] = num_sites_hmm
+
+
+ps_f.close()
 
 labels = labels + ['id_' + x for x in args['known_states']]
+labels = labels + ['match_nongap_' + x for x in args['known_states']]
+labels = labels + ['num_sites_nongap_' + x for x in args['known_states']]
+labels = labels + ['match_hmm_' + x for x in args['known_states']]
+labels = labels + ['num_sites_hmm']
+#labels = labels + ['num_sites_hmm_' + x for x in args['known_states']]
+labels = labels + ['match_nonmask_' + x for x in args['known_states']]
+labels = labels + ['num_sites_nonmask_' + x for x in args['known_states']]
 
 for species_from in args['states']:
 

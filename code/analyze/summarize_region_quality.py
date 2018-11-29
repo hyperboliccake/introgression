@@ -1,6 +1,7 @@
 import sys
 import os
 import gzip
+import bisect
 import gene_predictions
 sys.path.insert(0, '..')
 import global_params as gp
@@ -10,7 +11,7 @@ import read_fasta
 cen_starts = [151465, 238207, 114385, 449711, 151987, 148510, 496920, 105586, 355629, 436307, 440129, 150828, 268031, 628758, 326584, 555957]
 cen_starts = [x-1 for x in cen_starts]
 
-cen_ends =[151582,238323,114501,449821,152104,148627,497038,105703,355745,436425,440246,150947,268149,628875,326702,556073]
+cen_ends = [151582,238323,114501,449821,152104,148627,497038,105703,355745,436425,440246,150947,268149,628875,326702,556073]
 cen_ends = [x-1 for x in cen_ends]
 
 tel_coords = [1,801,229411,230218,1,6608,812379,813184,1,1098,315783,316620,1,904,1524625,1531933,1,6473,569599,576874,1,5530,269731,270161,1,781,1083635,1090940,1,5505,556105,562643,1,7784,439068,439888,1,7767,744902,745751,1,807,665904,666816,1,12085,1064281,1078177,1,6344,923541,924431,1,7428,783278,784333,1,847,1083922,1091291,1,7223,942396,948010]
@@ -145,3 +146,75 @@ def index_alignment_by_reference(ref_seq):
 #def slice_alignment_by_reference(seq, ref_seq, ref_start, ref_end):
     
     
+def num_sites_between(sites, start, end):
+    # sites are sorted
+    i = bisect.bisect_left(sites, start)
+    j = bisect.bisect_right(sites, end)
+    return j - i, sites[i:j]
+
+def read_masked_intervals(fn):
+    f = open(fn, 'r')
+    f.readline() # header
+    ints = []
+    for line in f:
+        line = line.split()
+        ints.append((int(line[0]), int(line[2])))
+    f.close()
+    return ints
+
+def convert_intervals_to_sites(ints):
+    s = []
+    for start, end in ints:
+        s += range(start, end + 1)
+    return s
+
+def seq_id_hmm(ref_seq, seq, master_ref_seq, offset, include_sites, shmm):
+    n = len(ref_seq)
+    total_sites = 0
+    total_match = 0
+    offset -= 1
+    skip = [gp.gap_symbol, gp.unsequenced_symbol]
+    x = []
+    for i in range(n):
+        if master_ref_seq[i] != gp.gap_symbol:
+            offset += 1
+            if offset in include_sites:
+                assert ref_seq[i] not in skip and seq[i] not in skip
+                total_sites += 1
+                if ref_seq[i] == seq[i]:
+                    total_match += 1
+                if offset in x:
+                    print master_ref_seq[:i]
+                    print ref_seq[:i]
+                    print seq[:i]
+                
+                    print '***', offset
+                x.append(offset)
+    if shmm != x:
+        print '====='
+        print len(shmm), len(x)
+        m = set(shmm) - set(x)
+        print m
+        print [ref_seq[i] for i in m]
+        m = set(x) - set(shmm)
+        print m
+        print [ref_seq[i] for i in m]
+        print shmm
+    return total_match, total_sites
+
+
+def seq_id_unmasked(ref_seq, seq, offset, exclude_sites):
+    n = len(ref_seq)
+    total_sites = 0
+    total_match = 0
+    offset -= 1
+    skip = [gp.gap_symbol, gp.unsequenced_symbol]
+    for i in range(n):
+        offset += 1
+        if i + offset in exclude_sites:
+            continue
+        if ref_seq[i] not in skip and seq[i] not in skip:
+            total_sites += 1
+            if ref_seq[i] == seq[i]:
+                total_match += 1
+    return total_match, total_sites
