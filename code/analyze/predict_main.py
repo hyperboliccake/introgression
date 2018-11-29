@@ -21,13 +21,13 @@ args = predict.process_predict_args(sys.argv[1:])
 # refs = {'cer':('S288c', '../../data/', 'S288C-SGD_R64'), ...]
 # strains = {'cer':[('strain1', '../../data/'), ...], ...}
 strain_dirs = align_helpers.get_strains(align_helpers.flatten(gp.non_ref_dirs.values()))
-strain_dirs = strain_dirs[0:1] + strain_dirs[2:81] + strain_dirs[83:]
+#strain_dirs = strain_dirs[0:1] + strain_dirs[2:]
 
 ##======
 # output files and if and where to resume
 ##======
 
-resume = False
+resume = True
 open_mode = 'a'
 if not resume:
     open_mode = 'w'
@@ -42,9 +42,6 @@ if not os.path.isdir(gp.analysis_out_dir_absolute + args['tag']):
 # each strain x chrm
 ps_fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + 'positions_' + \
         args['tag'] + '.txt.gz'
-write_ps = True
-if write_ps:
-    ps_f = gzip.open(ps_fn, open_mode + 'b')
 
 # introgressed blocks
 blocks_f = {}
@@ -62,20 +59,26 @@ hmm_init_f = open(hmm_init_fn, open_mode)
 hmm_fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + 'hmm_' + \
          args['tag'] + '.txt'
 hmm_f = open(hmm_fn, open_mode)
+emis_symbols = predict.get_emis_symbols(args['known_states'])
 if not resume:
-    predict.write_hmm_header(args['known_states'], args['unknown_states'], hmm_init_f)
-    emis_symbols = predict.write_hmm_header(args['known_states'], \
-                                            args['unknown_states'], hmm_f)
+    predict.write_hmm_header(args['known_states'], args['unknown_states'], \
+                             emis_symbols, hmm_init_f)
+    predict.write_hmm_header(args['known_states'], args['unknown_states'], \
+                             emis_symbols, hmm_f)
 
 # posterior probabilities
 probs_fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + 'probs_' + \
            args['tag'] + '.txt.gz'
 
 # figure out which species x chromosomes we've completed already
+# and also make sure file is gzipped properly
 completed = {} # keyed by chrm, list of strains
 if resume:
     probs_f = gzip.open(probs_fn, 'rb')
+    probs_temp_fn = probs_fn[:-7] + '.temp.txt.gz'
+    probs_temp_f = gzip.open(probs_temp_fn, 'wb')
     line = probs_f.readline()
+    probs_temp_f.write(line)
     print 'reading already completed:'
     while line != '':
         x1 = line.find('\t')
@@ -86,8 +89,37 @@ if resume:
             completed[chrm] = []
         completed[chrm].append(strain)
         print strain, chrm
-        line = probs_f.readline()
+        try:
+            line = probs_f.readline()
+            probs_temp_f.write(line)
+        except Exception as e:
+            print e
+            break
     probs_f.close()
+    probs_temp_f.close()
+    os.system('mv ' + probs_temp_fn + ' ' + probs_fn)
+
+    ps_f = gzip.open(ps_fn, 'rb')
+    ps_temp_fn = ps_fn[:-7] + '.temp.txt.gz'
+    ps_temp_f = gzip.open(ps_temp_fn, 'wb')
+    line = ps_f.readline()
+    ps_temp_f.write(line)
+    while line != '':
+        try:
+            line = ps_f.readline()
+            ps_temp_f.write(line)
+        except Exception as e:
+            print e
+            break
+    ps_f.close()
+    ps_temp_f.close()
+    os.system('mv ' + ps_temp_fn + ' ' + ps_fn)
+
+    
+
+write_ps = True
+if write_ps:
+    ps_f = gzip.open(ps_fn, open_mode + 'b')
 
 probs_f = gzip.open(probs_fn, open_mode + 'b')
 
@@ -109,7 +141,11 @@ for chrm in gp.chrms:
         ref_prefix = '_'.join(gp.alignment_ref_order)
         fn = gp_dir + gp.alignments_dir + ref_prefix + '_' + strain + \
              '_chr' + chrm + '_mafft' + gp.alignment_suffix
-        headers, seqs = read_fasta.read_fasta(fn)
+        try:
+            headers, seqs = read_fasta.read_fasta(fn)
+        except Exception as e:
+            print 'no alignment for', strain, chrm
+            continue
 
         ref_seqs = seqs[:-1]
         predict_seq = seqs[-1]

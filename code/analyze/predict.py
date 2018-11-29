@@ -450,15 +450,18 @@ def read_blocks(fn, labeled=False):
     f.close()
     return d
 
-def write_hmm_header(known_states, unknown_states, f):
-
-    sep = '\t'
-    header_string = 'strain' + sep + 'chromosome' + sep
+def get_emis_symbols(known_states): 
 
     symbols = [gp.match_symbol, gp.mismatch_symbol]
     emis_symbols = [''.join(x) for x in \
                            list(itertools.product(symbols, repeat=len(known_states)))]
     emis_symbols.sort()
+    return emis_symbols
+
+def write_hmm_header(known_states, unknown_states, emis_symbols, f):
+
+    sep = '\t'
+    header_string = 'strain' + sep + 'chromosome' + sep
 
     states = known_states + unknown_states
 
