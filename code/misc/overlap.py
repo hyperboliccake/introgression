@@ -1,4 +1,6 @@
 def overlap(start1, end1, start2, end2):
+    if end1 < start2 or end2 < start1:
+        return 0
     if start1 < start2:
         if start2 < end1:
             if end2 < end1:
