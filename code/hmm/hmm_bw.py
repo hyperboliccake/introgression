@@ -1,5 +1,6 @@
 import math
 import sys
+from collections import defaultdict
 
 LOGZERO = 'LOGZERO'
 
@@ -188,7 +189,7 @@ class HMM:
                # emission probabilities
                b = []
                for state in xrange(len(self.states)):
-                    d = {}
+                    d = defaultdict(float)
                     for symbol in self.emis[state].keys():
                          num = LOGZERO
                          den = LOGZERO
@@ -425,7 +426,7 @@ class HMM:
           for ind in range(len(self.obs)):
                p_ind = []
                for site in range(len(self.obs[ind])):
-                    p_ind_site = {}
+                    p_ind_site = defaultdict(float)
                     for state_ind in range(len(self.states)):
                          p_ind_site[self.states[state_ind]] = \
                               eexp(gamma[ind][site][state_ind])
