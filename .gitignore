@@ -21,3 +21,6 @@ data/*
 !data/track.txt
 .DS_Store
 code/sim/seedms
+code/phylogeny/*
+!code/phylogeny/*.R
+!code/phylogeny/*.py
