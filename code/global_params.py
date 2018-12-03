@@ -22,15 +22,24 @@ alignment_suffix = '.maf'
 #====
 
 ref_dir = {'S288c':'/tigress/AKEY/akey_vol2/aclark4/nobackup/100_genomes/genomes/S288c_SGD-R64/', \
-           'CBS432':'/tigress/anneec/projects/introgression/data/CBS432/'}
+           'CBS432':'/tigress/anneec/projects/introgression/data/CBS432/', \
+           'N_45':'/tigress/AKEY/akey_vol2/aclark4/nobackup/para_sgrp/strains/N_45/', \
+           'DBVPG6304':'/tigress/AKEY/akey_vol2/aclark4/nobackup/para_sgrp/strains/DBVPG6304/', \
+           'UWOPS91_917_1':'/tigress/AKEY/akey_vol2/aclark4/nobackup/para_sgrp/strains/UWOPS91_917_1/'}
 
 ref_gb_dir = {'S288c':'/tigress/AKEY/akey_vol2/aclark4/nobackup/S288c/',\
-              'CBS432':'/tigress/AKEY/akey_vol2/aclark4/nobackup/CBS432/'}
+              'CBS432':'/tigress/AKEY/akey_vol2/aclark4/nobackup/CBS432/', \
+              'N_45':None, \
+              'DBVPG6304':None, \
+              'UWOPS91_917_1':None}
 
 # will look at all *.fa files in these directories; expects filenames
 # in the format strain_chrX.fa
 non_ref_dirs = {'S288c':['/tigress/AKEY/akey_vol2/aclark4/nobackup/100_genomes/genomes_gb/'], \
-                    'CBS432':['/tigress/AKEY/akey_vol2/aclark4/nobackup/para_sgrp/strains/']}
+                'CBS432':[], \
+                'N_45':[], \
+                'DBVPG6304':[], \
+                'UWOPS91_917_1':[]}
 
 # genbank file for _all_ species/strains
 gb_all = '/tigress/AKEY/akey_vol2/aclark4/nobackup/100_genomes/sequence.gb'
@@ -48,16 +57,17 @@ gb_master_dir = '/tigress/AKEY/akey_vol2/aclark4/nobackup/'
 #====
 
 # order that references appear in filename
-alignment_ref_order = ['S288c', 'CBS432']
+alignment_ref_order = ['S288c', 'CBS432', 'N_45', 'DBVPG6304', 'UWOPS91_917_1']
 
 # this is kind of dumb, but the name of the fasta files to get seqs
 # from won't necessarily just be the names we want to use
-ref_fn_prefix = {'S288c':'S288c_SGD-R64', 'CBS432':'CBS432'}
+ref_fn_prefix = {'S288c':'S288c_SGD-R64', 'CBS432':'CBS432', 'N_45':'N_45', \
+                 'DBVPG6304':'DBVPG6304', 'UWOPS91_917_1':'UWOPS91_917_1'}
 
 # directory for mugsy to output alignments and for subsequent parts of
 # the program to read the alignments; this directory needs to exist
 # before running the program
-alignments_dir = '../alignments/genbank/'
+alignments_dir = '../alignments/par4/'
 
 # should we leave the alignments already completed in the alignments
 # directory alone?
