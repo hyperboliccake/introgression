@@ -60,9 +60,8 @@ def seq_id(ref_seq, seq):
             total_sites += 1
             if ref_seq[i] == seq[i]:
                 total_match += 1
-    if total_sites == 0:
-        return 'NA'
-    return float(total_match) / total_sites
+
+    return total_match, total_sites
 
 def translate(seq):
     if len(seq) % 3 != 0:
@@ -72,5 +71,4 @@ def translate(seq):
         codon = seq[i:i+3]
         a += codon_table[codon]
     return a
-
 
