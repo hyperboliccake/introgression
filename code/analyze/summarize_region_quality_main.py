@@ -12,7 +12,13 @@ import read_table
 import seq_functions
 
 args = predict.process_predict_args(sys.argv[2:])
-species_from = args['states'][int(sys.argv[1])]
+
+task_ind = int(sys.argv[1])
+species_ind = task_ind / len(gp.chrms)
+chrm_ind = task_ind % len(gp.chrms) 
+
+species_from = args['states'][species_ind]
+chrm = gp.chrms[chrm_ind]
 gp_dir = '../'
 
 fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + \
@@ -31,7 +37,7 @@ for s in args['known_states']:
     regions['match_nonmask_' + s] = [0 for i in range(n)]
     regions['num_sites_nonmask_' + s] = [0 for i in range(n)]
     
-regions['num_sites_hmm'] = [0 for i in range(n)]
+#regions['num_sites_hmm'] = [0 for i in range(n)]
 
 strains = set(regions['strain'])
 
@@ -40,15 +46,14 @@ strains = set(regions['strain'])
 masked_sites_refs = {}
 for s in args['known_states']:
     masked_sites_refs[s] = {}
-    for chrm in gp.chrms:
-        species_from_prefix = gp.ref_fn_prefix[s]
-        masked_sites_refs[s][chrm] = \
-            convert_intervals_to_sites(read_masked_intervals(gp_dir + \
-                                                             gp.alignments_dir + \
-                                                             'masked/' + \
-                                                             species_from_prefix + \
-                                                             '_chr' + chrm + \
-                                                             '_intervals.txt'))
+    species_from_prefix = gp.ref_fn_prefix[s]
+    masked_sites_refs[s] = \
+        convert_intervals_to_sites(read_masked_intervals(gp_dir + \
+                                                         gp.alignments_dir + \
+                                                         'masked/' + \
+                                                         species_from_prefix + \
+                                                         '_chr' + chrm + \
+                                                         '_intervals.txt'))
 
 
 # loop through chromosomes and strains, followed by species of
@@ -61,7 +66,10 @@ ps_f = gzip.open(ps_fn, 'rb')
 for line in ps_f:
     line = line.split('\t')
     strain = line[0]
-    chrm = line[1]
+    current_chrm = line[1]
+    if current_chrm != chrm:
+        continue
+
     print strain, chrm
     ps = [int(x) for x in line[2:]]
 
@@ -78,8 +86,8 @@ for line in ps_f:
                                                          '_chr' + chrm + \
                                                          '_intervals.txt'))
 
-    # loop through all regions but only process those that are for the
-    # current chromosome/strain
+    # loop through all regions for the specified chromosome and the
+    # current strain
     for i in range(n):
         
         if regions['chromosome'][i] != chrm or regions['strain'][i] != strain:
@@ -129,7 +137,7 @@ for line in ps_f:
 
             # all alignment columns, excluding ones with gaps or
             # masked bases in these two sequences
-            masked_union = set(masked_sites).union(set(masked_sites_refs[statej][chrm]))
+            masked_union = set(masked_sites).union(set(masked_sites_refs[statej]))
             total_match_nonmask, total_sites_nonmask = \
                 seq_id_unmasked(seqj, seqx, int(regions['start'][i]), masked_union)
 
@@ -146,22 +154,21 @@ for line in ps_f:
 
         #regions_all[species_from]['num_sites'][i] = int(regions['end'][i]) - \
         #                                            int(regions['start'][i]) + 1
-        regions['num_sites_hmm'][i] = num_sites_hmm
-        break
-    break
+        #regions['num_sites_hmm'][i] = num_sites_hmm
+
 ps_f.close()
 
 labels = labels + ['match_nongap_' + x for x in args['known_states']]
 labels = labels + ['num_sites_nongap_' + x for x in args['known_states']]
 labels = labels + ['match_hmm_' + x for x in args['known_states']]
-labels = labels + ['num_sites_hmm']
+#labels = labels + ['num_sites_hmm']
 #labels = labels + ['num_sites_hmm_' + x for x in args['known_states']]
 labels = labels + ['match_nonmask_' + x for x in args['known_states']]
 labels = labels + ['num_sites_nonmask_' + x for x in args['known_states']]
 
 fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + \
      'introgressed_blocks_' + species_from + \
-     '_' + args['tag'] + '_quality.txt'
+     '_' + args['tag'] + '_chr' + chrm + '_quality.txt'
 
 f = open(fn, 'w')
 f.write('\t'.join(labels) + '\n')

@@ -204,6 +204,9 @@ def seq_id_hmm(ref_seq, seq, master_ref_seq, offset, include_sites, shmm):
 
 
 def seq_id_unmasked(ref_seq, seq, offset, exclude_sites):
+    # total_sites is number of sites at which neither sequence is
+    # masked or has a gap or unsequenced character; total_match is the
+    # number of those sites at which the two sequences match
     n = len(ref_seq)
     total_sites = 0
     total_match = 0
