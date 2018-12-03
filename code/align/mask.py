@@ -5,8 +5,13 @@ import align_helpers
 sys.path.insert(0, '..')
 import global_params as gp
 
-# get all non-reference strains of cerevisiae and paradoxus
-s = align_helpers.get_strains(flatten(gp.non_ref_dirs.values()))
+only_ref = True
+
+s = []
+
+if not only_ref:
+    # get all non-reference strains of cerevisiae and paradoxus
+    s = align_helpers.get_strains(align_helpers.flatten(gp.non_ref_dirs.values()))
 
 gp_dir = '../'
 a = []
