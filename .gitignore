@@ -24,3 +24,4 @@ code/sim/seedms
 code/phylogeny/*
 !code/phylogeny/*.R
 !code/phylogeny/*.py
+code/*/scratch/*
