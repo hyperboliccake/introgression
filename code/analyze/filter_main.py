@@ -1,3 +1,11 @@
+# two levels of filtering:
+# 1. remove regions that don't look confidently introgressed at all,
+#    based on fraction gaps/masked, number of matches to S288c and not S288c
+#    --> _filtered1 
+# 2. remove regions that we can't confidently pin on a specific reference,
+#    based on whether it matches similarly to other reference(s)
+#    --> _filtered2
+
 import re
 import sys
 import os
@@ -11,7 +19,7 @@ sys.path.insert(0, '../misc/')
 import mystats
 import read_table
 
-def write_region_summary_plus_line(f, region_id, region, fields):
+def write_filtered_line(f, region_id, region, fields):
     f.write(region_id + '\t' + '\t'.join([region[field] for field in fields[1:]]))
     f.write('\n')
 
@@ -41,20 +49,82 @@ def passes_filters(region):
     
     return True
 
-tag = sys.argv[1]
+def passes_filters1(region):
+    # filtering out things that we can't call introgressed with
+    # confidence (i.e. doesn't seem like a strong case against being
+    # S288c)
 
-fn = gp.analysis_out_dir_absolute + tag + '/' + \
-     'introgressed_blocks_par_' + tag + '_summary_plus.txt'
-region_summary, fields = read_table.read_table_rows(fn, '\t')
+    r = gp.alignment_ref_order[0]
+    s = region['predicted_species']
+    
+    aligned_length = (int(region['end']) - int(region['start']) + 1)
 
-fn_out = gp.analysis_out_dir_absolute + tag + '/' + \
-         'introgressed_blocks_filtered_par_' + tag + '_summary_plus.txt'
-f_out = open(fn_out, 'w')
-f_out.write('\t'.join(fields) + '\n')
+    # FILTER: fraction gaps + masked
+    fraction_gaps_masked_threshold = .5
+    # num_sites_nonmask_x is number of sites at which neither
+    # reference x nor the test sequence is masked or has a gap or
+    # unsequenced character
+    fraction_gaps_masked_r = \
+        1 - float(region['num_sites_nonmask_' + r]) / aligned_length
+    fraction_gaps_masked_s = \
+        1 - float(region['num_sites_nonmask_' + s]) / aligned_length
 
-for region_id in region_summary:
-    region = region_summary[region_id]
-    if passes_filters(region):
-        write_region_summary_plus_line(f_out, region_id, region, fields)
+    if fraction_gaps_masked_r > fraction_gaps_masked_threshold:
+        return False
+    if fraction_gaps_masked_s > fraction_gaps_masked_threshold:
+        return False
+    
+    # FILTER: number sites analyzed by HMM that match predicted
+    # reference
+    number_hmm_match_threshold = 7
+    number_hmm_match = int(region['num_sites_hmm_' + s])
+    if number_hmm_match < number_match_only_threshold:
+        return False
 
-f_out.close()
+    # FILTER: divergence with predicted reference and master reference
+    # (S288c)
+    id_predicted = float(region['match_nongap_' + s]) / \
+                   float(region['num_sites_nongap_' + s])
+    id_master = float(region['match_nongap_' + r]) / \
+                float(region['num_sites_nongap_' + r])
+    if id_master > id_predicted:
+        return False
+    if id_predicted < .7:
+        return False
+    if id_master < .6:
+        return False
+
+    return True
+
+args = predict.process_predict_args(sys.argv[1:])
+
+fields1 = fields
+fields2 = fields + ['alternatives']
+
+for species_from in args['states']:
+
+    fn = gp.analysis_out_dir_absolute + tag + '/' + \
+         'introgressed_blocks_' + species_from + \
+         '_' + args['tag'] + '_quality.txt'
+    region_summary, fields = read_table.read_table_rows(fn, '\t')
+
+    fn_out1 = gp.analysis_out_dir_absolute + tag + '/' + \
+              'introgressed_blocks_' + species_from + \
+              '_' + args['tag'] + '_filtered1.txt'
+
+    fn_out2 = gp.analysis_out_dir_absolute + tag + '/' + \
+              'introgressed_blocks_' + species_from + \
+              '_' + args['tag'] + '_filtered2.txt'
+
+    f_out1 = open(fn_out1, 'w')
+    f_out1.write('\t'.join(fields + ['alternatives']) + '\n')
+
+    f_out2 = open(fn_out2, 'w')
+    f_out2.write('\t'.join(fields) + '\n')
+
+    for region_id in region_summary:
+        region = region_summary[region_id]
+        if passes_filters1(region):
+            write_filtered_line(f_out, region_id, region, fields)
+
+    f_out.close()
