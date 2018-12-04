@@ -11,6 +11,7 @@
 *.pdf
 *.png
 *#
+*lprof
 !todo.txt
 !100_genomes_info.txt
 !code/*txt
@@ -29,3 +30,4 @@ code/phylogeny/*
 !code/phylogeny/*.R
 !code/phylogeny/*.py
 code/*/scratch/*
+code/setup/*
