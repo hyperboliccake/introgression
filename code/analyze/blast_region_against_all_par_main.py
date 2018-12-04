@@ -19,7 +19,7 @@ import mystats
 
 tag = 'u3_i.001_tv_l1000_f.01'
 suffix = '_filtered'
-region_id = 'r2402'
+region_id = 'r2793' #'r2259' #'r2402'
 make_dbs = False
 
 gp_dir = '../'
