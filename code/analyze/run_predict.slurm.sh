@@ -4,7 +4,7 @@
 # Or you can do something like this:
 # cd $GRID_HOME
 
-#SBATCH --array=1-12
+#SBATCH --array=1
 
 # We need 20 GB for each instance (must be a good estimate).
 # Note that SLURM assumes one core per task. For tasks using multiple
@@ -26,4 +26,4 @@
 
 ARGS=$(head -n $SLURM_ARRAY_TASK_ID predict_args.txt | tail -n 1)
 
-python predict_main.py refs.txt strains.txt $ARGS
+python predict_main.py $ARGS
