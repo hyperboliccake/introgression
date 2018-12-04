@@ -411,11 +411,10 @@ def read_positions(fn):
 
 def write_blocks_header(f):
     sep = '\t'
-    # NOTE: number_non_gap actually represents the sites considered by
-    # the HMM, so it might exclude non-polymorphic sites in addition
-    # to gaps
+    # NOTE: num_sites_hmm represents the sites considered by the HMM,
+    # so it might exclude non-polymorphic sites in addition to gaps
     f.write('strain' + sep + 'chromosome' + sep + 'predicted_species' + sep + \
-            'start' + sep + 'end' + sep + 'number_non_gap' + '\n')
+            'start' + sep + 'end' + sep + 'num_sites_hmm' + '\n')
     f.flush()
 
 def write_blocks(state_seq_blocks, ps, f, strain, chrm, species_pred):
