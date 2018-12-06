@@ -14,7 +14,7 @@
 # Formats: mins, hrs:mins, days-hrs:mins
 # And use the 1hr QOS.
 # #SBATCH --time=2 --qos=1hr
-#SBATCH --time=6-0 --qos=10hr
+#SBATCH --time=5-0 --qos=10hr
 
 # This specifies 32 tasks, which will require at least 2 nodes.
 #SBATCH -n 1

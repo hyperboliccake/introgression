@@ -7,6 +7,7 @@ sys.path.insert(0, '..')
 import global_params as gp
 sys.path.insert(0, '../misc/')
 import read_fasta
+import binary_search
 
 cen_starts = [151465, 238207, 114385, 449711, 151987, 148510, 496920, 105586, 355629, 436307, 440129, 150828, 268031, 628758, 326584, 555957]
 cen_starts = [x-1 for x in cen_starts]
@@ -168,56 +169,47 @@ def convert_intervals_to_sites(ints):
         s += range(start, end + 1)
     return s
 
-def seq_id_hmm(ref_seq, seq, master_ref_seq, offset, include_sites, shmm):
-    n = len(ref_seq)
+def seq_id_hmm(seq1, seq2, offset, include_sites):
+
+    n = len(seq1)
     total_sites = 0
     total_match = 0
-    offset -= 1
+    #offset -= 1
     skip = [gp.gap_symbol, gp.unsequenced_symbol]
-    x = []
+    #x = []
+    #current_include_ind = 0
     for i in range(n):
-        if master_ref_seq[i] != gp.gap_symbol:
-            offset += 1
-            if offset in include_sites:
-                assert ref_seq[i] not in skip and seq[i] not in skip
-                total_sites += 1
-                if ref_seq[i] == seq[i]:
-                    total_match += 1
-                if offset in x:
-                    print master_ref_seq[:i]
-                    print ref_seq[:i]
-                    print seq[:i]
-                
-                    print '***', offset
-                x.append(offset)
-    if shmm != x:
-        print '====='
-        print len(shmm), len(x)
-        m = set(shmm) - set(x)
-        print m
-        print [ref_seq[i] for i in m]
-        m = set(x) - set(shmm)
-        print m
-        print [ref_seq[i] for i in m]
-        print shmm
+        #if master_ref_seq[i] != gp.gap_symbol:
+        #    offset += 1
+        #    if offset == include_sites[current_include_ind]:
+        if binary_search.present(include_sites, i + offset):
+            assert seq1[i] not in skip and seq2[i] not in skip
+            total_sites += 1
+            if seq1[i] == seq2[i]:
+                total_match += 1
+            #x.append(offset)
+            #current_include_ind += 1
     return total_match, total_sites
 
 
-def seq_id_unmasked(ref_seq, seq, offset, exclude_sites):
+def seq_id_unmasked(seq1, seq2, offset, exclude_sites1, exclude_sites2):
     # total_sites is number of sites at which neither sequence is
     # masked or has a gap or unsequenced character; total_match is the
     # number of those sites at which the two sequences match
-    n = len(ref_seq)
+    n = len(seq1)
     total_sites = 0
     total_match = 0
-    offset -= 1
+    #offset -= 1
     skip = [gp.gap_symbol, gp.unsequenced_symbol]
     for i in range(n):
-        offset += 1
-        if i + offset in exclude_sites:
+        #offset += 1
+        if binary_search.present(exclude_sites1, i + offset) or \
+           binary_search.present(exclude_sites2, i + offset):
+            #if binary_search.present(exclude_sites, i + offset):
             continue
-        if ref_seq[i] not in skip and seq[i] not in skip:
+        if seq1[i] not in skip and seq2[i] not in skip:
             total_sites += 1
-            if ref_seq[i] == seq[i]:
+            if seq1[i] == seq2[i]:
                 total_match += 1
     return total_match, total_sites
+
