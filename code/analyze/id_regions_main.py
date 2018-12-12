@@ -23,7 +23,7 @@ for species_from in args['states']:
 
     # strain chromosome predicted_species start end number_non_gap
     fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + \
-         'introgressed_blocks_' + species_from + \
+         'blocks_' + species_from + \
          '_' + args['tag'] + '.txt'
 
     # introgressed regions keyed by strain and then chromosome: 

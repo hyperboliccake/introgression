@@ -18,16 +18,16 @@ import read_fasta
 
 args = predict.process_predict_args(sys.argv[1:])
 
-# refs = {'cer':('S288c', '../../data/', 'S288C-SGD_R64'), ...]
-# strains = {'cer':[('strain1', '../../data/'), ...], ...}
+# refs: {'cer':('S288c', '../../data/', 'S288C-SGD_R64'), ...]
+# strains: {'cer':[('strain1', '../../data/'), ...], ...}
+
 strain_dirs = align_helpers.get_strains(align_helpers.flatten(gp.non_ref_dirs.values()))
-#strain_dirs = strain_dirs[0:1] + strain_dirs[2:]
 
 ##======
 # output files and if and where to resume
 ##======
 
-resume = True
+resume = False
 open_mode = 'a'
 if not resume:
     open_mode = 'w'
@@ -47,7 +47,7 @@ ps_fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + 'positions_' + \
 blocks_f = {}
 for s in args['states']:
     blocks_f[s] = open(gp.analysis_out_dir_absolute + args['tag'] + '/' + \
-                       'introgressed_blocks_' + s + '_' + args['tag'] + '.txt', \
+                       'blocks_' + s + '_' + args['tag'] + '.txt', \
                        open_mode)
     if not resume:
         predict.write_blocks_header(blocks_f[s])
