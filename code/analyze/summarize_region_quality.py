@@ -174,22 +174,32 @@ def seq_id_hmm(seq1, seq2, offset, include_sites):
     n = len(seq1)
     total_sites = 0
     total_match = 0
-    #offset -= 1
     skip = [gp.gap_symbol, gp.unsequenced_symbol]
-    #x = []
-    #current_include_ind = 0
+
+    info_gap = [False for i in range(n)]
+    info_unseq = [False for i in range(n)]
+    info_hmm = [False for i in range(n)]
+    info_match = [False for i in range(n)]
+
     for i in range(n):
-        #if master_ref_seq[i] != gp.gap_symbol:
-        #    offset += 1
-        #    if offset == include_sites[current_include_ind]:
+
+        if seq1[i] == gp.gap_symbol or seq2[i] == gp.gap_symbol:
+            info_gap[i] = True
+        if seq1[i] == gp.unsequenced_symbol or seq2[i] == gp.unsequenced_symbol:
+            info_unseq[i] = True
+        if seq1[i] == seq2[i]:
+            info_match[i] = True
+
         if binary_search.present(include_sites, i + offset):
+            info_hmm[i] = True
             assert seq1[i] not in skip and seq2[i] not in skip
             total_sites += 1
-            if seq1[i] == seq2[i]:
+            if info_match[i]:
                 total_match += 1
-            #x.append(offset)
-            #current_include_ind += 1
-    return total_match, total_sites
+
+    return total_match, total_sites, \
+        {'gap_flag':info_gap, 'unseq_flag':info_unseq, \
+         'hmm_flag':info_hmm, 'match':info_match}
 
 
 def seq_id_unmasked(seq1, seq2, offset, exclude_sites1, exclude_sites2):
@@ -213,3 +223,37 @@ def seq_id_unmasked(seq1, seq2, offset, exclude_sites1, exclude_sites2):
                 total_match += 1
     return total_match, total_sites
 
+def make_info_string(info, master_ind, predict_ind):
+
+    s = ''
+    for i in range(len(info)):
+
+        if info[i]['gap_flag']:
+            s += '-'
+            continue
+
+        if info[i]['unseq_flag']:
+            s += 'n'
+            continue
+
+        m = info[i]['match_list']
+        if False not in m:
+            s += '.'
+            continue
+        x = ''
+        if m[master_ind]:
+            if m[predict_ind]:
+                x = 'b'
+            else:
+                x = 'c'
+        else:
+            if m[predict_ind]:
+                x = 'p'
+            else:
+                x = 'x'
+        if info[i]['hmm_flag']:
+            x = x.upper()
+        s += x
+
+    return s
+            
