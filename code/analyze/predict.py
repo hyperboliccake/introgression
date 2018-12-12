@@ -228,7 +228,39 @@ def initial_probabilities(known_states, unknown_states, \
         
     return norm_list(init)
 
-def emission_probabilities(known_states, unknown_states, symbol_freqs):
+def emission_probabilities(known_states, unknown_states, symbols):
+
+    own_bias = .99
+    
+    emis = []
+
+    # this is sort of hardcoding...fix it?
+    num_match_symbols = 2 ** (len(known_states) - 1)
+    num_mismatch_symbols = 2 ** (len(known_states) - 1)
+    for s in range(len(known_states)):
+        state = known_states[s]
+        emis.append(defaultdict(float))
+        for symbol in symbols:
+            match = symbol[s] == gp.match_symbol
+            if match:
+                emis[s][symbol] = own_bias / num_match_symbols
+            else:
+                emis[s][symbol] = (1 - own_bias) / num_mismatch_symbols
+        emis[s] = norm_dict(emis[s])
+    
+    for s in range(len(unknown_states)):
+        state = unknown_states[s]
+        emis.append(defaultdict(float))
+        for symbol in symbols:
+            match_count = symbol.count(gp.match_symbol)
+            mismatch_count = symbol.count(gp.mismatch_symbol)
+            emis[s + len(known_states)][symbol] = (match_count * (1 - own_bias) + \
+                                                    mismatch_count * own_bias)
+        emis[s + len(known_states)] = norm_dict(emis[s + len(known_states)])
+
+    return emis
+
+def emission_probabilities_old(known_states, unknown_states, symbol_freqs):
 
     # doesn't use prior expectations, but probably should if we ever
     # want to include multiple unknown states
@@ -302,7 +334,7 @@ def initial_hmm_parameters(seq, known_states, unknown_states, \
 
     init = initial_probabilities(known_states, unknown_states, \
                                  expected_frac, weighted_match_freqs)
-    emis = emission_probabilities(known_states, unknown_states, symbol_freqs)
+    emis = emission_probabilities(known_states, unknown_states, symbol_freqs.keys())
     trans = transition_probabilities(known_states, unknown_states, \
                                      expected_frac, expected_tract_lengths)
 
