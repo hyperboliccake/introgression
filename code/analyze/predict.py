@@ -230,32 +230,43 @@ def initial_probabilities(known_states, unknown_states, \
 
 def emission_probabilities(known_states, unknown_states, symbols):
 
-    own_bias = .99
+    prob_P = .9 # matches current but not master
+    prob_B = .09 # matches current and master
+    prob_X = .009 # matches neither
+    prob_C = .001 # matches master but not current
     
     emis = []
 
     # this is sort of hardcoding...fix it?
-    num_match_symbols = 2 ** (len(known_states) - 1)
-    num_mismatch_symbols = 2 ** (len(known_states) - 1)
+    num_per_category = 2 ** (len(known_states) - 2)
     for s in range(len(known_states)):
         state = known_states[s]
         emis.append(defaultdict(float))
         for symbol in symbols:
-            match = symbol[s] == gp.match_symbol
-            if match:
-                emis[s][symbol] = own_bias / num_match_symbols
+            match_master = symbol[0] == gp.match_symbol
+            match_current = symbol[s] == gp.match_symbol
+            if match_current:
+                if match_master:
+                    emis[s][symbol] = prob_B / num_per_category
+                else:
+                    emis[s][symbol] = prob_P / num_per_category
             else:
-                emis[s][symbol] = (1 - own_bias) / num_mismatch_symbols
+                if match_master:
+                    emis[s][symbol] = prob_C / num_per_category
+                else:
+                    emis[s][symbol] = prob_X / num_per_category
+                    
         emis[s] = norm_dict(emis[s])
     
+    mismatch_bias = .99
     for s in range(len(unknown_states)):
         state = unknown_states[s]
         emis.append(defaultdict(float))
         for symbol in symbols:
             match_count = symbol.count(gp.match_symbol)
             mismatch_count = symbol.count(gp.mismatch_symbol)
-            emis[s + len(known_states)][symbol] = (match_count * (1 - own_bias) + \
-                                                    mismatch_count * own_bias)
+            emis[s + len(known_states)][symbol] = (match_count * (1 - mismatch_bias) + \
+                                                    mismatch_count * mismatch_bias)
         emis[s + len(known_states)] = norm_dict(emis[s + len(known_states)])
 
     return emis
