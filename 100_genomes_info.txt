@@ -5,7 +5,7 @@ YJM244	YJM210	CBS 1227	Romania	Clinical	wine/European
 YJM248	YJM218	CBS 2910	Unknown	Clinical (feces)	wine/European
 YJM270	YJM215	CBS 2807	Slovenia	Wine	wine/European
 YJM271	YJM214	CBS 1782	Unknown	Brewery	wine/European
-YJM320 	YJM309	CBS 7837	"CA, USA"	Clinical	mosaic
+YJM320	YJM309	CBS 7837	"CA, USA"	Clinical	mosaic
 YJM326	YJM310	CBS 7838	"CA, USA"	Clinical	mosaic
 YJM428	YJM308	CBS 7836	"CA, USA"	Clinical	mosaic
 YJM450	YJM440	92-123	"CA, USA"	Clinical	mosaic
@@ -95,6 +95,7 @@ YJM1529	M22	J. Fay	Unknown	Wine	wine/European
 YJM1549	DBVPG6040	Ed Louis	Netherlands	Fermenting fruit juice	mosaic
 YJM1552	S1	S288c	"CA, USA"	Rotten fig	mosaic
 YJM1573	YJM1566	NRRL Y-12603	India	Fermented food	mosaic
-YJM1574	N96 (=AWRI1775)	Unknown	Wine	wine/European	
+YJM1574	N96 (=AWRI1775)	Unknown	missing	Wine	wine/European
 YJM1592	YJM1585	NRRL Y-17448	Thailand	Sewage	sake
 YJM1628	YJM312	91-213	"CA, USA"	Clinical	mosaic
+YJM1615	missing	missing	missing	Clinical	mosaic
