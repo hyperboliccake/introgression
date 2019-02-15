@@ -4,7 +4,7 @@
 # Or you can do something like this:
 # cd $GRID_HOME
 
-#SBATCH --array=0-92 --mem 16384
+#SBATCH --array=0-15 --mem 16384
 
 # We need 20 GB for each instance (must be a good estimate).
 # Note that SLURM assumes one core per task. For tasks using multiple
@@ -14,7 +14,7 @@
 # Formats: mins, hrs:mins, days-hrs:mins
 # And use the 1hr QOS.
 # #SBATCH --time=2 --qos=1hr
-#SBATCH --time=5-0 --qos=1hr
+#SBATCH --time=1-0 --qos=1hr
 
 # This specifies 32 tasks, which will require at least 2 nodes.
 #SBATCH -n 1

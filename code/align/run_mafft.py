@@ -9,8 +9,7 @@ mask_suffix = ''
 if masked:
     mask_suffix = '_masked'
 
-# get all non-reference strains of cerevisiae and paradoxus
-s = get_strains(flatten(gp.non_ref_dirs.values()))
+ref_only = True
 
 gp_dir = '../'
 a = []
@@ -21,6 +20,34 @@ ref_prefix = '_'.join(gp.alignment_ref_order) + '_'
 ref_fns = [gp.ref_dir[r] + gp.ref_fn_prefix[r] + '_chr' + '?' + \
            mask_suffix + gp.fasta_suffix \
            for r in gp.alignment_ref_order]
+
+if ref_only:
+
+    chrm = gp.chrms[int(sys.argv[1])]
+
+    ref_fns_chrm = [x.replace('?', chrm) for x in ref_fns]
+    combined_fn = 'run_mafft_' + chrm + '.temp'
+
+    concatenate_fasta(ref_fns_chrm, \
+                      gp.alignment_ref_order, combined_fn)
+    
+    align_fn = ref_prefix + 'chr' + chrm + \
+        '_mafft' + gp.alignment_suffix
+    align_fn_abs = gp_dir + gp.alignments_dir + align_fn
+
+    cmd_string = gp.mafft_install_path + '/mafft ' + \
+                 combined_fn + ' > ' + align_fn_abs + '; '
+        
+    cmd_string += 'rm ' + combined_fn + ';'
+
+    print cmd_string
+    os.system(cmd_string)
+    sys.stdout.flush()
+
+    sys.exit()
+
+# get all non-reference strains of cerevisiae and paradoxus
+s = get_strains(flatten(gp.non_ref_dirs.values()))
 
 strain_fn = '*_chr?' + mask_suffix + gp.fasta_suffix
 
@@ -37,6 +64,8 @@ print strain
 current_strain_fn = d + strain_fn.replace('*', strain)
 
 for chrm in gp.chrms:
+    if chrm != 'XII':
+        continue
     print chrm
     sys.stdout.flush()
 
@@ -58,6 +87,10 @@ for chrm in gp.chrms:
                           gp.alignment_ref_order + [strain], combined_fn)
         
         # add --ep 0.123 to maybe get shorter alignment
+        #cmd_string += gp.mafft_install_path + '/mafft --ep 0.123 ' + \
+        #    combined_fn + ' > ' + align_fn_abs + '; '
+        #cmd_string += gp.mafft_install_path + '/mafft --retree 1 ' + \
+        #    combined_fn + ' > ' + align_fn_abs + '; '
         cmd_string += gp.mafft_install_path + '/mafft ' + \
             combined_fn + ' > ' + align_fn_abs + '; '
         
