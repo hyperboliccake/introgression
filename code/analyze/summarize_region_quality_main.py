@@ -4,7 +4,6 @@ import gzip
 import predict
 from collections import defaultdict
 from summarize_region_quality import *
-import gene_predictions
 sys.path.insert(0, '..')
 import global_params as gp
 sys.path.insert(0, '../misc/')
@@ -72,7 +71,15 @@ def main():
     ps_f = gzip.open(ps_fn, 'rb')
 
     # get chromosomes and strains from position file
-    for line in ps_f:
+    #for line in ps_f:
+    while True:
+        line = None
+        try:
+            line = ps_f.readline()
+        except:
+            pass
+        if line == None or line == '':
+            break
         line = line.split('\t')
         strain = line[0]
         current_chrm = line[1]
@@ -138,7 +145,8 @@ def main():
             #info_all = dict(zip(args['known_states'], \
             #                    [['.' for c in seqx] for sj in args['known_states']]))
             info = [{'gap_flag':False, 'unseq_flag':False, \
-                     'hmm_flag':False, 'match_list':[]} \
+                     'hmm_flag':False, 'match_list':[], \
+                     'gap_mask_list':[]} 
                     for k in range(len(seqx))]
 
             for sj in range(len(args['known_states'])):
@@ -162,15 +170,19 @@ def main():
                 # these two sequences
                 total_match_nongap, total_sites_nongap = \
                     seq_functions.seq_id(seqj, seqx)
+
                 regions_chrm['match_nongap_' + statej][i] = total_match_nongap
                 regions_chrm['num_sites_nongap_' + statej][i] = total_sites_nongap
 
                 # all alignment columns, excluding ones with gaps or
-                # masked bases in these two sequences
-                total_match_nonmask, total_sites_nonmask = \
+                # masked bases or unsequenced in these two sequences
+                total_match_nonmask, total_sites_nonmask, infoj = \
                     seq_id_unmasked(seqj, seqx, slice_start, \
                                     masked_sites_ind_align[sj],\
                                     masked_sites_ind_align[-1])
+                for k in range(len(seqx)):
+                    info[k]['gap_mask_list'].append(infoj['gap_mask'][k])
+
                 regions_chrm['match_nonmask_' + statej][i] = \
                     total_match_nonmask
                 regions_chrm['num_sites_nonmask_' + statej][i] = \
@@ -196,6 +208,7 @@ def main():
                 regions_chrm['count_' + sym][i] = info_string.count(sym)
 
             sys.stdout.flush()
+        
     ps_f.close()
 
     labels = labels + ['match_nongap_' + x for x in args['known_states']]
@@ -213,8 +226,8 @@ def main():
     f.write('\t'.join(labels) + '\n')
 
     for i in range(n):
-        if regions_chrm['chromosome'][i] != chrm:
-            continue
+        #if regions_chrm['chromosome'][i] != chrm:
+        #    continue
         f.write('\t'.join([str(regions_chrm[label][i]) for label in labels]))
         f.write('\n')
     f.close()

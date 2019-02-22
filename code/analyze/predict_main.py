@@ -5,7 +5,6 @@ import gzip
 sys.path.append('..')
 import global_params as gp
 sys.path.append('../sim')
-import sim_predict
 import sim_process
 sys.path.append('../align')
 import align_helpers
