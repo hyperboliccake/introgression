@@ -31,7 +31,7 @@ open_mode = 'a'
 if not resume:
     open_mode = 'w'
 
-gp_dir = '../'
+gp_dir = ''  # '../'
 
 if not os.path.isdir(gp.analysis_out_dir_absolute + args['tag']):
     os.makedirs(gp.analysis_out_dir_absolute + args['tag'])

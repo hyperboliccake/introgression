@@ -3,10 +3,8 @@ import os
 import copy
 import itertools
 import sim_process
-sys.path.append('..')
 import global_params as gp
-sys.path.append('../hmm')
-import hmm_bw
+import hmm.hmm_bw
 
 def process_args(arg_list, sim_args, i=1):
     

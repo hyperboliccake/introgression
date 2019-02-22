@@ -6,15 +6,11 @@ import re
 import numpy.random
 import itertools
 from collections import defaultdict
-sys.path.insert(0, '../hmm/')
-import hmm_bw
-sys.path.insert(0, '../sim/')
-import sim_predict
-import sim_process
-sys.path.insert(0, '../')
+import hmm.hmm_bw as hmm_bw
+import sim.sim_predict as sim_predict
+import sim.sim_process as sim_process
 import global_params as gp
-sys.path.insert(0, '../misc')
-import read_fasta
+import misc.read_fasta
 
 def process_predict_args(arg_list):
 

@@ -537,6 +537,98 @@ def test_write_blocks():
     assert output.getvalue() == result
 
 
+def test_read_blocks(mocker):
+    block_in = StringIO('''
+''')
+
+    mocked_file = mocker.patch('analyze.predict.open',
+                               return_value=block_in)
+    output = predict.read_blocks('mocked')
+
+    mocked_file.assert_called_with('mocked', 'r')
+    assert output.keys() == []
+
+    block_in = StringIO('''header
+test\tI\tpred\t100\t200\t10
+''')
+
+    mocked_file = mocker.patch('analyze.predict.open',
+                               return_value=block_in)
+    output = predict.read_blocks('mocked')
+
+    assert len(output) == 1
+    assert output['test']['I'] == [(100, 200, 10)]
+
+    block_in = StringIO('''header
+test\tI\tpred\t100\t200\t10
+test\tI\tpred\t200\t200\t30
+test\tI\tpred\t300\t400\t40
+test\tII\tpred\t300\t400\t40
+test2\tIII\tpred\t300\t400\t47
+''')
+
+    mocked_file = mocker.patch('analyze.predict.open',
+                               return_value=block_in)
+    output = predict.read_blocks('mocked')
+
+    assert len(output) == 2
+    assert len(output['test']) == 2
+    assert len(output['test2']) == 1
+    assert output['test']['I'] == [
+        (100, 200, 10),
+        (200, 200, 30),
+        (300, 400, 40),
+    ]
+    assert output['test']['II'] == [(300, 400, 40)]
+    assert output['test2']['III'] == [(300, 400, 47)]
+
+
+def test_read_blocks_labeled(mocker):
+    block_in = StringIO('''
+''')
+
+    mocked_file = mocker.patch('analyze.predict.open',
+                               return_value=block_in)
+    output = predict.read_blocks('mocked', labeled=True)
+
+    mocked_file.assert_called_with('mocked', 'r')
+    assert output.keys() == []
+
+    block_in = StringIO('''header
+r1\ttest\tI\tpred\t100\t200\t10
+''')
+
+    mocked_file = mocker.patch('analyze.predict.open',
+                               return_value=block_in)
+    output = predict.read_blocks('mocked', labeled=True)
+
+    assert len(output) == 1
+    assert output['test']['I'] == [('r1', 100, 200, 10)]
+
+    block_in = StringIO('''header
+r1\ttest\tI\tpred\t100\t200\t10
+r2\ttest\tI\tpred\t200\t200\t30
+r3\ttest\tI\tpred\t300\t400\t40
+r4\ttest\tII\tpred\t300\t400\t40
+r5\ttest2\tIII\tpred\t300\t400\t47
+''')
+
+    mocked_file = mocker.patch('analyze.predict.open',
+                               return_value=block_in)
+    output = predict.read_blocks('mocked', labeled=True)
+
+    assert len(output) == 2
+    assert len(output['test']) == 2
+    assert len(output['test2']) == 1
+    assert output['test']['I'] == [
+        ('r1', 100, 200, 10),
+        ('r2', 200, 200, 30),
+        ('r3', 300, 400, 40),
+    ]
+    assert output['test']['II'] == [('r4', 300, 400, 40)]
+    assert output['test2']['III'] == [('r5', 300, 400, 47)]
+
+
 def test_write_hmm():
     output = StringIO()
 

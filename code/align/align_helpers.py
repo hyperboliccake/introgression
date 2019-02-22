@@ -1,6 +1,5 @@
 import sys
 import os
-sys.path.insert(0, '..')
 import global_params as gp
 
 def flatten(l):
