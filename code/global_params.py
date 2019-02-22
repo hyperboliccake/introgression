@@ -159,6 +159,11 @@ blast_install_path = '/tigress/anneec/software/ncbi-blast-2.7.1+-src/c++/Release
 
 orffinder_install_path = '/tigress/anneec/software/'
 
+ldselect_install_path = '/tigress/anneec/software/ldSelect/'
+
+structure_install_path = '/tigress/anneec/software/structure/'
+
+
 #====
 # other
 #====
