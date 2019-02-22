@@ -60,8 +60,23 @@ def seq_id(ref_seq, seq):
             total_sites += 1
             if ref_seq[i] == seq[i]:
                 total_match += 1
-
     return total_match, total_sites
+
+def seq_id_windowed(seq1, seq2, window):
+    n = len(seq1)
+    total_sites = 0
+    total_match = 0
+    matches = []
+    for i in range(n):
+        if seq1[i] in r and seq2[i] in r:
+            total_sites += 1
+            if seq1[i] == seq2[i]:
+                total_match += 1
+            if total_sites == window:
+                matches.append(float(total_match)/window)
+                total_sites = 0
+                total_match = 0
+    return matches
 
 def translate(seq):
     if len(seq) % 3 != 0:
