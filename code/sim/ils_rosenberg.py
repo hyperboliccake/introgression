@@ -236,7 +236,7 @@ def concordance(r, s, q, T3, T2):
 #print results['topological concordance']
 #print results['monophyletic concordance']
 
-#mpmath.mp.dps = 50
+mpmath.mp.dps = 100
 #for i in range(11, 16):
 #    mpmath.nprint(monophyletic_concordance_2(10, 100, 375000000/8000000./i), 50)
 #mpmath.nprint(monophyletic_concordance_2(10, 100, 375000000/8000000.), 50)
