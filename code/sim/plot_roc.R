@@ -1,6 +1,7 @@
 library(ggplot2)
 library(viridis)
 require(grDevices)
+library(grid)
 source('../my_color_palette.R')
 
 #####
@@ -55,7 +56,8 @@ ggplot(a, aes(x=fpr,y=tpr,colour=as.factor(migration_rate))) + geom_line() + geo
           theme(panel.background=element_rect(fill="white"),
           panel.grid.minor=element_blank(), panel.grid.major=element_blank(),
           axis.line=element_line(),
-          axis.text.x = element_text(colour="black"), axis.text.y = element_text(colour="black"))
+          axis.text.x = element_text(colour="black"),
+          axis.text.y = element_text(colour="black"))
 
 ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/sim/roc_plots/roc_', id, '.pdf', sep=''), height=9, width=9)
 
@@ -100,22 +102,30 @@ a2 = a2[order(a2$tpr),]
 
 a = rbind(a1, a2)
 
-ggplot(a, aes(x=fpr,y=tpr,shape=method,colour=method)) + geom_line() + geom_point(size=3) +
-          xlab('False positive rate') + ylab('True positive rate') +
-          #scale_colour_viridis(discrete=TRUE) +
-    scale_colour_manual(values = c(my_color_palette[['misc1']],my_color_palette[['misc2']])) +
+ggplot(a, aes(x=fpr,y=tpr,shape=method,colour=method)) +
+    geom_line(size=2) +
+    geom_point(size=4, alpha=.7) +
+    xlab('False positive rate') + ylab('True positive rate') +
+    scale_colour_manual(values = c(my_color_palette[['misc1']],
+                                   my_color_palette[['misc2']])) +
     scale_shape_manual(values=c(19,17)) +
     geom_abline(intercept = 0, slope = 1, linetype='dashed') + 
     labs(colour="Method", shape="Method") +
           scale_x_continuous(expand=c(0,.01)) + 
 	  scale_y_continuous(expand=c(0,.01)) + 
           theme(panel.background=element_rect(fill="white"),
-          panel.grid.minor=element_blank(), panel.grid.major=element_blank(),
+          panel.grid.minor=element_blank(),
+          panel.grid.major=element_blank(),
           axis.line=element_line(),
-          axis.text.x = element_text(colour="black", size=14), axis.text.y = element_text(colour="black", size=14),
-          axis.title.x = element_text(colour="black", size=16), axis.title.y = element_text(colour="black", size=16),
-          legend.title = element_text(size=16), legend.text = element_text(size=14), 
+          axis.text.x = element_text(colour="black", size=16),
+          axis.text.y = element_text(colour="black", size=16),
+          axis.title.x = element_text(colour="black", size=20),
+          axis.title.y = element_text(colour="black", size=20),
+          plot.margin=unit(c(.5,.5,.5,.5),"in"),
+          legend.position = c(.8,.2),
+          legend.title = element_text(size=18),
+          legend.text = element_text(size=16), 
           legend.key = element_rect(fill = "transparent"))
 
-ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/sim/roc_plots/roc_', sim_id, '_', pred_id, '.pdf', sep=''), height=9, width=10.5)
+ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/sim/roc_plots/roc_', sim_id, '_', pred_id, '.png', sep=''), height=6, width=6)
 
