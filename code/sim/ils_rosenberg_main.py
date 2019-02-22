@@ -2,14 +2,33 @@ import ils_rosenberg
 import mpmath as mp
 import sys
 
-mp.dps = 200
+mp.dps = 100
 
 # correct
 # 11.71875 * 4 * n / n = 46.875
 T = 46.875
-for Ti in [T/10, T/5, T/2, T, T*2, T*5, T*10]:
+
+num_points = 30
+#x = float(num_points) / 2
+max_multiplier = 20
+T_values = []
+x = T - T/float(max_multiplier)
+for i in range(num_points):
+    T_values.append(x * float(i) / num_points + T / float(max_multiplier))
+T_values.append(T)
+for i in range(num_points):
+    T_values.append(x * float(i) / num_points + T)
+
+#for i in range(num_points/2, 0, -1):
+#    T_values.append(T/(float(max_multiplier * i) / x))
+#T_values.append(T)
+#for i in range(1, num_points/2 + 1):
+#    T_values.append(T*float(max_multiplier * i) / x)
+print T_values
+
+for Ti in T_values:
     #print "%0.50f" % (1 - ils_rosenberg.monophyletic_concordance_2(1, 2, Ti))
-    print Ti, "%0.50f" % (1 - ils_rosenberg.monophyletic_concordance_2(1, 94, Ti))
+    print Ti, "%0.100f" % (1 - ils_rosenberg.monophyletic_concordance_2(1, 94, Ti))
 
 sys.exit()
 
