@@ -260,6 +260,11 @@ structure/
 Several files for running population structure analyses that aren't
 crucial to deal with right now.
 
+plotting/
+---------
+
+All the code related to just things, mostly in R.
+
 to_update/
 ----------
 
