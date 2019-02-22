@@ -1,0 +1,310 @@
+##============
+## analyze
+##============
+
+*******
+* Overall workflow goal:
+*******
+
+1. Take in alignments, initial guesses about how much introgression is
+expected, and parameters specifying how long to train HMM for and
+whether to use viterbi algorithm or posterior probabilities. Output
+predictions of regions for each reference and (optionally) unknown
+state.
+
+2. Generate alignment file for each region, formatted/annotated in a
+way that's easy to look at.
+
+3. Annotate each region with some information related to quality that
+we'll use in filtering: identity with each reference, fraction of
+region that is gapped and/or masked, number of sites that exclusively
+match predicted reference or default reference.
+
+4. Optionally make some plots to inform choice of filtering thresholds.
+
+5. Choose filtering thresholds. Annotate all regions with with filters
+they pass, and create set of only regions that pass all filters to use
+for downstream analysis.
+
+6. Annotate each region with some additional information: overlapping
+genes, ...
+
+7. Generate an alignment for each introgressed gene.
+
+8. Summarize results in a variety of ways: by strain (all regions
+introgressed, all genes introgressed), by gene (all strains
+introgressed), ...
+
+9. Calculate other things of interest: how much introgression is shared
+among strains, nucleotide diversity, population structure stuff, ...
+
+10. Plot things.
+
+*******
+* What the code is actually doing currently:
+*******
+
+predict_main
+------------
+
+Runs the HMM sequentially on all alignments. (Could be run in parallel
+and aggregated after.)
+
+input files
+- global_params.py
+- predict_args.txt
+- strains.txt
+- alignments
+
+output files
+- postions_tag.txt.gz -> the positions actually given to the HMM 
+  		      	 (e.g. polymorphic alignment columns with no gaps)
+- blocks_state_tag.txt -> all regions predicted to be in this state 
+  		       	  for each strain and chromosome 
+- hmm_init_tag.txt -> initial probabilities set in the HMM
+  		      for each strain and chromosome
+- hmm_tag.txt -> probabilities after training is complete
+- probs_tag.txt.gz -> rather large file that gives probability of each state
+  		      at each position for each strain and chromosome
+
+uses functions from
+- predict
+- ../sim/sim_process
+- ../align/align_helpers
+- ../misc/read_fasta
+
+slurm script
+- run_predict.slurm.sh
+
+id_regions_main
+---------------
+
+Just gives an id to each region (e.g. r123), after ordering them in a
+reasonable way.
+
+input files
+- global_params.py
+- predict_args.txt
+- blocks_state_tag.txt
+
+output files
+- blocks_state_tag_labeled.txt -> same as blocks_state_tag.txt but with
+  			       	  additional column for region id
+
+uses functions from
+- predict
+- ../misc/read_fasta
+
+summarize_region_quality_main
+-----------------------------
+
+Processes all regions for one chromosome for one state. Calculates
+some things related to quality for each introgressed region, like the
+fraction of alignment columns that are gapped and/or masked and the
+number of sites that match only the predicted reference. Generates a
+new file of regions for each reference with that additional
+information, and also generates and alignment file for each region
+that contains an extra sequence of symbols giving information about
+each site.
+
+input files
+- global_params.py
+- predict_args.txt
+- blocks_state_tag_labeled.txt
+- alignments
+- positions_tag.txt.gz
+- strain_chrX_intervals.txt -> regions of the genome to be masked, 
+  			       one file for each chromosome for each
+			       reference strain and test strain
+
+other inputs
+- state
+- chromosome
+
+output files
+- blocks_state_tag_chrX_quality.txt -> same as blocks_state_tag_labeled.txt but with
+  				       additional columns related to quality of region
+- id.fa.gz -> one file for each introgressed region giving the alignment,
+  	      in addition to a sequence of symbols indicating which sites match the
+	      predicted reference and/or other references
+
+uses functions from
+- summarize_region_quality
+- predict
+- ../misc/read_fasta
+- ../misc/read_table
+- ../misc/seq_functions
+
+slurm script
+- run_summarize_region_quality.slurm.sh
+
+combine_chromosome_files_main
+-----------------------------
+
+Just combines all the individual _quality chromosome files from above
+into one file for each state.
+
+input files
+- global_params.py
+- predict_args.txt
+- blocks_state_tag_chrX_quality.txt
+
+output files
+- blocks_state_tag_quality.txt
+
+uses functions from
+- predict
+
+filter_1_main
+-------------
+
+This first filtering step is to get rid of regions that we can't
+confidently call introgressed at all, regardless of whether we can
+confidently assign them to a *specific* introgressed state.
+
+input files
+- global_params.py
+- predict_args.txt
+- blocks_state_tag_quality.txt
+- id.fa.gz
+
+output_files
+- blocks_state_tag_filtered1intermediate.txt -> same as blocks_state_tag_quality.txt
+  					     	but includes a column for the reason
+						(if any) that the region failed
+						filtering
+- blocks_state_tag_filtered1.txt -> same as blocks_state_tag_quality.txt
+  				    but with all regions that didn't pass filtering
+				    removed
+
+uses functions from
+- filter_helpers
+- predict
+- ../misc/read_fasta
+- ../misc/read_table
+
+filter_2_main
+-------------
+
+The second filtering step is to determine whether we can assign each
+region to one or more specific introgressed states.
+
+input files
+- global_params.py
+- predict_args.txt
+- blocks_state_tag_filtered1.txt 
+- id.fa.gz
+
+output files
+- blocks_state_tag_filtered2intermediate.txt -> same as blocks_state_tag_filtered1.xt
+  					     	but with extra column giving the
+						state(s) the region is assigned to
+- blocks_state_tag_filtered2.txt -> same as blocks_state_filtered1.txt but with
+  				    all regions assigned to more than one state
+				    removed
+
+uses functions from
+- filter_helpers
+- predict
+- ../misc/read_fasta
+- ../misc/read_table
+
+filter_2_thresholds_main
+------------------------
+
+Largely redundant code to above, but tries a range of filtering
+thresholds, and outputs a file that counts how many regions we assign
+to each possible combination of states when using each threshold.
+
+input files
+- global_params.py
+- predict_args.txt
+- blocks_state_tag_filtered1.txt 
+- id.fa.gz
+
+output files
+- filter_2_thresholds_tag.txt
+
+uses functions from
+- filter_helpers
+- predict
+- ../misc/read_fasta
+- ../misc/read_table
+
+summarize_strain_states_main
+----------------------------
+
+Summarizes for each strain how many introgressed sites fall into each
+reference state or combination of reference states at different levels
+of filtering.
+
+input files
+- global_params.py
+- predict_args.txt
+- blocks_state_tag_filtered1intermediate.txt 
+- blocks_state_tag_filtered2intermediate.txt 
+- 100_genomes_info.txt
+
+output files
+- state_counts_by_strain.txt
+
+uses functions from
+- filter_helpers
+- predict
+- ../misc/read_fasta
+- ../misc/read_table
+
+structure/
+----------
+
+Several files for running population structure analyses that aren't
+crucial to deal with right now.
+
+to_update/
+----------
+
+Other code files that are more disorganized and that I haven't updated
+since I made breaking changes to use multiple introgressed references,
+but that are still potentially useful (in no particular order):
+- aggregate_genes_by_strains_main
+  -> generates file listing genes introgressed in each strain, and file
+     listing number of strains introgressed for each gene
+- annotate_positions_main and annotate_positions and run_annotate_positions.slurm.sh
+  -> generates files for converting between master reference position 
+     and other strain positions, based on alignments; there is probably a
+     better way to deal with this issue
+- annotate_regions_main and annotate_regions and run_annotate_regions
+  -> generates site summary files that give reference and test strain indices for
+     each alignment column, as well as other information about whether that site
+     is introgressed, in a gene, masked, etc.
+- check_paralogs_main
+  -> checks whether each introgressed gene has a paralog; if it does, blasts
+     that gene against the gene sequence from the non-introgressed and 
+     introgressed reference and the paralog from each of those references;
+     outputs lists of genes whose best hit is for each of those sequences
+- combine_gene_all_strains_main and combine_all_strains 
+  -> generates a few different alignment files for each introgressed gene
+- combine_gene_all_strains_main
+  -> mostly redundant to the above, but for arbitrary start and end coordinates
+     instead of genes
+- compare_3strains_main
+  -> calculates how many introgressed sites are in common among a specific 
+     set of strains
+- compare_to_strope
+  -> generates lists of genes that are in common or not between my introgression 
+     calls and a different set of calls
+- count_coding_changes_main and count_coding_changes and run_count_coding_changes
+  -> counts number of introgressed sites that fall within coding regions 
+     by different definitions
+- count_introgressed_main
+  -> calculates fraction of each chromosome introgressed in one or more strains
+- frequency_of_introgression_main
+  -> calculates number of strains each site is introgressed in
+- gene_overlap_main and gene_predictions
+  -> generates files summarizing the genes in each region, the genes for each 
+     strain, and the strains for each gene
+- nucleotide_diversity_from_introgression_main and 
+  run_nucleotide_diversity_from_introgression
+  -> calculates nucleotide diversity considering all pairs of strains, counting 
+     all sites or only introgressed and/or coding sites
+- 
