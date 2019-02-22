@@ -2,14 +2,10 @@ import sys
 import os
 import predict
 import gzip
-sys.path.append('..')
 import global_params as gp
-sys.path.append('../sim')
-import sim_process
-sys.path.append('../align')
-import align_helpers
-sys.path.append('../misc')
-import read_fasta
+from sime import sim_process
+from align import align_helpers
+from misc import read_fasta
 
 ##======
 # read in analysis parameters

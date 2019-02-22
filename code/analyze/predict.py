@@ -1,16 +1,12 @@
-import os
-import sys
 import copy
 import gzip
-import re
-import numpy.random
 import itertools
 from collections import defaultdict
-import hmm.hmm_bw as hmm_bw
-import sim.sim_predict as sim_predict
-import sim.sim_process as sim_process
+from hmm import hmm_bw
+from sim import sim_predict
+from sim import sim_process
 import global_params as gp
-import misc.read_fasta
+from misc import read_fasta
 
 def process_predict_args(arg_list):
 
@@ -392,8 +388,6 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args, \
     # set states and initial probabilties
     hmm.set_states(predict_args['states'])
     hmm.set_init(init)
-    #if emis[0]['++'] <= emis[1]['++']:
-    #    print 'EMIS INIT PROBLEM'
     hmm.set_emis(emis)
     hmm.set_trans(trans)
 
@@ -424,7 +418,7 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args, \
         return predicted, p[0], hmm, hmm_init, ps
 
     else:
-        print 'invalid method'
+        print('invalid method')
 
 def write_positions(ps, f, strain, chrm):
     sep = '\t'
@@ -779,47 +773,20 @@ def predict_introgressed_hmm(seqs, states, sim_states, unknown_state, init, emis
 
     for i in range(len(seqs)):
         if i % 100 == 0:
-            print 'viterbi on seq', i
+            print('viterbi on seq', i)
             sys.stdout.flush()
         hmm.set_obs(seqs[i])
         predicted.append(convert_predictions(hmm.viterbi(), states))
 
     return predicted, hmm
 
-'''
-def predict_introgressed_id(seqs):
-    # ok so the aligned sequences can have gaps
-    window_size = 1000
-    window_shift = 500
-    thresholds = [.7, .95, .96]
-    predicted = []
-    for seq in seqs:
-        p = [0 for b in xrange(len(seq))]
-        for i in range(0, len(seq) - window_size, window_shift):
-            region = seq[i:i+window_size]
-            count0 = region.count('0')
-            count1 = region.count('1')
-            count2 = region.count('2')
-            #count3 = window_size - count0 - count1 - count2
-            cer_match = float(count0 + count2) / len(region)
-            par_match = float(count1 + count2) / len(region) 
-            if cer_match > thresholds[0]:
-                if cer_match < thresholds[1] and par_match > thresholds[2]:
-                    # this automatically appends to the list if we've
-                    # gone over the length, but we'll deal with that
-                    # later
-                    p[i:i+window_size] = [1] * window_size 
-        predicted.append(p[:len(seq)])
-
-    return predicted
-'''
 
 def get_predicted_tracts(predicted, all_ps, master_ref, seq_inds):
 
     blocks = []
     # loop through all sequences
     for s in xrange(len(predicted)):
-        print 'alignment block: ', all_ps[s]
+        print('alignment block: ', all_ps[s])
         alignment_block = all_ps[s]
         # loop through all sites in that sequence, keeping track of
         # introgressed blocks
@@ -841,7 +808,7 @@ def get_predicted_tracts(predicted, all_ps, master_ref, seq_inds):
                 start_int = i
                 end_int = i
                 prev_species = predicted[s][i]
-                
+
     return blocks
 
 def write_predicted_tracts(blocks, f):

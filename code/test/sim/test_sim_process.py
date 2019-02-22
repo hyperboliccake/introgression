@@ -1,5 +1,5 @@
-import sim.sim_process as sim_process
-import hmm.hmm_bw as hmm
+from sim import sim_process
+from hmm import hmm_bw as hmm
 import pytest
 import operator
 import numpy as np
@@ -51,9 +51,10 @@ def test_convert_to_blocks_one():
         blocks = sim_process.convert_to_blocks_one(seq, states)
 
         nseq = np.array(seq, int)
+        # add element to the end to catch repeats on last index
+        nseq = np.append(nseq, nseq[-1]+1)
         diff = np.diff(nseq)
         locs = np.nonzero(diff)[0]
-        locs = np.append(locs, locs[-1]+1)
         lens = np.diff(locs)
         lens = np.append(locs[0]+1, lens)
 
@@ -64,4 +65,4 @@ def test_convert_to_blocks_one():
             current += lens[i]
 
         for k in blocks:
-            assert blocks[k] == result[k]
+            assert blocks[k] == result[k], f"fail iteration {test}"

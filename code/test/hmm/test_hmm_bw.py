@@ -1,4 +1,4 @@
-import hmm.hmm_bw as hmm
+from hmm import hmm_bw as hmm
 import math
 import random
 import pytest

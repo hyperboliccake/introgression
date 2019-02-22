@@ -1,5 +1,5 @@
-import sim.sim_predict as sim_predict
-import hmm.hmm_bw as hmm
+from sim import sim_predict
+from hmm import hmm_bw as hmm
 import pytest
 
 

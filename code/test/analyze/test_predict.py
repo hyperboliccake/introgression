@@ -1,9 +1,8 @@
-import analyze.predict as predict
-import hmm.hmm_bw as hmm
+from analyze import predict
+from hmm import hmm_bw as hmm
 import pytest
 from pytest import approx
-# TODO: with python 3 change to io.StringIO
-from StringIO import StringIO
+from io import StringIO
 from collections import Counter, defaultdict
 import random
 import numpy as np
@@ -262,8 +261,7 @@ def symbol_test_helper(sequence):
         symbols[k] /= total
     symbols = defaultdict(int, symbols)
 
-    sequence = np.array(sequence)
-    sequence = sequence.view('S1').reshape((sequence.size, -1))
+    sequence = np.array([list(s) for s in sequence])
 
     # look along species
     for s in np.transpose(sequence):
@@ -367,16 +365,7 @@ def np_emission(args, symbols):
         probs[k] *= 2**(len(args['known_states']) - 2)
 
     # make char array
-    symbols = np.array(symbols)
-    syms = symbols.view('S1').reshape((symbols.size, -1))
-    # add first column to rest
-    first_col = np.tile(syms[:, 0:1], (1, len(args['known_states'])))
-    syms = np.core.defchararray.add(first_col,
-                                    syms[:, 0:len(args['known_states'])])
-    # lookup in table
-    emit = np.vectorize(probs.__getitem__)(syms)
-    # normalize
-    emit /= sum(emit)
+    sym_array = np.array([list(s) for s in symbols], dtype='<U1')
 
     # for unknown
     num_match = np.vectorize(
@@ -388,6 +377,15 @@ def np_emission(args, symbols):
     # repeat for number of unknown states
     num_match = np.transpose(
         np.tile(num_match, (len(args['unknown_states']), 1)))
+
+    # add first column to rest
+    first_col = np.tile(sym_array[:, 0:1], (1, len(args['known_states'])))
+    sym_array = np.core.defchararray.add(
+        first_col, sym_array[:, 0:len(args['known_states'])])
+    # lookup in table
+    emit = np.vectorize(probs.__getitem__)(sym_array)
+    # normalize
+    emit /= sum(emit)
 
     # create result
     result = [defaultdict(float, {k: v for k, v in zip(symbols, emit[:, i])})
@@ -546,7 +544,7 @@ def test_read_blocks(mocker):
     output = predict.read_blocks('mocked')
 
     mocked_file.assert_called_with('mocked', 'r')
-    assert output.keys() == []
+    assert list(output.keys()) == []
 
     block_in = StringIO('''header
 test\tI\tpred\t100\t200\t10
@@ -592,7 +590,7 @@ def test_read_blocks_labeled(mocker):
     output = predict.read_blocks('mocked', labeled=True)
 
     mocked_file.assert_called_with('mocked', 'r')
-    assert output.keys() == []
+    assert list(output.keys()) == []
 
     block_in = StringIO('''header
 r1\ttest\tI\tpred\t100\t200\t10
@@ -672,5 +670,5 @@ def test_write_state_probs():
     assert output.getvalue() == \
         ('strain\tI\t'
          'a:0.00000,1.00000,0.00000\t'
-         'c:1.00000,0.00000,1.00000\t'
-         'b:0.00000,0.00000,1.00000\n')
+         'b:0.00000,0.00000,1.00000\t'
+         'c:1.00000,0.00000,1.00000\n')

@@ -1,10 +1,7 @@
-import sys
-import os
 import copy
 import itertools
-import sim_process
+from sim import sim_process
 import global_params as gp
-import hmm.hmm_bw
 
 def process_args(arg_list, sim_args, i=1):
     
@@ -268,7 +265,6 @@ def emission_probabilities(d_freqs, own_bias, num_sites, predict_args):
         individual_symbol_freqs, symbol_freqs, weighted_match_freqs \
             = d_freqs[state]
         for symbol in symbol_freqs.keys():
-            #print state, symbol, symbol_freqs[symbol], float(predict_args['expected_tract_lengths'][state] * predict_args['expected_num_tracts'][state]) / num_sites, predict_args['expected_tract_lengths'][state], predict_args['expected_num_tracts'][state], num_sites
             p = symbol_freqs[symbol] * weight_expected * \
                 float(predict_args['expected_tract_lengths'][state] * \
                       predict_args['expected_num_tracts'][state]) / \
@@ -529,7 +525,7 @@ def run_hmm(seqs, sim_args, predict_args, init, emis, trans, train, default_stat
         return predicted, None, hmm, hmm_init
 
     else:
-        print 'invalid method'
+        print('invalid method')
 
 def set_up_seqs(sim, sim_args, predict_args): 
 
