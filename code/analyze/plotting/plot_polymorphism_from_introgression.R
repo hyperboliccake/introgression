@@ -8,33 +8,63 @@ source('../my_color_palette.R')
 
 tag = 'u3_i.001_tv_l1000_f.01'
 
-a = read.table('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/u3_i.001_tv_l1000_f.01/polymorphism/nucleotide_diversity.txt', header=T, stringsAsFactors=F)
+a = read.table(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/',
+               'analysis/u3_i.001_tv_l1000_f.01/polymorphism/nucleotide_diversity_c.txt',
+               sep = ''),
+               header=T, stringsAsFactors=F)
 
-a$chromosome = factor(a$chromosome, levels = c('all', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI'))
+a$chromosome = factor(a$chromosome, levels = c('all', 'I', 'II', 'III', 'IV',
+                                               'V', 'VI', 'VII', 'VIII', 'IX',
+                                               'X', 'XI', 'XII', 'XIII', 'XIV',
+                                               'XV', 'XVI'))
 
 a1 = a[which(a$chromosome != 'all'),]
-average_frac = 1 - a[which(a$chromosome=='all'),]$pi_nonint / a[which(a$chromosome=='all'),]$pi
+average_frac = 1 - a[which(a$chromosome=='all'),]$pi_nonint /
+    a[which(a$chromosome=='all'),]$pi
+average_frac_coding = 1 - a[which(a$chromosome=='all'),]$pi_coding_nonint /
+    a[which(a$chromosome=='all'),]$pi_coding
 
-ggplot(a1, aes(x=chromosome, y=1-pi_nonint/pi, fill='x')) +
+print(a[which(a$chromosome=='all'),]$pi_nonint)
+print(a[which(a$chromosome=='all'),]$pi)
+print(average_frac)
+print(a[which(a$chromosome=='all'),]$pi_coding_nonint)
+print(a[which(a$chromosome=='all'),]$pi_coding)
+print(average_frac_coding)
+
+a1$frac = 1 - a1$pi_nonint / a1$pi
+a1$frac_coding = 1 - a1$pi_coding_nonint / a1$pi_coding
+
+a2 = melt(a1, id.vars = c("chromosome"))
+a2 = a2[which(grepl("frac", a2$variable)),]
+
+
+ggplot(a2, aes(x=chromosome, y=value, fill=variable)) +
     geom_bar(stat='identity', position='dodge') +
-    scale_fill_manual(values = c(my_color_palette[['introgressed']])) +
+    scale_fill_manual(values = c(my_color_palette[['introgressed']],
+                                 my_color_palette[["misc2"]]),
+                      labels = c("Whole genome", "Coding regions")) +
     ylab('Fraction of nucleotide diversity resulting from paradoxus introgression') +
     xlab('Chromosome') +
-    geom_hline(yintercept=average_frac, linetype='dashed', color='black') +
-    scale_y_continuous(expand = c(0,0), limits=c(0,1.1*max(1-a1$pi_nonint/a1$pi)))+ 
+    geom_hline(yintercept=average_frac, linetype='dashed',
+               color=my_color_palette[["introgressed"]]) +
+    geom_hline(yintercept=average_frac_coding, linetype='dashed',
+               color=my_color_palette[["misc2"]]) +
+    scale_y_continuous(expand = c(0,0), limits=c(0,1.1*max(a2$value)))+ 
         theme(panel.background=element_rect(fill="white"),
           panel.grid.minor=element_blank(), panel.grid.major=element_blank(),
-          legend.position="none",
           axis.line=element_line(),
           axis.title.x = element_text(size=16), 
           axis.title.y = element_text(size=15), 
           axis.text.x = element_text(colour="black",size=12), 
           axis.text.y = element_text(colour="black",size=12),
-          legend.text=element_text(size=14),
+          legend.text = element_text(size=16),
+          legend.position = c(.85, .85),
           legend.title=element_blank())
 
 ggsave('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/u3_i.001_tv_l1000_f.01/polymorphism/nuc_div_by_chrm.pdf', height=7, width=12)
 
+
+stop here
 
 
 a = read.table('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/u3_i.001_tv_l1000_f.01/polymorphism/polymorphism_summary.txt', header=T, stringsAsFactors=F)

@@ -1,0 +1,12 @@
+#define MAXPOPS 6
+#define BURNIN 2
+#define NUMREPS 10000
+#define NUMINDS 94
+#define PLOIDY 1
+#define MISSING -9
+#define ONEROWPERIND 0
+#define LABEL 1
+#define POPDATA 1
+#define MARKERNAMES 1
+#define RECESSIVEALLELES 0
+#define MAPDISTANCES 1

@@ -9,33 +9,34 @@ source('../my_color_palette.R')
 options(stringsAsFactors = FALSE) # fuck you R
 
 # r2259 -> SUL1
+#region_start = 787000
+#region_end = 794000
+#chrm = 'II'
 
-region_start = 787000
-region_end = 794000
-chrm = 'II'
+# r4560 -> SIR1
+region_start = 917571
+region_end = 921647
+chrm = 'IV'
 
 # save plot
 fn = paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/u3_i.001_tv_l1000_f.01/plots/region_chr', chrm, '_', region_start, '-', region_end,'.pdf', sep='')
-pdf(fn, width = 10, height = 5)
+pdf(fn)
 
 # get strains
 strains = read.table('strains.txt', header=F)
 strains = t(strains)
 row.names(strains) = NULL
 strains = data.frame(strain=strains[3:nrow(strains),1])
-
-strains = data.frame(strain=c('yjm450', 'yjm320', 'yjm1399', 'yjm1355'))#
 strains$index=1:nrow(strains)
-print(strains)#
 
 ## formatting parameters
 #context_length = 200
-genome_height = 3
+genome_height = 17
 num_strains = nrow(strains)
 strain_height = 2
 padding = 1
-genome_width = 1
-hmargin = 2 # for top and bottom
+genome_width = 2
+hmargin = 5 # for top and bottom
 
 ## plot overall outline, line for each strain etc
 
@@ -49,7 +50,7 @@ plot(c(region_start, region_end),
      ylab = "", main = "", xaxt='n', yaxt='n', xaxs='i', yaxs='i')
 
 ## move x axis label and title closer to axis
-title(xlab = paste("position on chromosome", chrm), line = 1.8, cex.title=1.2)
+title(xlab = paste("position on chromosome", chrm), line = 1.8)
 
 ## plot overall line for genome at bottom
 rect(region_start, 
@@ -66,7 +67,7 @@ positions = seq(padding + strain_height/2,
                 (num_strains*(padding + strain_height)),
                 (padding+strain_height))
 axis(2, at=positions, labels=strains$strain[order(strains$index)],
-     las=1, cex.axis=1, mgp=c(3, .1, 0), tick=FALSE)
+     las=1, cex.axis=.35, mgp=c(3, .1, 0), tick=FALSE)
 ## plot gridlines for strains
 for (p in positions) {   
     abline(a=p, b=0, col=alpha(my_color_palette[['nonintrogressed']],.3))
@@ -133,7 +134,7 @@ for (i in 1:nrow(variants)) {
         }
         else if (x == 'n') {
             #points(ps, positions[j], col = alpha('gray50',.5),pch='|',cex=.3)
-            segments(ps, positions[j] - strain_height / 2, y1=positions[j] + strain_height/2, col = alpha('black',.5), lend='butt', lwd=.5)
+            segments(ps, positions[j] - strain_height / 2, y1=positions[j] + strain_height/2, col = alpha('gray50',.5), lend='butt', lwd=.5)
         }
         else if (x == '-') {
             segments(ps-.5, positions[j], x1=ps+.5, col = 'white',lend='butt')

@@ -39,9 +39,12 @@ def referize(strain_seq, ref_ind_to_strain_ind, skip_char = 'N'):
             s[i] = strain_seq[si]
     return s
 
-region_start = 787000
-region_end = 794000
-chrm = 'II'
+#region_start = 787000
+#region_end = 794000
+#chrm = 'II'
+region_start = 917571 - 100
+region_end = 921647 + 100
+chrm = 'IV'
 region_length = region_end - region_start + 1
 
 ##======
@@ -99,7 +102,11 @@ for i in range(region_length):
     for strain, d in strain_dirs:
         x = seqs[strain][i]
         f.write('\t')
-        if x in 'atgc':
+        if x not in 'atgc' or \
+           master_seq[i] not in 'atgc' or \
+           other_ref_seq[i] not in 'atgc':
+            f.write('-')
+        else:
             if x == master_seq[i]:
                 if x == other_ref_seq[i]:
                     f.write('b')
@@ -110,8 +117,6 @@ for i in range(region_length):
                     f.write('p')
                 else:
                     f.write('n')
-        else:
-            f.write('-')
     f.write('\n')
 f.close()
 

@@ -1,0 +1,12 @@
+#define LINKAGE 1
+#define NOADMIX 0
+#define SITEBYSITE 1
+#define PHENOTYPE 0
+#define EXTRACOLS 0
+#define USEPOPINFO 0
+#define POPFLAG 1
+#define MIGRPRIOR .1
+#define GENSBACK 1
+#define STARTATPOPINFO 1
+#define INTERMEDSAVE 1000
+#define ADMBURNIN 1

@@ -5,6 +5,7 @@ library(ggplot2)
 library(reshape2)
 library(RColorBrewer)
 library(viridis)
+library(VennDiagram)
 source('../my_color_palette.R')
 
 
@@ -26,14 +27,41 @@ regions = read.table(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgressi
 
 genes_strope = read.table('compare_to_strope/genes_both.txt', header=F, stringsAsFactors=F)
 
+gt = read.table(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/', tag, '/gene_summary', suffix,'_', tag, '.txt', sep=''),
+                sep='\t', header=T, stringsAsFactors=F)
+
+##=====
+# venn diagram
+##=====
+
+x = nrow(read.table('compare_to_strope/genes_me_only.txt',
+                    header=F, stringsAsFactors=F))
+y = nrow(read.table('compare_to_strope/genes_strope_only.txt',
+                    header=F, stringsAsFactors=F))
+xy = nrow(read.table('compare_to_strope/genes_both.txt',
+                     header=F, stringsAsFactors=F))
+x = x + xy
+y = y + xy
+
+v = draw.pairwise.venn(x, y, xy,
+                       #category = c('Our predictions', 'Strope et al. predictions'),
+                       #cat.col = c(my_color_palette[['misc1']],
+                       #            my_color_palette[['misc2']]),
+                       fill=c(my_color_palette[['misc1']],
+                              my_color_palette[['misc2']]),
+                       alpha=.7, cex=4)
+png(filename = paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/',
+                     'results/analysis/', tag,
+                     '/plots/compare_to_strope_venn.png', sep=''),
+    width = 3, height = 3, units = 'in', res=300)
+grid.draw(v)
+dev.off()
+
 
 ##=====
 # average fraction of gene introgressed vs avg containing region length,
 # labeled by whether or not called by strope et al
 ##=====
-
-gt = read.table(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/', tag, '/gene_summary', suffix,'_', tag, '.txt', sep=''),
-                sep='\t', header=T, stringsAsFactors=F)
 
 gt$strope_found = gt$gene %in% genes_strope[,1]
 
@@ -102,24 +130,31 @@ ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/ana
 # labeled by whether or not called by strope et al
 ##=====
 
-ggplot(gt, (aes(x=avg_frac_intd, y=average_cer_ref_id, colour=strope_found, shape=strope_found))) + geom_point(size=2, alpha=1) +
-    ylab('Average identity with cerevisiae reference') + xlab('Average fraction of gene we call introgressed') +
-    labs(colour="Also found by\nStrope et al.?", shape="Also found by\nStrope et al.?") +
-    scale_color_manual(values = c(my_color_palette[['misc1']],my_color_palette[['misc2']]), labels = c("no", "yes")) +
-        scale_shape_manual(values=c(19,17),labels=c("no","yes")) +
-        theme(panel.background=element_rect(fill="white"),
+ggplot(gt, (aes(x=avg_frac_intd, y=average_cer_ref_id,
+                colour=strope_found, shape=strope_found))) +
+    geom_point(size=3, alpha=.8) +
+    ylab('Average identity with cerevisiae reference') +
+    xlab('Average fraction of gene we call introgressed') +
+    labs(colour="Also found by\nStrope et al.?",
+         shape="Also found by\nStrope et al.?") +
+    scale_color_manual(values = c(my_color_palette[['misc1']],
+                                  my_color_palette[['misc2']]),
+                       labels = c("no", "yes")) +
+    scale_shape_manual(values=c(19,17),labels=c("no","yes")) +
+    theme(panel.background=element_rect(fill="white"),
           panel.grid.minor=element_line(colour="gray92"),
           panel.grid.major=element_line(colour="gray92"),
           axis.line=element_line(),
           legend.title = element_text(size=18),
           legend.text = element_text(size=16),
+          legend.position = c(.85, .15),
           legend.key = element_rect(fill = "transparent"),
           axis.title.x = element_text(size=18), 
           axis.title.y = element_text(size=18), 
-          axis.text.x = element_text(colour="black"), 
-          axis.text.y = element_text(colour="black"))
+          axis.text.x = element_text(colour="black",size=14), 
+          axis.text.y = element_text(colour="black",size=14))
 
-ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/cer_ref_id_vs_intd_by_strope_found_',tag,'.pdf',sep=''), width = 12, height = 7)
+ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/cer_ref_id_vs_intd_by_strope_found_',tag,'.pdf',sep=''), width = 8.5, height = 7)
 
 stop here
 

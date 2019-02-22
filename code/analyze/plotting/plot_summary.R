@@ -2,31 +2,78 @@ library(ggplot2)
 library(reshape2)
 library(RColorBrewer)
 library(viridis)
+library(dplyr)
 source('../my_color_palette.R')
 
 args = commandArgs(trailingOnly=TRUE)
 tag = args[1]
-suffix = ''
-if (length(args) == 2)
-{
-    suffix = args[2]
+
+strains3 = c('yjm1252', 'yjm1078', 'yjm248')
+
+chrms = c('I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI')
+
+intd_refs = c("CBS432", "N_45", "DBVPG6304", "UWOPS91_917_1") 
+intd_refs = c("par")
+
+regions = data.frame()
+for (ref in intd_refs) {
+    #regions_ref = read.table(paste('/tigress/AKEY/akey_vol2/aclark4/projects/',
+    #                               'introgression/results/analysis/', tag,
+    #                               '/blocks_', ref, '_', tag, '_', suffix,
+    #                               '.txt', sep=''), sep='\t', header=T,
+    #                         stringsAsFactors=F)
+    regions_ref = read.table(paste('/tigress/AKEY/akey_vol2/aclark4/projects/',
+                                   'introgression/results/analysis/', tag,
+                                   '/introgressed_blocks_filtered_', ref, '_',
+                                   tag, '_summary_plus',
+                                   '.txt', sep=''), sep='\t', header=T,
+                             stringsAsFactors=F)
+    print(nrow(regions_ref))
+    regions_ref$variable = "variable" # make things a lil easier with dcast
+    #regions[[ref]]$overlap_gene = regions$number_genes >= 1
+    regions_ref$length = regions_ref$end - regions_ref$start + 1
+    if (!"predicted_species" %in% names(regions_ref)) {
+        regions_ref$predicted_species = ref
+    }
+    regions = rbind(regions, regions_ref)
 }
 
+# bar chart: genes introgressed per strain
+ag = read.table(paste('/tigress/AKEY/akey_vol2/aclark4/projects/',
+                      'introgression/results/analysis/', tag,
+                      '/genes_for_each_strain_filtered_', tag,
+                      '.txt', sep=''), sep='\t', header=T,
+                stringsAsFactors=F)
+ag2 = ag %>%
+    group_by(strain) %>%
+    summarise(total = sum(num_genes))
+print(ag2)
+ggplot(ag2, aes(x=reorder(toupper(strain), -total), y=total, fill='x')) + 
+    geom_bar(stat='identity',position='dodge') + 
+    xlab('Strain') + ylab('Number of genes introgressed') +
+    scale_fill_manual(values =c(my_color_palette[['introgressed']]) ) +
+    guides(fill=FALSE) +
+    scale_y_continuous(expand = c(0,0), limits=c(0,max(ag2$total))) +
+    theme(panel.background=element_rect(fill="white"),
+          panel.grid.minor=element_blank(), panel.grid.major=element_blank(),
+          axis.ticks=element_line(colour="black"),
+          axis.line=element_line(),
+          axis.title.x = element_text(size=18), 
+          axis.title.y = element_text(size=18), 
+          axis.text.x = element_text(size=8,angle = 45,vjust = 1,hjust=1,colour="black"), 
+          axis.text.y = element_text(colour="black"))
+ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/num_genes_bar','_',tag,'.pdf',sep=''), width = 12, height = 6)
 
-regions = read.table(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/', tag, '/introgressed_blocks', suffix,'_par_', tag, '_summary_plus.txt', sep=''), sep='\t', header=T, stringsAsFactors=F)
-regions$variable = "variable" # make things a lil easier with dcast
-regions$overlap_gene = regions$number_genes >= 1
-regions$length = regions$end - regions$start + 1
-
-
-# bar chart: fraction genome introgressed per strain
+## bar chart: fraction genome introgressed per strain
 g = 12071326
-a = dcast(regions, strain ~ variable, value.var="length", fun.aggregate=sum)
+a = dcast(regions, strain + predicted_species ~ variable, value.var="length", fun.aggregate=sum)
 a$frac = a$variable/g
-ggplot(a, aes(x=reorder(strain, -frac), y=frac, fill='x')) + 
+a$in3 = a$strain %in% strains3
+print(a[1:10,])
+ggplot(a, aes(x=reorder(toupper(strain), -frac), y=frac, fill=in3)) + 
     geom_bar(stat='identity',position='dodge') + 
     xlab('Strain') + ylab('Fraction of genome introgressed') +
-    scale_fill_manual(values =c(my_color_palette[['introgressed']]) ) +
+    scale_fill_manual(values =c(my_color_palette[['introgressed']], "#9775A3") ) +
     guides(fill=FALSE) +
     scale_y_continuous(expand = c(0,0), limits=c(0,max(a$frac))) +
     theme(panel.background=element_rect(fill="white"),
@@ -35,36 +82,123 @@ ggplot(a, aes(x=reorder(strain, -frac), y=frac, fill='x')) +
           axis.line=element_line(),
           axis.title.x = element_text(size=18), 
           axis.title.y = element_text(size=18), 
-          axis.text.x = element_text(size=8,angle = 45,vjust = 1,hjust=1,colour="black"), 
+          axis.text.x = element_text(size=5, angle = 45,
+                                     vjust = 1, hjust=1, colour="black"), 
           axis.text.y = element_text(colour="black"))
-ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/frac_bar',suffix,'_',tag,'.pdf',sep=''), width = 12, height = 6)
+ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/frac_bar','_',tag,'.pdf',sep=''), width = 10, height = 5)
 print(mean(a$frac))
 print(median(a$frac))
 print(min(a$frac))
 print(max(a$frac))
 
+## histogram: region lengths, 3 strains
 
-# bar chart: genes introgressed per strain
-a = dcast(regions, strain ~ variable, value.var="number_genes", fun.aggregate=sum)
-ggplot(a, aes(x=reorder(strain, -variable), y=variable, fill='x')) + 
-    geom_bar(stat='identity',position='dodge') + 
-    xlab('Strain') + ylab('Number of genes introgressed') +
-    scale_fill_manual(values =c(my_color_palette[['introgressed']]) ) +
+r3 = regions[which(regions$strain %in% strains3),]
+ggplot(r3, aes(x=length, fill=strain)) + geom_histogram(binwidth=100) +
+    xlab('Region length') + ylab('Number of regions') +
+    #scale_fill_manual(values =c(my_color_palette[['introgressed']]) ) +
     guides(fill=FALSE) +
-    scale_y_continuous(expand = c(0,0), limits=c(0,max(a$variable))) +
+    #scale_y_continuous(expand = c(0,0), limits=c(0,1500)) + 
+    scale_x_continuous(expand = c(0,0), limits=c(0,max(r3$length)*1.05)) +
     theme(panel.background=element_rect(fill="white"),
           panel.grid.minor=element_blank(), panel.grid.major=element_blank(),
-          axis.ticks=element_line(colour="black"),
           axis.line=element_line(),
+          axis.ticks=element_line(colour="black"),
           axis.title.x = element_text(size=18), 
           axis.title.y = element_text(size=18), 
-          axis.text.x = element_text(size=8,angle = 45,vjust = 1,hjust=1,colour="black"), 
-          axis.text.y = element_text(colour="black"))
-ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/num_genes_bar',suffix,'_',tag,'.pdf',sep=''), width = 12, height = 6)
+          axis.text.x = element_text(colour="black",size=12), 
+          axis.text.y = element_text(colour="black",size=12))
+ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/length_histr3','_',tag,'.pdf',sep=''), width = 9, height = 6)
+print(mean(r3$length))
+print(median(r3$length))
+print(min(r3$length))
+print(max(r3$length))
+print(length(r3$length))
 
+## histogram: region lengths, all but 3 strains
+
+nr3 = regions[which(!regions$strain %in% strains3),]
+ggplot(nr3, aes(x=length, fill=predicted_species)) + geom_histogram(binwidth=100) +
+    xlab('Region length') +
+    ylab('Number of regions') +
+    scale_fill_manual(values =c(my_color_palette[['introgressed']]) ) +
+    guides(fill=FALSE) +
+    #scale_y_continuous(expand = c(0,0), limits=c(0,)) + 
+    scale_x_continuous(expand = c(0,0), limits=c(0,max(nr3$length)*1.05)) +
+    theme(panel.background=element_rect(fill="white"),
+          panel.grid.minor=element_blank(), panel.grid.major=element_blank(),
+          axis.line=element_line(),
+          axis.ticks=element_line(colour="black"),
+          axis.title.x = element_text(size=18),
+          axis.title.y = element_text(size=18),
+          axis.text.x = element_text(colour="black",size=12),
+          axis.text.y = element_text(colour="black",size=12))
+ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/length_hist_notnr3','_',tag,'.pdf',sep=''), width = 9, height = 6)
+print(mean(nr3$length))
+print(median(nr3$length))
+print(min(nr3$length))
+print(max(nr3$length))
+print(length(nr3$length))
+
+# boxplot: region lengths for only 3 strains and for rest of strains
+regions$in3 = regions$strain %in% strains3
+regions[which(regions$in3 == TRUE),]$in3 = "Three highly-\nintrogressed strains"
+regions[which(regions$in3 == FALSE),]$in3 = "Ninety other\nstrains"
+regions$in3 = factor(regions$in3, levels = c("Three highly-\nintrogressed strains",
+                                             "Ninety other\nstrains"))
+ggplot(regions, aes(x=in3, y=length/1000, fill = "a")) +
+    geom_boxplot() +
+    ylab('Region length (kb)') +
+    xlab('') +
+    scale_fill_manual(values = c(my_color_palette[['introgressed']]) ) +
+    theme(panel.background=element_rect(fill="white"),
+          panel.grid.minor=element_line(colour="gray90"),
+          panel.grid.major=element_line(colour="gray80"),
+          legend.position = "none",
+          axis.line=element_line(),
+          axis.ticks=element_line(colour="black"),
+          axis.title.x = element_text(size=18),
+          axis.title.y = element_text(size=18),
+          axis.text.x = element_text(colour="black",size=12),
+          axis.text.y = element_text(colour="black",size=12))
+
+ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/length_boxplot_r3','_',tag,'.pdf',sep=''), width = 4, height = 6)
+
+# ecdf: region lengths for only 3 strains and for rest of strains
+regions$in3 = regions$strain %in% strains3
+regions[which(regions$in3 == TRUE),]$in3 = "Three highly-introgressed strains"
+regions[which(regions$in3 == FALSE),]$in3 = "Ninety other strains"
+regions$in3 = factor(regions$in3, levels = c("Three highly-introgressed strains",
+                                             "Ninety other strains"))
+ggplot(regions, aes(x=length/1000, colour=in3)) +
+    stat_ecdf(size=2, alpha = .8) +
+    xlab('Region length (kb)') +
+    ylab('Fraction of regions shorter') +
+    scale_x_continuous(expand=c(0,.4)) +
+    scale_y_continuous(expand=c(0,.01)) +
+    scale_colour_manual(values = c("#9775A3", my_color_palette[['introgressed']])) +
+    theme(panel.background=element_rect(fill="white"),
+          panel.grid.minor=element_line(colour="gray90"),
+          panel.grid.major=element_line(colour="gray80"),
+          legend.title=element_blank(),
+          legend.position = c(.6,.1),
+          legend.key = element_rect(fill = "transparent"),
+          legend.text=element_text(size=18),
+          axis.line=element_line(),
+          axis.ticks=element_line(colour="black"),
+          axis.title.x = element_text(size=20),
+          axis.title.y = element_text(size=20),
+          axis.text.x = element_text(colour="black",size=14),
+          axis.text.y = element_text(colour="black",size=14))
+
+ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/',tag,'/plots/length_ecdf_r3','_',tag,'.png',sep=''), width = 7, height = 7)
+
+
+####################
+stop here
 
 # histogram: region lengths
-ggplot(regions, aes(x=length, fill='x')) + geom_histogram(binwidth=100) +
+ggplot(regions, aes(x=length, fill=predicted_species)) + geom_histogram(binwidth=100) +
     xlab('Region length') + ylab('Number of regions') +
     scale_fill_manual(values =c(my_color_palette[['introgressed']]) ) +
     guides(fill=FALSE) +
@@ -86,7 +220,7 @@ print(max(regions$length))
 print(length(regions$length))
 
 # region lengths zoomed
-ggplot(regions, aes(x=length, fill='x')) + geom_histogram(binwidth=100) +
+ggplot(regions, aes(x=length, fill=predicted_species)) + geom_histogram(binwidth=100) +
     xlab('Region length') + ylab('Number of regions') +
     scale_fill_manual(values =c(my_color_palette[['introgressed']]) ) +
     guides(fill=FALSE) +
@@ -104,7 +238,7 @@ ggsave(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/ana
 
 
 # histogram: region lengths (log scale)
-ggplot(regions, aes(x=length, fill='x')) + geom_histogram(binwidth=50) +
+ggplot(regions, aes(x=length, fill=predicted_species)) + geom_histogram(binwidth=50) +
     xlab('Region length') + ylab('Number of regions') +
     scale_fill_manual(values =c(my_color_palette[['introgressed']]) ) +
     guides(fill=FALSE) +
@@ -126,10 +260,9 @@ print(min(regions$length))
 print(max(regions$length))
 print(length(regions$length))
 
+asdf
 
-
-
-asdgasdg
+#####################################
 
 predict_args = read.table('predict_args.txt', sep=' ', stringsAsFactors=F)
 predict_args = predict_args[c(seq(1,19),seq(21,25),seq(27,36)),]

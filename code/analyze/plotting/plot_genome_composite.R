@@ -29,7 +29,7 @@ tel_right_ends = tel_coords[seq(4, 64, 4)]
 par_color_dark = my_color_palette[['introgressed']]
 unk_color_dark = 'gray50'
 r=col2rgb(par_color_dark)/255
-par_color = rgb(r[1],r[2],r[3],alpha=.1)
+par_color = rgb(r[1],r[2],r[3],alpha=1)
 r=col2rgb(unk_color_dark)/255
 unk_color = rgb(r[1],r[2],r[3],alpha=.1)
 
@@ -62,14 +62,14 @@ strains = data.frame(strain=strains_list, index=1:length(strains_list))
 
 # row/spacing parameters
 row_height = 2 # chromosome height
-padding = 3 # between chromosomes
-vmargin = 3 # for top and bottom
+padding = 1.5 # between chromosomes
+vmargin = 2 # for top and bottom
 
 # plot png file
 png(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/', tag, '/plots/all_chrms', suffix, '_', tag, '.png', sep=''), 6400, 3600)
 
 # set margins: bottom, left, top, right
-par(mar=c(5, 10, 4, 2))
+par(mar=c(30, 20, 4, 2))
 
 # coordinates for longest chromosome
 seq_start = 0
@@ -82,9 +82,10 @@ seq_end = max(tel_right_ends)
 # xaxt and yaxt args to specify...?
 total_height = 2 * vmargin + num_chrms * (row_height + padding) - padding
 plot(c(seq_start, seq_end+1),
-    	 c(0, total_height),
-         type = "n", xlab = "",
-         ylab = "", main = "", xaxt='n', yaxt='n', xaxs='i', yaxs='i', mgp=c(2,2,.5), axes=F)
+     c(0, total_height),
+     type = "n",
+     xlab = "Position (Mb)", cex.lab=13, mgp = c(22, 0, 0),
+     ylab = "", main = "", xaxt='n', yaxt='n', xaxs='i', yaxs='i', axes=F)
 
 # move x axis label and title closer to axis
 # title(xlab = paste("chromosome ", chrm, " ", m, sep = ''), line = 3, cex.lab=1.7)
@@ -150,11 +151,11 @@ for (ci in 1:length(chrms))
 positions = seq(vmargin + row_height/2,
                 num_chrms*(padding + row_height) - padding + vmargin,
                 padding+row_height)
-axis(2, at=positions, labels=chrms, las=1, cex.axis=6, tick=FALSE, line=-.5)
+axis(2, at=positions, labels=chrms, las=1, cex.axis=10, tick=FALSE, line=-.5, mgp=c(0,5,0))
 
 # plot position labels
 positions = seq(seq_start, seq_end+1, 100000)
-axis(1, at=positions, labels=positions/1000000, las=1, mgp=c(3,4,0), cex.axis=6, line = 0)
+axis(1, at=positions, labels=positions/1000000, las=1, cex.axis=10, line = 0, mgp = c(15,8,0))
 
 dev.off()
 
