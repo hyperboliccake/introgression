@@ -59,48 +59,41 @@ def test_ecompare():
         assert hmm.ecompare(m, n) == (m > n)
 
 
-def test_isclose():
-    assert True  # TODO replace with math.isclose in python 3
-
-
 def test_init():
     hm = hmm.HMM()
     assert hm.states == []
-    assert hm.trans == []
-    assert hm.emis == []
-    assert hm.obs == []
-    assert hm.init == []
+    assert hm.transitions == []
+    assert hm.emissions == []
+    assert hm.observations == []
+    assert hm.initial_p == []
 
 
 def test_setters():
     hm = hmm.HMM()
 
-    # TODO probably need better type checking here
-    hm.set_states('test')
-    assert hm.states == 'test'
+    hm.set_states(['test'])
+    assert hm.states == ['test']
 
-    hm.set_obs('test')
-    assert hm.obs == 'test'
+    hm.set_transitions([[0, 1], [1, 0]])
+    assert np.array_equal(hm.transitions, np.array([[0, 1], [1, 0]]))
 
-    hm.set_trans([[0, 1], [1, 0]])
-    assert hm.trans == [[0, 1], [1, 0]]
-
-    with pytest.raises(AssertionError) as e:
-        hm.set_trans([[0, 0]])
+    with pytest.raises(ValueError) as e:
+        hm.set_transitions([[0, 0]])
     assert '[0, 0] 0' in str(e)
 
-    hm.set_emis([{'1': 1, '2': 0}, {'1': 0, '2': 1}])
-    assert hm.emis == [{'1': 1, '2': 0}, {'1': 0, '2': 1}]
+    hm.set_states(['1', '2'])
+    hm.set_emissions([{'1': 1, '2': 0}, {'1': 0.5, '2': 0.5}])
+    assert np.array_equal(hm.emissions, np.array([[1, 0], [0.5, 0.5]]))
+
+    with pytest.raises(ValueError) as e:
+        hm.set_emissions([{'1': 1, '2': 0}, {'1': 0, '2': 0}])
+    assert '2 0' in str(e)
+
+    hm.set_initial_p([0, 1, 0])
+    assert np.array_equal(hm.initial_p, np.array([0, 1, 0]))
 
     with pytest.raises(AssertionError) as e:
-        hm.set_emis([[0, 0]])
-    assert '[0, 0] 0' in str(e)
-
-    hm.set_init([0, 1, 0])
-    assert hm.init == [0, 1, 0]
-
-    with pytest.raises(AssertionError) as e:
-        hm.set_init([0, 0])
+        hm.set_initial_p([0, 0])
     assert '[0, 0] 0' in str(e)
 
 
@@ -108,13 +101,13 @@ def test_setters():
 def hm():
     hm = hmm.HMM()
     hm.set_states(['N', 'E'])
-    hm.set_obs([list('NNENNENNEN'),
-                list('NNNNNEENNN'),
-                list('NNENNEENEN')])
-    hm.set_trans([[0.5, 0.5], [0.3, 0.7]])
-    hm.set_emis([{'N': 0.3, 'E': 0.7},
-                 {'N': 0.8, 'E': 0.2}])
-    hm.set_init([0.2, 0.8])
+    hm.set_emissions([{'N': 0.3, 'E': 0.7},
+                      {'N': 0.8, 'E': 0.2}])
+    hm.set_observations([list('NNENNENNEN'),
+                         list('NNNNNEENNN'),
+                         list('NNENNEENEN')])
+    hm.set_transitions([[0.5, 0.5], [0.3, 0.7]])
+    hm.set_initial_p([0.2, 0.8])
 
     return hm
 
@@ -173,37 +166,64 @@ def test_go(capsys, hm):
 
 
 def test_forward(hm):
-    for seqnum in range(len(hm.obs)):
-        alpha = hm.forward()[seqnum]
-        seq = hm.obs[seqnum]
+    alpha = hm.forward()
+    alpha2 = iter_forward(hm)
+    for seqnum in range(len(hm.observations)):
+        for l in range(len(alpha[seqnum])):
+            assert alpha[seqnum][l] == approx(alpha2[seqnum][l])
 
-        # emis * init for state 1, seq N
-        assert alpha[0][0] == approx(math.log(0.3 * 0.2))
-        assert alpha[0][1] == approx(math.log(0.8 * 0.8))
+#        # emis * init for state 1, seq N
+#        assert alpha[0][0] == approx(math.log(0.3 * 0.2))
+#        assert alpha[0][1] == approx(math.log(0.8 * 0.8))
+#
+#        for i in range(1, len(alpha)):
+#            alpha_a = np.dot(np.exp(alpha[i-1]), hm.trans)
+#            assert alpha[i][0] == approx(
+#                math.log(hm.emis[0][seq[i]] * alpha_a[0]))
+#            assert alpha[i][1] == approx(
+#                math.log(hm.emis[1][seq[i]] * alpha_a[1]))
 
-        for i in range(1, len(alpha)):
-            alpha_a = np.dot(np.exp(alpha[i-1]), hm.trans)
-            assert alpha[i][0] == approx(
-                math.log(hm.emis[0][seq[i]] * alpha_a[0]))
-            assert alpha[i][1] == approx(
-                math.log(hm.emis[1][seq[i]] * alpha_a[1]))
+
+def iter_forward(model):
+    alpha = []
+    for seq in range(len(model.observations)):
+
+        alpha_current = [[]]
+        for s in range(len(model.states)):
+            alpha_current[0].append(math.log(
+                model.emissions[s][model.observations[seq][0]] * model.initial_p[s]))
+        for o in range(1, len(model.observations[seq])):
+            row = []
+            for current in range(len(model.states)):
+                    total = -np.inf
+                    for prev in range(len(model.states)):
+                        total = np.logaddexp(
+                            total,
+                            alpha_current[o-1][prev] +
+                            math.log(model.transitions[prev][current]))
+                    total += math.log(model.emissions[current][model.observations[seq][o]])
+                    row.append(total)
+            alpha_current.append(row)
+
+        alpha.append(alpha_current)
+    return alpha
 
 
 def test_backward(hm):
-    for seqnum in range(len(hm.obs)):
+    for seqnum in range(len(hm.observations)):
         beta = hm.backward()[seqnum]
         # reverse so recursion is easier
         beta.reverse()
-        seq = hm.obs[seqnum]
-        seq.reverse()
+        seq = hm.observations[seqnum]
+        seq = np.flip(seq)
 
         assert beta[0][0] == math.log(1)
         assert beta[0][0] == math.log(1)
 
         for i in range(1, len(beta)):
-            beta_ab = np.dot(hm.trans,
+            beta_ab = np.dot(hm.transitions,
                              np.multiply(np.exp(beta[i-1]),
-                                         [hm.emis[j][seq[i-1]]
+                                         [hm.emissions[j][seq[i-1]]
                                           for j in range(2)]))
             assert beta[i][0] == approx(math.log(beta_ab[0]))
 
@@ -226,22 +246,21 @@ def test_bw(hm):
     Beta = hm.backward()
     Xi = hm.bw(Alpha, Beta)
 
-    for seqnum in range(len(hm.obs)):
+    for seqnum in range(len(hm.observations)):
         # offset to match time t with t+1 in beta and seq
         alpha = np.exp(Alpha[seqnum][:-1])
         beta = np.exp(Beta[seqnum][1:])
-        seq = hm.obs[seqnum][1:]
         xi = np.exp(Xi[seqnum])
-        # make emission a dir of lists instead of list of dirs
-        emis = {i: [hm.emis[j][i] for j in range(2)]
-                for i in hm.states}
+
+        # tranpose to index onto observaitons easier
+        emis = np.transpose(hm.emissions)
 
         # build array of emission based on sequence
-        emis = np.array([emis[n] for n in seq])
+        emis = emis[hm.observations[seqnum, 1:]]
 
         # element-wise multiplication with weird broadcasting
         num = alpha[:, :, None] * beta[:, None, :]\
-            * hm.trans * emis[:, None, :]
+            * hm.transitions * emis[:, None, :]
 
         # normalize by summing along axis 1 and 2, broadcast division
         assert xi == approx(num / np.sum(num, axis=(1, 2))[:, None, None])
@@ -249,20 +268,18 @@ def test_bw(hm):
 
 # TODO make function call take a sequence to consider
 def test_calc_probs(hm):
-    # seems like this is only supported for a single sequence
-    hm.obs = hm.obs[0]
+    hm.observations = hm.observations[0]
     prob, states = hm.calc_probs()
     prob = np.exp(prob)
 
-    # make emission a dir of lists instead of list of dirs
-    emis = {i: [hm.emis[j][i] for j in range(2)]
-            for i in hm.states}
+    emis = hm.emissions
 
     # build array of emission based on sequence
-    emis = np.array([emis[n] for n in hm.obs])
+    emis = np.transpose(emis)[hm.observations]
 
-    p = [list(hm.init * emis[0])]
-    trans_emis = np.array(hm.trans)[None, :, :] * emis[:, None, :]
+    p = [list(hm.initial_p * emis[0])]
+
+    trans_emis = np.array(hm.transitions)[None, :, :] * emis[:, None, :]
     s = [[]]
 
     for i in range(1, len(emis)):
@@ -276,7 +293,7 @@ def test_calc_probs(hm):
 
 
 def test_max_path(hm):
-    hm.obs = hm.obs[0]
+    hm.observations = hm.observations[0]
     prob, states = hm.calc_probs()
     path = hm.max_path(prob, states)
 
@@ -289,6 +306,7 @@ def test_max_path(hm):
 
     assert p == path
 
+    hm.observations = [hm.observations]
     assert hm.viterbi() == p
 
 

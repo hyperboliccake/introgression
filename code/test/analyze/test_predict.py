@@ -239,6 +239,9 @@ def test_set_expectations_default(args):
 def test_get_symbol_freqs():
     sequence = '-++ +-+ ++- ---'.split()
     symbol_test_helper(sequence)
+    # TODO throw better exception or handle better
+    # symbol_test_helper([])
+    symbol_test_helper(['+'])
     # get all len 10 symbols
     syms = predict.get_emis_symbols([1]*10)
 
@@ -284,6 +287,11 @@ def symbol_test_helper(sequence):
 
 def test_norm_list():
     random.seed(0)
+
+    for test_list in ([], [1], [1, 1]):
+        mynorm = test_list / np.sum(test_list, dtype=np.float)
+        assert predict.norm_list(test_list) == approx(mynorm)
+
     for i in range(10):
         test_list = [random.randint(0, 100) for j in range(100)]
 
@@ -409,6 +417,9 @@ def test_norm_dict():
         total = float(sum(d.values()))
         return {k: v/total for k, v in d.items()}
 
+    for d in ({}, {'a': 1}, {'a': 1, 'b': 1}):
+        is_approx_equal_list_dict([predict.norm_dict(d)], [mynorm(d)])
+
     random.seed(0)
     for i in range(10):
         d = {k: v for k, v in zip(range(i),
@@ -501,7 +512,7 @@ def test_predict_introgressed(args, capsys):
 
     # ps are locations of polymorphic sites, not counting missing '-'
     assert ps == [0, 1, 3, 6, 8]
-    assert hmm.init == [1, 0, 0, 0, 0, 0]
+    assert hmm.initial_p == [1, 0, 0, 0, 0, 0]
 
     # check path
     assert path == ['S288c', 'S288c', 'UWOPS91_917_1',
@@ -637,12 +648,12 @@ def test_write_hmm():
     assert output.getvalue() == 'strain\tI\n'
 
     hm.set_states(list('abc'))
-    hm.set_init([0, 1, 0])
-    hm.set_trans([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
-    hm.set_emis([{'a': 1, 'b': 0, 'c': 0},
-                 {'a': 0, 'b': 0, 'c': 1},
-                 {'a': 0, 'b': 1, 'c': 0},
-                 ])
+    hm.set_initial_p([0, 1, 0])
+    hm.set_transitions([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
+    hm.set_emissions([{'a': 1, 'b': 0, 'c': 0},
+                      {'a': 0, 'b': 0, 'c': 1},
+                      {'a': 0, 'b': 1, 'c': 0},
+                      ])
 
     output = StringIO()
     predict.write_hmm(hm, output, 'strain', 'I', list('abc'))
