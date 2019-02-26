@@ -31,3 +31,4 @@ code/phylogeny/*
 !code/phylogeny/*.py
 code/*/scratch/*
 code/setup/*
+.coverage
