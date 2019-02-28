@@ -383,7 +383,7 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args, \
     hmm = hmm_bw.HMM()
 
     # set states and initial probabilties
-    hmm.set_states(predict_args['states'])
+    hmm.set_hidden_states(predict_args['states'])
     hmm.set_initial_p(init)
     hmm.set_emissions(emis)
     hmm.set_transitions(trans)
@@ -524,16 +524,16 @@ def write_hmm(hmm, f, strain, chrm, emis_symbols):
     line_string = strain + sep + chrm + sep
 
     # initial
-    for i in range(len(hmm.states)):
+    for i in range(len(hmm.hidden_states)):
         line_string += str(hmm.initial_p[i]) + sep
 
     # emission
-    for i in range(len(hmm.states)):
+    for i in range(len(hmm.hidden_states)):
         for symbol in emis_symbols:
             line_string += str(hmm.emissions[i, hmm.symbol_to_ind[symbol]]) + sep
     # transition
-    for i in range(len(hmm.states)):
-        for j in range(len(hmm.states)):
+    for i in range(len(hmm.hidden_states)):
+        for j in range(len(hmm.hidden_states)):
             line_string += str(hmm.transitions[i][j]) + sep
 
     f.write(line_string[:-(len(sep))] + '\n')

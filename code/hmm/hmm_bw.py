@@ -1,64 +1,31 @@
-import math
 from collections import defaultdict
 import numpy as np
 from typing import List, Dict
 
-LOGZERO = 'LOGZERO'
-
-
-def elog(n):
-    if n == 0 or n == LOGZERO:
-        return LOGZERO
-    return math.log(n)
-
-
-def elogproduct(m, n):
-    if m == LOGZERO or n == LOGZERO:
-        return LOGZERO
-    return m + n
-
-
-def elogsum(m, n):
-    # approx(np.logaddexp(m, n))
-    if m == LOGZERO:
-        return n
-    if n == LOGZERO:
-        return m
-    if m > n:
-        return m + elog(1 + eexp(n - m))
-    return n + elog(1 + eexp(m - n))
-
-
-def eexp(n):
-    if n == LOGZERO:
-        return 0
-    return math.e ** n
-
-
-def ecompare(m, n):
-    if m == LOGZERO:
-        return False
-    if n == LOGZERO:
-        return True
-    return m > n
-
 
 class HMM:
     def __init__(self):
-        # TODO replace with numpy arrays as much as possible
-
-        self.states = []
+        self.hidden_states = []
+        self.observed_states = []
+        self.hidden_states = []
         self.transitions = []
         self.emissions = []
         self.observations = []
         self.initial_p = []
         self.symbol_to_ind = {}
 
-    def set_states(self, states: List[str]) -> None:
+    def set_hidden_states(self, states: List[str]) -> None:
         '''
-        Sets the states of the HMM to the supplied list of strings
+        Sets the hidden states of the HMM to the supplied list of strings
         '''
-        self.states = states
+        self.hidden_states = states
+
+    def set_observed_states(self, states: List[str]) -> None:
+        '''
+        Sets the observed states of the HMM to the supplied list of strings
+        If not supplied will set to list of keys provided by emissions 
+        '''
+        self.observed_states = states
 
     def set_transitions(self, transitions: List[List[float]]) -> None:
         '''
@@ -83,17 +50,20 @@ class HMM:
         Must have states set prior to calling
         '''
         # assumes all dicts have same keys
-        self.symbols = list(emissions[0].keys())
-        self.symbol_to_ind = {key: ind for ind, key in enumerate(self.symbols)}
+        if self.observed_states == []:
+            self.observed_states = list(emissions[0].keys())
+        self.symbol_to_ind = {key: ind
+                              for ind, key in enumerate(self.observed_states)}
 
-        self.emissions = np.array([[d[key] for key in self.symbols]
+        self.emissions = np.array([[d[key] if key in d else 0
+                                    for key in self.observed_states]
                                    for d in emissions])
         row_sum = np.sum(self.emissions, axis=1)
         out_of_range = np.invert(np.isclose(row_sum, 1))
         if np.any(out_of_range):
             # get first index out of range
             index = np.where(out_of_range)[0][0]
-            raise ValueError(f"{self.symbols[index]} {row_sum[index]}")
+            raise ValueError(f"{self.observed_states[index]} {row_sum[index]}")
 
     def set_observations(self, observations: List[List[str]]) -> None:
         '''
@@ -119,57 +89,54 @@ class HMM:
         self.initial_p = np.array(initial_p)
         assert np.isclose(sum(initial_p), 1), f"{initial_p} {sum(initial_p)}"
 
-    def print_results(self, num_its: int, LL: float) -> None:
+    def print_results(self, iterations: int, LL: float) -> None:
         '''
         Display current state of HMM to stdout
         '''
         print(
-            f'''Iterations: {num_its}
+            f'''Iterations: {iterations}
 
 Log Likelihood:
 {LL:.30e}
 
 Initial State Probabilities:'''
         )
-        for i in range(len(self.states)):
-            print(f"{self.states[i]}={self.initial_p[i]:.30e}")
+        for i in range(len(self.hidden_states)):
+            print(f"{self.hidden_states[i]}={self.initial_p[i]:.30e}")
         print()
         print("Transition Probabilities:")
-        for i in range(len(self.states)):
-            for j in range(len(self.states)):
-                print(f"{self.states[i]},{self.states[j]}\
+        for i in range(len(self.hidden_states)):
+            for j in range(len(self.hidden_states)):
+                print(f"{self.hidden_states[i]},{self.hidden_states[j]}\
                     ={self.transitions[i][j]:.30e}")
         print()
         print("Emission Probabilities:")
-        for i in range(len(self.states)):
-            for k in sorted(self.symbols):
-                print(f"{self.states[i]},{k}=\
+        for i in range(len(self.hidden_states)):
+            for k in sorted(self.observed_states):
+                print(f"{self.hidden_states[i]},{k}=\
                       {self.emissions[i, self.symbol_to_ind[k]]:.30e}")
         print()
 
-    def go(self, improvement_frac=.01, num_its=0, prev_LL=0):
+    def go(self, improvement_frac=.01, max_iterations=None):
 
         # calculate current log likelihood
         print("calculating alpha")
         alpha = self.forward()
 
-        # for multiple observations, product of LL
-        # (note not base 2 log)
-        LL_all = []
-        LL = math.log(1)  # because we're taking product
-        for seq in range(len(self.observations)):
-            LL_seq = LOGZERO  # because we're taking sum
-            for i in range(len(self.states)):
-                LL_seq = elogsum(LL_seq, alpha[seq][-1][i])
-            LL_all.append(LL_seq)
-            LL = elogproduct(LL, LL_seq)
-        self.print_results(num_its, LL)
+        LL = self.log_likelihood(alpha)
+
+        iterations = 0
+        self.print_results(iterations, LL)
 
         # continue until log likelihood has stopped increasing much
         threshold = improvement_frac * abs(LL)
-        while num_its < 1 or LL - prev_LL > threshold:
+        # to execute first iteration
+        prev_LL = np.NINF
+        while (max_iterations is not None
+               and iterations < max_iterations)\
+                or LL - prev_LL > threshold:
 
-            print('Iteration',  num_its)
+            print(f"Iteration {iterations}")
 
             print("calculating beta")
             beta = self.backward()
@@ -180,290 +147,208 @@ Initial State Probabilities:'''
 
             print("updating parameters")
 
-            # initial probabilities
-            pi = [LOGZERO for i in range(len(self.states))]
-            for i in range(len(self.states)):
-                for seq in range(len(self.observations)):
-                        pi[i] = elogsum(pi[i], gamma[seq][0][i])
-            pi = [eexp(x) / len(self.observations) for x in pi]
+            self.initial_p = self.initial_probabilities(gamma)
+            self.transitions = self.transition_probabilities(xi, gamma)
+            self.emissions = self.emission_probabilities(gamma)
 
-            # transition probabilities
-            a = []
-            for i in range(len(self.states)):
-                row = []
-                for j in range(len(self.states)):
-                        num = LOGZERO
-                        den = LOGZERO
-                        for seq in range(len(self.observations)):
-                            num_seq = LOGZERO
-                            den_seq = LOGZERO
-                            for o in range(len(self.observations[seq]) - 1):
-                                # xi is probability of probability
-                                # of being at state i at time t and
-                                # state j at time t+1
-                                num_seq = elogsum(num_seq, xi[seq][o][i][j])
-                                # gamma is probability of being in
-                                # state i at time t
-                                den_seq = elogsum(den_seq, gamma[seq][o][i])
-                            # weight numerator and denominator for the
-                            # current observation sequence by 1/P(seq | model)
-                            # num_seq = elogproduct(num_seq, -LL_all[seq])
-                            # den_seq = elogproduct(den_seq, -LL_all[seq])
-                            # add the current sequence contribution to total
-                            num = elogsum(num, num_seq)
-                            den = elogsum(den, den_seq)
-                        assert den != LOGZERO, \
-                            'probably something wrong with \
-                            initial parameter values'
-                        row.append(eexp(elogproduct(num, -den)))
-                a.append(row)
-
-            # emission probabilities
-            b = []
-            for state in range(len(self.states)):
-                d = defaultdict(float)
-                for symbol in range(len(self.emissions[state])):
-                        num = LOGZERO
-                        den = LOGZERO
-                        for seq in range(len(self.observations)):
-                            num_seq = LOGZERO
-                            den_seq = LOGZERO
-                            for o in range(len(self.observations[seq])):
-                                if self.observations[seq][o] == symbol:
-                                    # gamma is probability of
-                                    # being in state i at time t
-                                    num_seq = elogsum(num_seq,
-                                                      gamma[seq][o][state])
-                                den_seq = elogsum(den_seq,
-                                                  gamma[seq][o][state])
-                            # weight numerator and denominator for the
-                            # current observation sequence by 1/P(seq | model)
-                            # num_seq = elogproduct(num_seq, -LL_all[seq])
-                            # den_seq = elogproduct(den_seq, -LL_all[seq])
-                            # add the current sequence contribution to total
-                            num = elogsum(num, num_seq)
-                            den = elogsum(den, den_seq)
-                        assert den != LOGZERO, \
-                            'probably something wrong with \
-                            initial parameter values'
-                        d[self.symbols[symbol]] = eexp(elogproduct(num, -den))
-                b.append(d)
-
-            self.initial_p = pi
-            self.transitions = a
-            # TODO replace with just keeping matrix when not converting to dict
-            self.set_emissions(b)
-            # self.emissions = b
-
-            assert np.isclose(sum(self.initial_p), 1), \
-                f"{sum(self.initial_p)} {self.initial_p}"
+            assert np.isclose(np.sum(self.initial_p), 1), \
+                f"{beta}\n{np.sum(self.initial_p)} {self.initial_p}"
             for t in self.transitions:
-                assert np.isclose(sum(t), 1), f"{sum(t)} {t}"
+                assert np.isclose(sum(t), 1), \
+                    f"{xi} {gamma} {sum(t)} {t}"
             for e in self.emissions:
                 assert np.isclose(sum(e), 1), f"{sum(e.values())} {e}"
 
-            num_its += 1
+            iterations += 1
 
             print("calculating alpha")
             alpha = self.forward()
 
             prev_LL = LL
-
-            LL_all = []
-            LL = math.log(1)  # because we're taking product
-            for seq in range(len(self.observations)):
-                LL_seq = LOGZERO  # because we're taking sum
-                for i in range(len(self.states)):
-                        LL_seq = elogsum(LL_seq, alpha[seq][-1][i])
-                LL_all.append(LL_seq)
-                LL = elogproduct(LL, LL_seq)
+            LL = self.log_likelihood(alpha)
 
             # print results for every iteration
-            self.print_results(num_its, LL)
+            self.print_results(iterations, LL)
 
             if LL < prev_LL and not np.isclose(LL, prev_LL):
                 # NOTE does not stop execution
                 print('PROBLEM: log-likelihood stopped increasing; \
                       stopping training now')
 
-        print(f"finished in {num_its} iterations")
+        print(f"finished in {iterations} iterations")
+
+    def log_likelihood(self, alpha: np.array) -> float:
+        '''
+        Determines the log likelihood from the supplied observation of alpha
+        '''
+        # for multiple observations, product of LL
+        return np.sum(
+            np.logaddexp.reduce(
+                alpha[:, -1, :],
+                axis=1)
+        )
+
+    def transition_probabilities(self, xi, gamma):
+        # reduce along observation string
+        num = np.logaddexp.reduce(xi, axis=1)
+        num = np.logaddexp.reduce(num, axis=0)  # reduce along observations
+        # reduce along observations, remove last
+        den = np.logaddexp.reduce(gamma[:, :-1, :], axis=1)
+        den = np.logaddexp.reduce(den, axis=0)  # reduce along observations
+
+        transitions = np.exp(num - den[:, None])
+
+        return transitions
+
+    def initial_probabilities(self, gamma: np.array) -> np.array:
+        '''
+        Calculatees the probability of beginning in each hidden state
+        '''
+        return np.exp(  # convert log likelihood to p
+            np.logaddexp.reduce(gamma[:, 0, :])  # sum along states
+        ) / len(self.observations)
+
+    def emission_probabilities(self, gamma):
+        # denominator is sum of gamma along sequences and sequence length
+        denominator = np.logaddexp.reduce(  # along sequences
+            np.logaddexp.reduce(  # along sequence length
+                gamma))
+
+        # numerator is also sum along gamma but only where position ==
+        # the observed symbols
+        # convert observation to boolean matrix where
+        # numerator[i, j, k] is true iff observed symbol at [j, k] == i
+        numerator = np.array([i == self.observations
+                              for i in range(len(self.observed_states))])
+        # move axis to match gamma shape
+        numerator = np.moveaxis(numerator, [0, 1, 2], [2, 0, 1])
+        # use where to select gamma where numerator is true, NINF where false
+        # broadcast to create a hidden_states x observed_states matrix
+        numerator = np.where(numerator[:, :, None, :],
+                             gamma[:, :, :, None],  # if true
+                             np.NINF)  # if false
+        # reduce along first two axes
+        numerator = np.logaddexp.reduce(  # along sequences
+            np.logaddexp.reduce(  # along sequence length
+                numerator))
+
+        return np.exp(numerator - denominator[:, None])
 
     def bw(self, alpha, beta):
 
-        # probability of being at state i at time t and state j at
-        # time t+1
-        xi = []
-        for seq in range(len(self.observations)):
-            xi_current = []
-            for o in range(len(self.observations[seq]) - 1):
-                norm = LOGZERO
-                matrix = [[LOGZERO] * len(self.states)
-                          for i in range(len(self.states))]
-                for i in range(len(self.states)):
-                        for j in range(len(self.states)):
-                            prob = elogproduct(
-                                elog(self.emissions[j][self.observations[seq][o+1]]),
-                                beta[seq][o+1][j])
-                            prob = elogproduct(elog(self.transitions[i][j]), prob)
-                            prob = elogproduct(alpha[seq][o][i], prob)
-                            matrix[i][j] = prob
-                            norm = elogsum(norm, prob)
+        # shift times to match appropriate elements
+        alpha = alpha[:, :-1, :]
+        beta = beta[:, 1:, :]
 
-                for i in range(len(self.states)):
-                        for j in range(len(self.states)):
-                            matrix[i][j] = elogproduct(matrix[i][j], -norm)
+        # tranpose emissions to make it easier to index into, take logs
+        emis = np.transpose(self.emissions)
+        emis = np.log(emis[self.observations[:, 1:]])
 
-                xi_current.append(matrix)
+        # calculate numerator with broadcasting to proper size
+        numerator = alpha[:, :, :, None] + beta[:, :, None, :] +\
+            np.log(self.transitions) + emis[:, :, None, :]
 
-            xi.append(xi_current)
+        # denominator is summed along states
+        denominator = np.logaddexp.reduce(
+            np.logaddexp.reduce(numerator, axis=2),
+            axis=2)
 
+        xi = numerator - denominator[:, :, None, None]
         return xi
 
     def state_probs(self, alpha, beta):
+        # probability of being at state i at time 
 
-        # probability of being at state i at time t
-        gamma = []
-        for seq in range(len(self.observations)):
-            gamma_current = []
-            for o in range(len(self.observations[seq])):
-                norm = LOGZERO
-                row = []
-                for current in range(len(self.states)):
-                        prob = elogproduct(alpha[seq][o][current],
-                                           beta[seq][o][current])
-                        row.append(prob)
-                        norm = elogsum(norm, prob)
-                for current in range(len(self.states)):
-                        row[current] = elogproduct(row[current], -norm)
-
-                gamma_current.append(row)
-
-            gamma.append(gamma_current)
-
-        return gamma
+        alpha_beta = alpha + beta
+        denominator = np.logaddexp.reduce(alpha_beta, axis=2)
+        return alpha_beta - denominator[:, :, None]
 
     def forward(self):
 
         # probability that the sequence from 0 to t was observed and
         # Markov process was at state j at time t
-        alpha = []
-        for seq in range(len(self.observations)):
+        # returns array of size observations, observations[0], hidden_states
+        # determine emission probabilities for each measured value
+        emis = np.transpose(np.log(self.emissions[:, self.observations]))
+        trans = np.log(self.transitions)
+        alpha = np.empty((len(self.observations),
+                          len(self.observations[0]),
+                          len(self.hidden_states)), float)
 
-            alpha_current = [[]]
-            for s in range(len(self.states)):
-                emissions = elog(self.emissions[s, self.observations[seq, 0]])
-                init = elog(self.initial_p[s])
-                alpha_current[0].append(elogproduct(emissions, init))
-            for o in range(1, len(self.observations[seq])):
-                row = []
-                for current in range(len(self.states)):
-                        total = LOGZERO
-                        for prev in range(len(self.states)):
-                            total = elogsum(
-                                total,
-                                elogproduct(alpha_current[o-1][prev],
-                                            elog(self.transitions[prev][current])))
-                        total = elogproduct(
-                            total,
-                            elog(self.emissions[current][self.observations[seq][o]]))
-                        row.append(total)
-                alpha_current.append(row)
-
-            alpha.append(alpha_current)
+        # initialize to initial probabilitiy * observed emission
+        alpha[:, 0, :] = np.log(self.initial_p[None, :]) + emis[0, :, :]
+        # recursively fill array
+        for i in range(1, len(self.observations[0])):
+            alpha[:, i, :] = np.logaddexp.reduce(alpha[:, i-1, :][:, :, None] +
+                                                 trans[None, :, :], axis=1) \
+                + emis[i, :, :]
         return alpha
 
     def backward(self):
 
         # probability that the sequence from t+1 to end was observed
         # and Markov process was at state j at time t
-        beta = []
-        for seq in range(len(self.observations)):
-            beta_current = [[0] * len(self.states)
-                            for i in range(len(self.observations[seq]))]
-            for o in range(len(self.observations[seq]) - 2, -1, -1):
-                for current in range(len(self.states)):
-                        total = LOGZERO
-                        for next in range(len(self.states)):
-                            prod = elogproduct(
-                                elog(self.emissions[next][self.observations[seq][o+1]]),
-                                beta_current[o+1][next])
-                            prod = elogproduct(elog(self.transitions[current][next]),
-                                               prod)
-                            total = elogsum(total, prod)
-                        beta_current[o][current] = total
+        emis = np.transpose(np.log(self.emissions[:, self.observations]))
+        trans = np.log(self.transitions)
+        beta = np.zeros((len(self.observations),
+                         len(self.observations[0]),
+                         len(self.hidden_states)), float)
 
-            beta.append(beta_current)
+        for i in range(len(self.observations[0]) - 2, -1, -1):
+            beta[:, i, :] = np.logaddexp.reduce(
+                (beta[:, i+1, :] + emis[i+1, :, :])[:, None, :] +
+                trans[None, :, :], axis=2)
 
         return beta
 
-    def calc_probs(self):
-        obs_len = self.observations.size
-        # T_states[i][j] gives state at position i - 1 that produces
-        # maximum probability for path with state j at position i
-        T_states = [[] for x in range(obs_len)]
-        T_probs = [[] for x in range(obs_len)]
+    def calculate_max_states(self):
+        probabilities = np.empty((len(self.observations),
+                                  len(self.hidden_states)), float)
+        states = np.empty((len(self.observations),
+                           len(self.hidden_states)), int)
 
-        # initialize
-        for i in range(len(self.states)):
-            T_probs[0].append(elogproduct(elog(self.initial_p[i]),
-                                          elog(self.emissions[i, self.observations[0]])))
+        # build array of emissions based on observations
+        emissions = np.log(np.transpose(self.emissions)[self.observations])
 
-        # main loop of viterbi algorithm
-        for pos in range(1, obs_len):
-            for end_state in range(len(self.states)):
-                max_prob = 'LOGZERO'
-                max_state = -1
-                for prev_state in range(len(self.states)):
-                        trans_prob = self.transitions[prev_state][end_state]
-                        emis_prob = self.emissions[end_state][self.observations[pos]]
-                        prob = elogproduct(T_probs[pos - 1][prev_state],
-                                           elogproduct(elog(trans_prob),
-                                                       elog(emis_prob)))
-                        if ecompare(prob, max_prob):
-                            max_prob = prob
-                            max_state = prev_state
+        trans_emis = np.log(self.transitions[None, :, :]) +\
+            emissions[:, None, :]
 
-                T_probs[pos].append(max_prob)
-                T_states[pos].append(max_state)
+        probabilities[0, :] = np.log(self.initial_p) + emissions[0]
+        states[0, :] = -1
 
-        return T_probs, T_states
+        for i in range(1, len(emissions)):
+            prob = probabilities[i-1, :] + np.transpose(trans_emis[i])
+            max_pos = np.argmax(prob, axis=1)
+            probabilities[i, :] = [prob[j, a] for j, a in enumerate(max_pos)]
+            states[i, :] = max_pos
 
-    def max_path(self, T_probs, T_states):
+        return probabilities, states
 
-        max_path = []
-        max_prob = 'LOGZERO'
-        max_state = -1
-        last_ind = len(self.observations) - 1
-        # start by finding the state we are most probably in at the
-        # last position
-        for end_state in range(len(self.states)):
-            p = T_probs[last_ind][end_state]
-            if ecompare(p, max_prob):
-                max_prob = p
-                max_state = end_state
-        max_path.append(max_state)
+    def max_path(self, probs, states):
 
-        # then retrace the most probable sequence of states that
-        # preceded this state
-        to_state = max_state
-        # goes from last_ind to 1 backwards (inclusively)
-        for i in range(last_ind, 0, -1):
-            from_state = T_states[i][to_state]
-            max_path.append(from_state)
-            to_state = from_state
+        path = np.empty(len(self.observations), int)
+        # state with most likely state
+        path[0] = np.argmax(probs[-1])
+        # fill in with most likely sequence from back
+        for i, state in enumerate(reversed(states[1:])):
+            path[i+1] = state[path[i]]
 
-        max_path.reverse()
-        return max_path
+        # reverse to proper order
+        path = np.flip(path)
+
+        return path
 
     def viterbi(self):
+        # consider only the first observation
         self.observations = self.observations[0]
-        T_probs, T_states = self.calc_probs()
-        max_path = self.max_path(T_probs, T_states)
-        return max_path
+        probs, states = self.calculate_max_states()
+        return self.max_path(probs, states)
 
     def posterior_decoding(self):
         # probability of being in each state at each position, in
         # format of a list of lists
+        # probability[i, j, k] is for observation i, position j in observation
+        # and hidden state k
         alpha = self.forward()
         beta = self.backward()
         gamma = self.state_probs(alpha, beta)
@@ -472,9 +357,9 @@ Initial State Probabilities:'''
             p_ind = []
             for site in range(len(self.observations[ind])):
                 p_ind_site = defaultdict(float)
-                for state_ind in range(len(self.states)):
-                        p_ind_site[self.states[state_ind]] = \
-                            eexp(gamma[ind][site][state_ind])
+                for state_ind in range(len(self.hidden_states)):
+                        p_ind_site[self.hidden_states[state_ind]] = \
+                            np.exp(gamma[ind][site][state_ind])
                 p_ind.append(p_ind_site)
             p.append(p_ind)
         return p

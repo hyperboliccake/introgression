@@ -512,7 +512,7 @@ def test_predict_introgressed(args, capsys):
 
     # ps are locations of polymorphic sites, not counting missing '-'
     assert ps == [0, 1, 3, 6, 8]
-    assert hmm.initial_p == [1, 0, 0, 0, 0, 0]
+    assert np.array_equal(hmm.initial_p, np.array([1, 0, 0, 0, 0, 0]))
 
     # check path
     assert path == ['S288c', 'S288c', 'UWOPS91_917_1',
@@ -647,7 +647,7 @@ def test_write_hmm():
     predict.write_hmm(hm, output, 'strain', 'I', list('abc'))
     assert output.getvalue() == 'strain\tI\n'
 
-    hm.set_states(list('abc'))
+    hm.set_hidden_states(list('abc'))
     hm.set_initial_p([0, 1, 0])
     hm.set_transitions([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
     hm.set_emissions([{'a': 1, 'b': 0, 'c': 0},
