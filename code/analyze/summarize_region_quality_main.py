@@ -57,8 +57,7 @@ def main():
         species_from_prefix = gp.ref_fn_prefix[args['known_states'][s]]
         masked_sites_refs[s] = \
             convert_intervals_to_sites(read_masked_intervals(gp_dir + \
-                                                             gp.alignments_dir + \
-                                                             'masked/' + \
+                                                             gp.mask_dir + \
                                                              species_from_prefix + \
                                                              '_chr' + chrm + \
                                                              '_intervals.txt'))
@@ -93,7 +92,7 @@ def main():
              '_'.join(gp.alignment_ref_order) + '_' + strain + \
              '_chr' + chrm + '_mafft' + gp.alignment_suffix
         headers, seqs = read_fasta.read_fasta(fn)
-        
+
         # to go from index in reference seq to index in alignment
         ind_align = []
         for s in range(len(seqs)):
@@ -101,8 +100,8 @@ def main():
 
         masked_sites = \
             convert_intervals_to_sites(read_masked_intervals(gp_dir + \
-                                                             gp.alignments_dir + \
-                                                             'masked/' + strain + \
+                                                             gp.mask_dir + \
+                                                             strain + \
                                                              '_chr' + chrm + \
                                                              '_intervals.txt'))
         masked_sites_ind_align = []
@@ -157,6 +156,7 @@ def main():
                 # gaps in any strain)
                 total_match_hmm, total_sites_hmm, infoj = \
                     seq_id_hmm(seqj, seqx, slice_start, ps_ind_align)
+
                 for k in range(len(seqx)):
                     info[k]['gap_flag'] = info[k]['gap_flag'] or infoj['gap_flag'][k]
                     info[k]['unseq_flag'] = info[k]['unseq_flag'] or \
@@ -208,7 +208,7 @@ def main():
                 regions_chrm['count_' + sym][i] = info_string.count(sym)
 
             sys.stdout.flush()
-        
+
     ps_f.close()
 
     labels = labels + ['match_nongap_' + x for x in args['known_states']]
