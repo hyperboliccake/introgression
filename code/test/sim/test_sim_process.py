@@ -1,24 +1,22 @@
 from sim import sim_process
-from hmm import hmm_bw as hmm
-import pytest
-import operator
 import numpy as np
 from collections import defaultdict
 import random
 
 
 def test_get_max_path(hm):
-    post = hm.posterior_decoding()
-    path, probs = sim_process.get_max_path(post[0])
-    maxes = [max(d.items(), key=operator.itemgetter(1)) for d in post[0]]
-    other_path, other_prob = map(list, zip(*maxes))
+    post = hm.posterior_decoding()[0]
+    path, probs = sim_process.get_max_path(post, hm.hidden_states)
+    max_pos = np.argmax(post, axis=1)
+    other_path = [hm.hidden_states[i] for i in max_pos]
+    other_prob = [post[i, pos] for i, pos in enumerate(max_pos)]
     assert path == other_path
     assert probs == other_prob
 
 
 def test_get_threshold_predicted(hm):
     post = hm.posterior_decoding()
-    path, probs = sim_process.get_max_path(post[0])
+    path, probs = sim_process.get_max_path(post[0], hm.hidden_states)
     for thresh in (0, 0.2, 0.5, 0.8, 1):
         pred = sim_process.threshold_predicted(path, probs, thresh, 'N')
         t = np.array(path)

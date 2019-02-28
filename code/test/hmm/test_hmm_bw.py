@@ -393,12 +393,4 @@ def test_posterior_decoding(hm):
 
     gamma = np.exp(hm.state_probs(hm.forward(), hm.backward()))
 
-    from collections import defaultdict
-    pdd = [[defaultdict(float,
-                        {key: value for key, value in zip(hm.hidden_states, entry)})
-            for entry in seq] for seq in gamma]
-
-    for i in range(len(post)):
-        for j in range(len(post[i])):
-            for k in post[i][j].keys():
-                assert post[i][j][k] == approx(pdd[i][j][k])
+    assert post == approx(gamma)

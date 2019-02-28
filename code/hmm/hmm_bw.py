@@ -1,6 +1,5 @@
-from collections import defaultdict
 import numpy as np
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 
 class HMM:
@@ -91,7 +90,7 @@ class HMM:
 
     def print_results(self, iterations: int, LL: float) -> None:
         '''
-        Display current state of HMM to stdout
+        Write current state of HMM to stdout
         '''
         print(
             f'''Iterations: {iterations}
@@ -117,7 +116,13 @@ Initial State Probabilities:'''
                       {self.emissions[i, self.symbol_to_ind[k]]:.30e}")
         print()
 
-    def go(self, improvement_frac=.01, max_iterations=None):
+    def go(self,
+           improvement_frac: float = .01,
+           max_iterations: int = None) -> None:
+        '''
+        Train the hmm until either the max iterations is reached or
+        the log likelihood fails to improve beyond the improvement factor
+        '''
 
         # calculate current log likelihood
         print("calculating alpha")
@@ -188,7 +193,12 @@ Initial State Probabilities:'''
                 axis=1)
         )
 
-    def transition_probabilities(self, xi, gamma):
+    def transition_probabilities(self,
+                                 xi: np.array,
+                                 gamma: np.array) -> np.array:
+        '''
+        Caclulate new transition probabilities from xi and gamma
+        '''
         # reduce along observation string
         num = np.logaddexp.reduce(xi, axis=1)
         num = np.logaddexp.reduce(num, axis=0)  # reduce along observations
@@ -202,13 +212,16 @@ Initial State Probabilities:'''
 
     def initial_probabilities(self, gamma: np.array) -> np.array:
         '''
-        Calculatees the probability of beginning in each hidden state
+        Calculates the probability of beginning in each hidden state
         '''
         return np.exp(  # convert log likelihood to p
             np.logaddexp.reduce(gamma[:, 0, :])  # sum along states
         ) / len(self.observations)
 
-    def emission_probabilities(self, gamma):
+    def emission_probabilities(self, gamma: np.array) -> np.array:
+        '''
+        Calcualte new emission probability matrix from gamma
+        '''
         # denominator is sum of gamma along sequences and sequence length
         denominator = np.logaddexp.reduce(  # along sequences
             np.logaddexp.reduce(  # along sequence length
@@ -234,7 +247,10 @@ Initial State Probabilities:'''
 
         return np.exp(numerator - denominator[:, None])
 
-    def bw(self, alpha, beta):
+    def bw(self, alpha: np.array, beta: np.array) -> np.array:
+        '''
+        Calculate Baum-Welch xi from alpha and beta
+        '''
 
         # shift times to match appropriate elements
         alpha = alpha[:, :-1, :]
@@ -256,14 +272,20 @@ Initial State Probabilities:'''
         xi = numerator - denominator[:, :, None, None]
         return xi
 
-    def state_probs(self, alpha, beta):
-        # probability of being at state i at time 
+    def state_probs(self, alpha: np.array, beta: np.array) -> np.array:
+        '''
+        Calculate gamma from supplied alpha and beta
+        '''
+        # probability of being at state i at time j
 
         alpha_beta = alpha + beta
         denominator = np.logaddexp.reduce(alpha_beta, axis=2)
         return alpha_beta - denominator[:, :, None]
 
-    def forward(self):
+    def forward(self) -> np.array:
+        '''
+        Calculate alpha
+        '''
 
         # probability that the sequence from 0 to t was observed and
         # Markov process was at state j at time t
@@ -284,8 +306,10 @@ Initial State Probabilities:'''
                 + emis[i, :, :]
         return alpha
 
-    def backward(self):
-
+    def backward(self) -> np.array:
+        '''
+        Calculate beta
+        '''
         # probability that the sequence from t+1 to end was observed
         # and Markov process was at state j at time t
         emis = np.transpose(np.log(self.emissions[:, self.observations]))
@@ -301,7 +325,12 @@ Initial State Probabilities:'''
 
         return beta
 
-    def calculate_max_states(self):
+    def calculate_max_states(self) -> Tuple[np.array, np.array]:
+        '''
+        Find the maximum likelihood hidden states and the corresponding 
+        log probability for each state.
+        Returned tuple is (probability, states)
+        '''
         probabilities = np.empty((len(self.observations),
                                   len(self.hidden_states)), float)
         states = np.empty((len(self.observations),
@@ -324,7 +353,10 @@ Initial State Probabilities:'''
 
         return probabilities, states
 
-    def max_path(self, probs, states):
+    def max_path(self, probs: np.array, states: np.array) -> np.array:
+        '''
+        Return the most likeli states for the HMM
+        '''
 
         path = np.empty(len(self.observations), int)
         # state with most likely state
@@ -338,28 +370,21 @@ Initial State Probabilities:'''
 
         return path
 
-    def viterbi(self):
+    def viterbi(self) -> np.array:
+        '''
+        Find the maximum likelihood path for the first observation
+        '''
         # consider only the first observation
         self.observations = self.observations[0]
         probs, states = self.calculate_max_states()
         return self.max_path(probs, states)
 
-    def posterior_decoding(self):
-        # probability of being in each state at each position, in
-        # format of a list of lists
-        # probability[i, j, k] is for observation i, position j in observation
-        # and hidden state k
+    def posterior_decoding(self) -> np.array:
+        '''
+        Return gamma as probability values
+        probability[i, j, k] is for observation i, position j in observation
+        and hidden state k
+        '''
         alpha = self.forward()
         beta = self.backward()
-        gamma = self.state_probs(alpha, beta)
-        p = []
-        for ind in range(len(self.observations)):
-            p_ind = []
-            for site in range(len(self.observations[ind])):
-                p_ind_site = defaultdict(float)
-                for state_ind in range(len(self.hidden_states)):
-                        p_ind_site[self.hidden_states[state_ind]] = \
-                            np.exp(gamma[ind][site][state_ind])
-                p_ind.append(p_ind_site)
-            p.append(p_ind)
-        return p
+        return np.exp(self.state_probs(alpha, beta))

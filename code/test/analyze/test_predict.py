@@ -518,7 +518,7 @@ def test_predict_introgressed(args, capsys):
     assert path == ['S288c', 'S288c', 'UWOPS91_917_1',
                     'UWOPS91_917_1', 'UWOPS91_917_1']
 
-    assert prob[0]['S288c'] == 1
+    assert prob[0][0] == 1
 
 
 def test_write_positions():
@@ -667,16 +667,16 @@ def test_write_hmm():
 
 def test_write_state_probs():
     output = StringIO()
-    predict.write_state_probs([{}], output, 'strain', 'I')
+    predict.write_state_probs([{}], output, 'strain', 'I', [])
 
     assert output.getvalue() == 'strain\tI\n'
 
     output = StringIO()
     predict.write_state_probs([
-        {'a': 0, 'b': 0, 'c': 1},
-        {'a': 1, 'b': 0, 'c': 0},
-        {'a': 0, 'b': 1, 'c': 1},
-    ], output, 'strain', 'I')
+        [0, 0, 1],
+        [1, 0, 0],
+        [0, 1, 1],
+    ], output, 'strain', 'I', list('abc'))
 
     assert output.getvalue() == \
         ('strain\tI\t'

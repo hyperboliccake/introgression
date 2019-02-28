@@ -389,7 +389,6 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args, \
     hmm.set_transitions(trans)
 
     # set obs
-    print(seq_coded)
     hmm.set_observations([seq_coded])
 
     hmm_init = copy.deepcopy(hmm)
@@ -400,12 +399,11 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args, \
 
     #if method == "posterior":
     predicted = {}
-    all_probs = {}
     # for all obs sequences, each site is a dic with one prob for each
     # state
     p = hmm.posterior_decoding() # returns list but we're hackin this
                                  # for just one species right now
-    path, path_probs = sim_process.get_max_path(p[0])
+    path, path_probs = sim_process.get_max_path(p[0], hmm.hidden_states)
 
     if method == "posterior":
         path_t = sim_process.threshold_predicted(path, path_probs, \
@@ -530,7 +528,10 @@ def write_hmm(hmm, f, strain, chrm, emis_symbols):
     # emission
     for i in range(len(hmm.hidden_states)):
         for symbol in emis_symbols:
-            line_string += str(hmm.emissions[i, hmm.symbol_to_ind[symbol]]) + sep
+            if symbol in hmm.symbol_to_ind:
+                line_string += str(hmm.emissions[i, hmm.symbol_to_ind[symbol]]) + sep
+            else:
+                line_string += "0.0" + sep
     # transition
     for i in range(len(hmm.hidden_states)):
         for j in range(len(hmm.hidden_states)):
@@ -539,21 +540,20 @@ def write_hmm(hmm, f, strain, chrm, emis_symbols):
     f.write(line_string[:-(len(sep))] + '\n')
     f.flush()
 
-def write_state_probs(probs, f, strain, chrm):
+def write_state_probs(probs, f, strain, chrm, states):
 
     # probs is list of sites, each site dic keyed by state
-    
     # file format is:
     # strain\tchrm\tcer:.1,.2,.3\tpar:.9,.8,.7
     # strain\tchrm\tcer:.4,.2,.3\tpar:.6,.8,.7
 
-    sep  ='\t'
+    sep = '\t'
     f.write(strain + sep + chrm)
 
-    for state in probs[0].keys():
-        f.write(sep + state + ':')
-        probs_string = ','.join(["{0:.5f}".format(site[state]) \
-                                     for site in probs])
+    for i in range(len(probs[0])):
+        f.write(sep + states[i] + ':')
+        probs_string = ','.join(["{0:.5f}".format(site[i])
+                                 for site in probs])
         f.write(probs_string)
     f.write('\n')
     f.flush()

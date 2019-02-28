@@ -314,7 +314,7 @@ def fill_seqs(polymorphic_seqs, polymorphic_sites, nsites, fill):
         seqs_filled.append(''.join(s)) # TODO should return this as list instead
     return seqs_filled
 
-def get_max_path(p):
+def get_max_path(p, states):
     # p is a list of dictionaries, one per site; each dict has keys
     # for each state, with associated probability
     max_path = []
@@ -322,10 +322,10 @@ def get_max_path(p):
     for site_probs in p:
         max_state = None
         max_prob = -1
-        for state in site_probs:
-            if site_probs[state] > max_prob:
-                max_prob = site_probs[state]
-                max_state = state
+        for i, prob in enumerate(site_probs):
+            if prob > max_prob:
+                max_prob = prob
+                max_state = states[i]
         max_path.append(max_state)
         max_probs.append(max_prob)
     return max_path, max_probs
