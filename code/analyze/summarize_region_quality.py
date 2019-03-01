@@ -2,7 +2,6 @@ import sys
 import os
 import gzip
 import bisect
-import gene_predictions
 sys.path.insert(0, '..')
 import global_params as gp
 sys.path.insert(0, '../misc/')
@@ -198,8 +197,6 @@ def seq_id_hmm(seq1, seq2, offset, include_sites):
             if info_match[i]:
                 total_match += 1
 
-        print seq1[i], seq2[i], info_gap[i], info_unseq[i], info_match[i], info_hmm[i]
-
     return total_match, total_sites, \
         {'gap_flag':info_gap, 'unseq_flag':info_unseq, \
          'hmm_flag':info_hmm, 'match':info_match}
@@ -214,44 +211,68 @@ def seq_id_unmasked(seq1, seq2, offset, exclude_sites1, exclude_sites2):
     total_match = 0
     #offset -= 1
     skip = [gp.gap_symbol, gp.unsequenced_symbol]
-    info_gap_mask = [False for i in range(n)]
-    gap = []
-    masked = []
+    info_mask = [False for i in range(n)]
     for i in range(n):
         #offset += 1
         if binary_search.present(exclude_sites1, i + offset) or \
            binary_search.present(exclude_sites2, i + offset):
             #if binary_search.present(exclude_sites, i + offset):
-            info_gap_mask[i] = True
+            info_mask[i] = True
             continue
         if seq1[i] not in skip and seq2[i] not in skip:
             total_sites += 1
             if seq1[i] == seq2[i]:
                 total_match += 1
-        else:
-            info_gap_mask[i] = True
+        #else:
+        #    info_gap_mask[i] = True
     # TODO: keep track of gapped/masked sites for master/predicted to
     # incorporate into info string later
-    return total_match, total_sites, {'gap_mask':info_gap_mask}
+    return total_match, total_sites, {'mask_flag':info_mask}
+
+def make_info_string_unknown(info, master_ind):
+
+    s = ''
+
+    for i in range(len(info)):
+
+        if info[i]['gap_any_flag']:
+            s += '-'
+            continue
+        if info[i]['mask_any_flag'] or info[i]['mask_any_flag']:
+            s += '_'
+            continue
+        m = info[i]['match_flag']
+        if False not in m:
+            s += '.'
+            continue
+        x = ''
+        if m[master_ind]:
+            x = 'x'
+        else:
+            x = 'X'
+        s += x
+
+    return s
+    
 
 def make_info_string(info, master_ind, predict_ind):
 
     s = ''
+
+    if predict_ind >= len(info[0]['gap_flag']):
+        return make_info_string_unknown(info, master_ind)
+
     for i in range(len(info)):
 
-        #if info[i]['gap_flag']:
-        #    s += '-'
-        #    continue
-
-        #if info[i]['unseq_flag']:
-        #    s += 'n'
-        #    continue
-
-        if info[i]['gap_mask_list'][master_ind] or \
-           info[i]['gap_mask_list'][predict_ind]:
+        if info[i]['gap_flag'][master_ind] or \
+           info[i]['gap_flag'][predict_ind]:
             s += '-'
             continue
-        m = info[i]['match_list']
+        if info[i]['mask_flag'][master_ind] or \
+           info[i]['mask_flag'][predict_ind]:
+            s += '_'
+            continue
+        m = info[i]['match_flag']
         if False not in m:
             s += '.'
             continue
