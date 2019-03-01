@@ -252,4 +252,5 @@ def main():
         f.write('\n')
     f.close()
 
-main()
+if __name__ == '__main__':
+    main()
