@@ -68,6 +68,7 @@ ref_fn_prefix = {'S288c':'S288c_SGD-R64', 'CBS432':'CBS432', 'N_45':'N_45', \
 # the program to read the alignments; this directory needs to exist
 # before running the program
 alignments_dir = '../alignments/par4/'
+mask_dir = '../alignments/masked/'
 
 # should we leave the alignments already completed in the alignments
 # directory alone?
