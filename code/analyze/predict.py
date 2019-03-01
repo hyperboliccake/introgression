@@ -352,7 +352,7 @@ def initial_hmm_parameters(seq, known_states, unknown_states, \
     return init, emis, trans
 
 def predict_introgressed(ref_seqs, predict_seq, predict_args, \
-                         train=True):
+                         train=True, ps_only=False):
 
     # get rid of ++ sites?
     only_poly_sites = True
@@ -365,6 +365,8 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args, \
     seq_coded, ref_seqs_coded, ps = ungap_and_code(predict_seq, ref_seqs)
     if only_poly_sites:
         seq_coded, ref_seqs_coded, ps = poly_sites(seq_coded, ref_seqs_coded, ps)
+    if ps_only:
+        return ps
 
     # sets expected number of tracts and bases for each reference
     # based on expected length of introgressed tracts and expected
