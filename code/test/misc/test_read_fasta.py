@@ -1,5 +1,5 @@
 from misc.read_fasta import read_fasta
-from StringIO import StringIO
+from io import StringIO
 import pytest
 
 

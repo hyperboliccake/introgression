@@ -1,4 +1,4 @@
-import align.align_helpers as helper
+from align import align_helpers as helper
 import pytest
 
 
@@ -11,6 +11,13 @@ def test_flatten():
 
 
 def test_get_strains(mocker, capsys):
+    # ensure params are correct
+    mocker.patch('align.align_helpers.gp.fasta_suffix',
+                 '.fa')
+    mocker.patch('align.align_helpers.gp.chrms',
+                 ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX',
+                  'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI'])
+
     mock_dir = mocker.patch('os.listdir')
 
     mock_dir.return_value = []
@@ -50,5 +57,3 @@ def test_get_strains(mocker, capsys):
     assert strains == [('strain', 'one_strain'),
                        ('strain1', 'two_strains'),
                        ('strain2', 'two_strains')]
-
-

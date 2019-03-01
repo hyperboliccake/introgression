@@ -10,10 +10,10 @@
 
 export PYTHONPATH=/home/tcomi/projects/aclark4_introgression/code/
 
-ARGS=$(head -n 1 predict_args.txt | tail -n 1)
+#Make sure chrms is set to only I
+ARGS="_chr1_test .001 viterbi 10000 .025 10000 .025 10000 .025 10000 .025 unknown 1000 .01"
 
-module load anaconda
+module load anaconda3
+conda activate introgression3
 
-conda activate introgression
-
-python predict_main.py $ARGS
+python $PYTHONPATH/analyze/predict_main.py $ARGS

@@ -1,122 +1,45 @@
-import hmm.hmm_bw as hmm
-import math
-import random
+from hmm import hmm_bw as hmm
 import pytest
 from pytest import approx
 import numpy as np
 
 
-def test_elog():
-    assert hmm.elog(0) == hmm.LOGZERO
-    assert hmm.elog(hmm.LOGZERO) == hmm.LOGZERO
-    random.seed(123)
-    for i in range(10):
-        num = random.random()
-        assert hmm.elog(num) == math.log(num)
-
-
-def test_elogproduct():
-    assert hmm.elogproduct(0, hmm.LOGZERO) == hmm.LOGZERO
-    assert hmm.elogproduct(hmm.LOGZERO, 0) == hmm.LOGZERO
-    random.seed(123)
-    for i in range(10):
-        m = random.random()
-        n = random.random()
-        assert hmm.elogproduct(m, n) == m + n
-
-
-def test_elogsum():
-    assert hmm.elogsum(0, hmm.LOGZERO) == 0
-    assert hmm.elogsum(hmm.LOGZERO, 0) == 0
-
-    assert hmm.elogsum(1, 1) == 1 + math.log(2)
-
-    random.seed(123)
-    for i in range(10):
-        m = random.random()
-        n = random.random()
-        assert hmm.elogsum(m, n) ==\
-            math.log(1 + math.exp(-1*abs(m-n))) + max(m, n)
-
-
-def test_eexp():
-    assert hmm.eexp(hmm.LOGZERO) == 0
-
-    random.seed(123)
-    for i in range(10):
-        m = random.random()
-        assert hmm.eexp(m) == math.exp(m)
-
-
-def test_ecompare():
-    assert hmm.ecompare(0, hmm.LOGZERO) is True
-    assert hmm.ecompare(hmm.LOGZERO, hmm.LOGZERO) is False
-    assert hmm.ecompare(hmm.LOGZERO, 0) is False
-
-    for i in range(10):
-        m = random.random()
-        n = random.random()
-        assert hmm.ecompare(m, n) == (m > n)
-
-
-def test_isclose():
-    assert True  # TODO replace with math.isclose in python 3
-
-
 def test_init():
     hm = hmm.HMM()
-    assert hm.states == []
-    assert hm.trans == []
-    assert hm.emis == []
-    assert hm.obs == []
-    assert hm.init == []
+    assert hm.hidden_states == []
+    assert hm.transitions == []
+    assert hm.emissions == []
+    assert hm.observations == []
+    assert hm.initial_p == []
 
 
 def test_setters():
     hm = hmm.HMM()
 
-    # TODO probably need better type checking here
-    hm.set_states('test')
-    assert hm.states == 'test'
+    hm.set_hidden_states(['test'])
+    assert hm.hidden_states == ['test']
 
-    hm.set_obs('test')
-    assert hm.obs == 'test'
+    hm.set_transitions([[0, 1], [1, 0]])
+    assert np.array_equal(hm.transitions, np.array([[0, 1], [1, 0]]))
 
-    hm.set_trans([[0, 1], [1, 0]])
-    assert hm.trans == [[0, 1], [1, 0]]
-
-    with pytest.raises(AssertionError) as e:
-        hm.set_trans([[0, 0]])
+    with pytest.raises(ValueError) as e:
+        hm.set_transitions([[0, 0]])
     assert '[0, 0] 0' in str(e)
 
-    hm.set_emis([{'1': 1, '2': 0}, {'1': 0, '2': 1}])
-    assert hm.emis == [{'1': 1, '2': 0}, {'1': 0, '2': 1}]
+    hm.set_hidden_states(['1', '2'])
+    hm.set_emissions([{'1': 1, '2': 0}, {'1': 0.5, '2': 0.5}])
+    assert np.array_equal(hm.emissions, np.array([[1, 0], [0.5, 0.5]]))
+
+    with pytest.raises(ValueError) as e:
+        hm.set_emissions([{'1': 1, '2': 0}, {'1': 0, '2': 0}])
+    assert '2 0' in str(e)
+
+    hm.set_initial_p([0, 1, 0])
+    assert np.array_equal(hm.initial_p, np.array([0, 1, 0]))
 
     with pytest.raises(AssertionError) as e:
-        hm.set_emis([[0, 0]])
+        hm.set_initial_p([0, 0])
     assert '[0, 0] 0' in str(e)
-
-    hm.set_init([0, 1, 0])
-    assert hm.init == [0, 1, 0]
-
-    with pytest.raises(AssertionError) as e:
-        hm.set_init([0, 0])
-    assert '[0, 0] 0' in str(e)
-
-
-@pytest.fixture
-def hm():
-    hm = hmm.HMM()
-    hm.set_states(['N', 'E'])
-    hm.set_obs([list('NNENNENNEN'),
-                list('NNNNNEENNN'),
-                list('NNENNEENEN')])
-    hm.set_trans([[0.5, 0.5], [0.3, 0.7]])
-    hm.set_emis([{'N': 0.3, 'E': 0.7},
-                 {'N': 0.8, 'E': 0.2}])
-    hm.set_init([0.2, 0.8])
-
-    return hm
 
 
 def test_print_results(capsys, hm):
@@ -172,40 +95,161 @@ def test_go(capsys, hm):
     assert round(float(out[19].split('=')[1]), 2) == 0.85
 
 
+def test_intial_likelihood(hm):
+    alpha = hm.forward()
+    LL = hm.log_likelihood(alpha)
+
+    iter_LL = 0
+    for seq in range(len(hm.observations)):
+        LL_seq = np.copy(alpha[seq, -1, 0])
+        for i in range(1, len(hm.hidden_states)):
+            LL_seq = np.logaddexp(LL_seq, alpha[seq, -1, i])
+        iter_LL += LL_seq
+
+    assert LL == approx(iter_LL)
+
+
+def test_initial_probabilities(hm):
+    gamma = hm.state_probs(hm.forward(), hm.backward())
+    pi = hm.initial_probabilities(gamma)
+    iter_pi = np.copy(gamma[0, 0, :])
+
+    for i in range(len(hm.hidden_states)):
+        for seq in range(1, len(hm.observations)):
+            iter_pi[i] = np.logaddexp(iter_pi[i], gamma[seq, 0, i])
+    iter_pi = [np.exp(x) / len(hm.observations) for x in iter_pi]
+
+    assert pi == approx(iter_pi)
+
+
+def test_transition_probabilities(hm):
+    alpha = hm.forward()
+    beta = hm.backward()
+    gamma = hm.state_probs(alpha, beta)
+    xi = hm.bw(alpha, beta)
+
+    trans = hm.transition_probabilities(xi, gamma)
+
+    iter_trans = []
+    for i in range(len(hm.hidden_states)):
+        row = []
+        for j in range(len(hm.hidden_states)):
+            num = np.NINF
+            den = np.NINF
+            for seq in range(len(hm.observations)):
+                num_seq = xi[seq][0][i][j]
+                den_seq = gamma[seq][0][i]
+                for o in range(1, len(hm.observations[seq]) - 1):
+                    # xi is probability of probability
+                    # of being at state i at time t and
+                    # state j at time t+1
+                    num_seq = np.logaddexp(num_seq, xi[seq][o][i][j])
+                    # gamma is probability of being in
+                    # state i at time t
+                    den_seq = np.logaddexp(den_seq, gamma[seq][o][i])
+                # add the current sequence contribution to total
+                num = np.logaddexp(num, num_seq)
+                den = np.logaddexp(den, den_seq)
+            row.append(np.exp(num - den))
+        iter_trans.append(row)
+
+    assert iter_trans == approx(trans)
+
+
+def test_emission_probabilities(hm3):
+    hm = hm3
+    gamma = hm.state_probs(hm.forward(), hm.backward())
+    em = hm.emission_probabilities(gamma)
+
+    # emission probabilities
+    iter_em = []
+    for state in range(len(hm.hidden_states)):
+        d = []
+        for symbol in range(len(hm.emissions[state])):
+            num = np.NINF
+            den = np.NINF
+            for seq in range(len(hm.observations)):
+                num_seq = np.NINF
+                den_seq = np.NINF
+                for o in range(len(hm.observations[seq])):
+                    if hm.observations[seq][o] == symbol:
+                        # gamma is probability of being in state i at time t
+                        num_seq = np.logaddexp(num_seq, gamma[seq][o][state])
+                    den_seq = np.logaddexp(den_seq, gamma[seq][o][state])
+
+                # add the current sequence contribution to total
+                num = np.logaddexp(num, num_seq)
+                den = np.logaddexp(den, den_seq)
+            d.append(np.exp(num - den))
+        iter_em.append(d)
+
+    iter_em = np.array(iter_em)
+    assert em == approx(iter_em)
+
+    den = np.logaddexp.reduce(gamma, axis=0)
+    den = np.logaddexp.reduce(den, axis=0)
+
+    obs = np.array([i == hm.observations for i in range(len(hm.observed_states))])
+    obs = np.moveaxis(obs, [0, 1, 2], [2, 0, 1])
+    gam = np.where(obs[:, :, None, :], gamma[:, :, :, None], np.NINF)
+    num = np.logaddexp.reduce(np.logaddexp.reduce(gam))
+
+    assert em == approx(np.exp(num - den[:, None]))
+
+
 def test_forward(hm):
-    for seqnum in range(len(hm.obs)):
-        alpha = hm.forward()[seqnum]
-        seq = hm.obs[seqnum]
+    alpha = hm.forward()
 
-        # emis * init for state 1, seq N
-        assert alpha[0][0] == approx(math.log(0.3 * 0.2))
-        assert alpha[0][1] == approx(math.log(0.8 * 0.8))
+    alpha_iter = []
+    for seq in range(len(hm.observations)):
 
-        for i in range(1, len(alpha)):
-            alpha_a = np.dot(np.exp(alpha[i-1]), hm.trans)
-            assert alpha[i][0] == approx(
-                math.log(hm.emis[0][seq[i]] * alpha_a[0]))
-            assert alpha[i][1] == approx(
-                math.log(hm.emis[1][seq[i]] * alpha_a[1]))
+        alpha_current = [[]]
+        for s in range(len(hm.hidden_states)):
+            alpha_current[0].append(np.log(
+                hm.emissions[s][hm.observations[seq][0]]
+                * hm.initial_p[s]))
+        for o in range(1, len(hm.observations[seq])):
+            row = []
+            for current in range(len(hm.hidden_states)):
+                    total = -np.inf
+                    for prev in range(len(hm.hidden_states)):
+                        total = np.logaddexp(
+                            total,
+                            alpha_current[o-1][prev] +
+                            np.log(hm.transitions[prev][current]))
+                    total += np.log(
+                        hm.emissions[current][hm.observations[seq][o]])
+                    row.append(total)
+            alpha_current.append(row)
+
+        alpha_iter.append(alpha_current)
+    alpha_iter = np.array(alpha_iter)
+
+    assert alpha == approx(alpha_iter)
 
 
 def test_backward(hm):
-    for seqnum in range(len(hm.obs)):
-        beta = hm.backward()[seqnum]
-        # reverse so recursion is easier
-        beta.reverse()
-        seq = hm.obs[seqnum]
-        seq.reverse()
+    beta = hm.backward()
 
-        assert beta[0][0] == math.log(1)
-        assert beta[0][0] == math.log(1)
+    beta_iter = []
+    for seq in range(len(hm.observations)):
+        beta_current = [[0] * len(hm.hidden_states)
+                        for i in range(len(hm.observations[seq]))]
+        for o in range(len(hm.observations[seq]) - 2, -1, -1):
+            for current in range(len(hm.hidden_states)):
+                total = np.NINF
+                for next in range(len(hm.hidden_states)):
+                    prod = np.log(
+                        hm.emissions[next][hm.observations[seq][o+1]]) +\
+                        beta_current[o+1][next]
+                    prod += np.log(hm.transitions[current][next])
+                    total = np.logaddexp(total, prod)
+                beta_current[o][current] = total
 
-        for i in range(1, len(beta)):
-            beta_ab = np.dot(hm.trans,
-                             np.multiply(np.exp(beta[i-1]),
-                                         [hm.emis[j][seq[i-1]]
-                                          for j in range(2)]))
-            assert beta[i][0] == approx(math.log(beta_ab[0]))
+        beta_iter.append(beta_current)
+    beta_iter = np.array(beta_iter)
+
+    assert beta == approx(beta_iter)
 
 
 def test_state_probs(hm):
@@ -213,83 +257,135 @@ def test_state_probs(hm):
     beta = hm.backward()
     gamma = hm.state_probs(alpha, beta)
 
-    alpha = np.exp(alpha)
-    beta = np.exp(beta)
-    ab = np.multiply(alpha, beta)
+    iter_gamma = []
+    for seq in range(len(hm.observations)):
+        gamma_current = []
+        for o in range(len(hm.observations[seq])):
+            norm = np.NINF
+            row = []
+            for current in range(len(hm.hidden_states)):
+                prob = alpha[seq][o][current] + beta[seq][o][current]
+                row.append(prob)
+                norm = np.logaddexp(norm, prob)
+            for current in range(len(hm.hidden_states)):
+                row[current] = row[current] - norm
 
-    assert gamma == approx(np.log(
-        ab / np.sum(ab, axis=2)[:, :, np.newaxis]))
+            gamma_current.append(row)
+
+        iter_gamma.append(gamma_current)
+
+    iter_gamma = np.array(iter_gamma)
+
+    assert gamma == approx(iter_gamma)
 
 
 def test_bw(hm):
-    Alpha = hm.forward()
-    Beta = hm.backward()
-    Xi = hm.bw(Alpha, Beta)
+    alpha = hm.forward()
+    beta = hm.backward()
+    xi = hm.bw(alpha, beta)
 
-    for seqnum in range(len(hm.obs)):
-        # offset to match time t with t+1 in beta and seq
-        alpha = np.exp(Alpha[seqnum][:-1])
-        beta = np.exp(Beta[seqnum][1:])
-        seq = hm.obs[seqnum][1:]
-        xi = np.exp(Xi[seqnum])
-        # make emission a dir of lists instead of list of dirs
-        emis = {i: [hm.emis[j][i] for j in range(2)]
-                for i in hm.states}
+    xi_iter = []
+    for seq in range(len(hm.observations)):
+        xi_current = []
+        for o in range(len(hm.observations[seq]) - 1):
+            norm = np.NINF
+            matrix = [[np.NINF] * len(hm.hidden_states)
+                      for i in range(len(hm.hidden_states))]
+            for i in range(len(hm.hidden_states)):
+                for j in range(len(hm.hidden_states)):
+                    prob = np.log(
+                        hm.emissions[j][hm.observations[seq][o+1]]
+                    ) + beta[seq][o+1][j]
+                    prob = np.log(hm.transitions[i][j]) + prob
+                    prob = alpha[seq][o][i] + prob
+                    matrix[i][j] = prob
+                    norm = np.logaddexp(norm, prob)
 
-        # build array of emission based on sequence
-        emis = np.array([emis[n] for n in seq])
+            for i in range(len(hm.hidden_states)):
+                    for j in range(len(hm.hidden_states)):
+                        matrix[i][j] = matrix[i][j] - norm
 
-        # element-wise multiplication with weird broadcasting
-        num = alpha[:, :, None] * beta[:, None, :]\
-            * hm.trans * emis[:, None, :]
+            xi_current.append(matrix)
 
-        # normalize by summing along axis 1 and 2, broadcast division
-        assert xi == approx(num / np.sum(num, axis=(1, 2))[:, None, None])
+        xi_iter.append(xi_current)
+
+    xi_iter = np.array(xi_iter)
+    xi_iter[np.isnan(xi_iter)] = np.NINF
+
+    assert xi == approx(xi_iter)
 
 
 # TODO make function call take a sequence to consider
 def test_calc_probs(hm):
-    # seems like this is only supported for a single sequence
-    hm.obs = hm.obs[0]
-    prob, states = hm.calc_probs()
-    prob = np.exp(prob)
+    hm.observations = hm.observations[0]
+    probs, states = hm.calculate_max_states()
 
-    # make emission a dir of lists instead of list of dirs
-    emis = {i: [hm.emis[j][i] for j in range(2)]
-            for i in hm.states}
+    obs_len = hm.observations.size
+    iter_states = [[] for x in range(obs_len)]
+    iter_probs = [[] for x in range(obs_len)]
 
-    # build array of emission based on sequence
-    emis = np.array([emis[n] for n in hm.obs])
+    # initialize
+    for i in range(len(hm.hidden_states)):
+        iter_probs[0].append(np.log(hm.initial_p[i]) +
+                             np.log(hm.emissions[i, hm.observations[0]]))
+        iter_states[0].append(-1)
 
-    p = [list(hm.init * emis[0])]
-    trans_emis = np.array(hm.trans)[None, :, :] * emis[:, None, :]
-    s = [[]]
+    # main loop of viterbi algorithm
+    for pos in range(1, obs_len):
+        for end_state in range(len(hm.hidden_states)):
+            max_prob = np.NINF
+            max_state = -1
+            for prev_state in range(len(hm.hidden_states)):
+                    trans_prob = hm.transitions[prev_state][end_state]
+                    emis_prob = hm.emissions[end_state][hm.observations[pos]]
+                    prob = iter_probs[pos - 1][prev_state] + \
+                        np.log(trans_prob) + np.log(emis_prob)
+                    if prob > max_prob:
+                        max_prob = prob
+                        max_state = prev_state
 
-    for i in range(1, len(emis)):
-        probs = p[-1] * np.transpose(trans_emis[i])
-        p.append(list(np.max(probs, axis=1)))
-        s.append(list(np.argmax(probs, axis=1)))
+            iter_probs[pos].append(max_prob)
+            iter_states[pos].append(max_state)
 
-    assert states == s
-    for i in range(len(prob)):
-        assert prob[i] == approx(p[i])
+    iter_probs = np.array(iter_probs)
+    iter_states = np.array(iter_states)
+
+    assert probs == approx(iter_probs)
+    assert states == approx(iter_states)
 
 
 def test_max_path(hm):
-    hm.obs = hm.obs[0]
-    prob, states = hm.calc_probs()
+    hm.observations = hm.observations[0]
+    prob, states = hm.calculate_max_states()
     path = hm.max_path(prob, states)
 
-    p = [np.argmax(prob.pop())]
-    states = states[1:]
-    while states:
-        p.append(states.pop()[p[-1]])
+    max_path = []
+    max_prob = np.NINF
+    max_state = -1
+    last_ind = len(hm.observations) - 1
+    # start by finding the state we are most probably in at the
+    # last position
+    for end_state in range(len(hm.hidden_states)):
+        p = prob[last_ind][end_state]
+        if p > max_prob:
+            max_prob = p
+            max_state = end_state
+    max_path.append(max_state)
 
-    p.reverse()
+    # then retrace the most probable sequence of states that
+    # preceded this state
+    to_state = max_state
+    # goes from last_ind to 1 backwards (inclusively)
+    for i in range(last_ind, 0, -1):
+        from_state = states[i][to_state]
+        max_path.append(from_state)
+        to_state = from_state
 
-    assert p == path
+    max_path.reverse()
+    assert path == approx(max_path)
 
-    assert hm.viterbi() == p
+    hm.observations = [hm.observations]
+    assert np.array(hm.viterbi()) == approx(max_path)
 
 
 def test_posterior_decoding(hm):
@@ -297,12 +393,4 @@ def test_posterior_decoding(hm):
 
     gamma = np.exp(hm.state_probs(hm.forward(), hm.backward()))
 
-    from collections import defaultdict
-    pdd = [[defaultdict(float,
-                        {key: value for key, value in zip(hm.states, entry)})
-            for entry in seq] for seq in gamma]
-
-    for i in range(len(post)):
-        for j in range(len(post[i])):
-            for k in post[i][j].keys():
-                assert post[i][j][k] == approx(pdd[i][j][k])
+    assert post == approx(gamma)

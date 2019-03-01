@@ -1,6 +1,5 @@
 import sys
 import os
-sys.path.insert(0, '..')
 import global_params as gp
 
 def flatten(l):
@@ -18,10 +17,10 @@ def get_strains(dirs):
         fns = filter(lambda x: x.endswith(gp.fasta_suffix), fns)
         # only look at files containing '_chr' which should be chromosome
         # sequence files
-        fns = filter(lambda x: '_chr' in x, fns)    
+        fns = list(filter(lambda x: '_chr' in x, fns))
         num_files = len(fns)
         if num_files == 0:
-            print 'found no chromosome sequence files in', d, '(perhaps you should check the _chr naming convention?)'
+            print('found no chromosome sequence files in', d, '(perhaps you should check the _chr naming convention?)')
         fns = list(set([x[:x.find('_chr')] for x in fns]))
         num_strains = len(fns)
         # might be greater because of masked sequence files
