@@ -116,7 +116,7 @@ Initial State Probabilities:'''
                       {self.emissions[i, self.symbol_to_ind[k]]:.30e}")
         print()
 
-    def go(self,
+    def train(self,
            improvement_frac: float = .01,
            max_iterations: int = None) -> None:
         '''

@@ -69,8 +69,8 @@ def test_print_results(capsys, hm):
     assert float(out[19].split('=')[1]) == 0.8
 
 
-def test_go(capsys, hm):
-    hm.go()
+def test_train(capsys, hm):
+    hm.train()
     # get output from last report
     out = capsys.readouterr().out.split('\n')[-23:]
     assert out[0] == 'Iterations: 2'

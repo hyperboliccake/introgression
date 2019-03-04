@@ -16,4 +16,7 @@ ARGS="_chr1_test .001 viterbi 10000 .025 10000 .025 10000 .025 10000 .025 unknow
 module load anaconda3
 conda activate introgression3
 
-python $PYTHONPATH/analyze/predict_main.py $ARGS
+#python $PYTHONPATH/analyze/predict_main.py $ARGS
+# gzip after
+gzip /tigress/tcomi/aclark4_temp/results/analysis_chr1_test/positions__chr1_test.txt
+gzip /tigress/tcomi/aclark4_temp/results/analysis_chr1_test/probs__chr1_test.txt
