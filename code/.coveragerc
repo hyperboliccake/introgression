@@ -1,0 +1,20 @@
+[run]
+branch = True
+
+source = .
+include =
+    ./analyze/*.py
+    ./align/*.py
+    ./hmm/*.py
+    ./sim/*.py
+    .
+[report]
+omit =
+    */test/*
+
+include =
+    ./analyze/*.py
+    ./align/*.py
+    ./hmm/*.py
+    ./sim/*.py
+    ./misc/*.py

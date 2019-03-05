@@ -1,10 +1,7 @@
-import sys
-import os
 import copy
 import itertools
-import sim_process
+from sim import sim_process
 import global_params as gp
-import hmm.hmm_bw
 
 def process_args(arg_list, sim_args, i=1):
     
@@ -268,7 +265,6 @@ def emission_probabilities(d_freqs, own_bias, num_sites, predict_args):
         individual_symbol_freqs, symbol_freqs, weighted_match_freqs \
             = d_freqs[state]
         for symbol in symbol_freqs.keys():
-            #print state, symbol, symbol_freqs[symbol], float(predict_args['expected_tract_lengths'][state] * predict_args['expected_num_tracts'][state]) / num_sites, predict_args['expected_tract_lengths'][state], predict_args['expected_num_tracts'][state], num_sites
             p = symbol_freqs[symbol] * weight_expected * \
                 float(predict_args['expected_tract_lengths'][state] * \
                       predict_args['expected_num_tracts'][state]) / \
@@ -422,11 +418,10 @@ def initial_hmm_parameters(seqs_coded, species_to_indices, species_to, \
 
     return p['init'], p['emis'], p['trans']
 
+
 def convert_predictions(path, states):
-    new_path = []
-    for p in path:
-        new_path.append(states[p])
-    return new_path
+    return [states[p] for p in path]
+
 
 def fill_prediction(path, ps, seq_start, seq_end, fill_order):
     
@@ -529,7 +524,7 @@ def run_hmm(seqs, sim_args, predict_args, init, emis, trans, train, default_stat
         return predicted, None, hmm, hmm_init
 
     else:
-        print 'invalid method'
+        print('invalid method')
 
 def set_up_seqs(sim, sim_args, predict_args): 
 
@@ -572,7 +567,7 @@ def predict_introgressed(sim, sim_args, predict_args, train, method, only_poly=T
                 0, sim_args['num_sites']-1)
 
     return predicted, probs, hmm, hmm_init, ps
-    
+
 def write_hmm_headers(states, emis_symbols, f, sep):
 
     header_string = ''
@@ -620,4 +615,3 @@ def write_hmm_line(hmm, f, header = False):
 
     f.write(line_string[:-(len(sep))] + '\n')
     f.flush()
-

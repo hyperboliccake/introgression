@@ -1,3 +1,6 @@
+import numpy as np
+
+
 # given fractional positions for snvs and length of sequence l,
 # determine integer positions; if allow_multi_hit is true, easy but if
 # not, shift them around to include all the snvs
@@ -27,6 +30,7 @@ def integer_positions(positions, l, allow_multi_hit = False):
                 n += 1
         a.append(new_p)
     return a
+
 
 def parse_ms_tree_helper(t):
     if '(' not in t:
@@ -58,9 +62,11 @@ def parse_ms_tree_helper(t):
     #time = Decimal(t[t.rfind(':')+1:])
     return [parse_ms_tree_helper(left), parse_ms_tree_helper(right), time]
 
-# converts newick tree string to nested list format (assuming labels from ms output)
+
+# converts newick tree string to nested list (assuming labels from ms output)
 def parse_ms_tree(t):
     return parse_ms_tree_helper(t[:-1] + ':0')
+
 
 def read_one_sim(f, num_sites, num_samples):
 
@@ -103,6 +109,7 @@ def read_one_sim(f, num_sites, num_samples):
 
     return sim
 
+
 def convert_to_blocks_one(state_seq, states):
     # single individual state sequence
     blocks = {}
@@ -125,8 +132,8 @@ def convert_to_blocks_one(state_seq, states):
     blocks[prev_species].append((block_start, block_end))
     # make first block extend to first position, and last to last
     # (for the case that we're only considering a subset of sites)
-    #first_block = blocks[state_seq[0]][0]
-    #blocks[state_seq[0]][0] = (seq_start, first_block[1])
+    # first_block = blocks[state_seq[0]][0]
+    # blocks[state_seq[0]][0] = (seq_start, first_block[1])
     return blocks
 
 
@@ -135,6 +142,7 @@ def convert_to_blocks(state_seqs, states):
     for ind in state_seqs.keys():
         blocks[ind] = convert_to_blocks_one(state_seqs[ind], states)
     return blocks
+
 
 def write_introgression(state_seq, f, rep, states):
     # file format is:
@@ -165,6 +173,7 @@ def write_introgression(state_seq, f, rep, states):
         f.write('\n')
     f.flush()
 
+
 def read_introgression(f, line, states):
     # inverse of write_introgression function above
     
@@ -187,6 +196,7 @@ def read_introgression(f, line, states):
                 
     return d, rep, line
 
+
 def write_introgression_blocks(state_seq_blocks, f, rep, states):
     # file format is:
     # rep 0
@@ -206,6 +216,7 @@ def write_introgression_blocks(state_seq_blocks, f, rep, states):
             f.write(blocks_string[:-1])
         f.write('\n')
     f.flush()
+
 
 def read_introgression_blocks(f, line, states):
     # inverse of write_introgression_blocks function above
@@ -232,6 +243,7 @@ def read_introgression_blocks(f, line, states):
         line = f.readline()
                 
     return d, rep, line
+
 
 def unblock(blocks, num_sites):
     # blocks is keyed by individual, then species, list of (start, end)
@@ -268,6 +280,7 @@ def write_state_probs(probs, f, rep):
         f.write('\n')
     f.flush()
 
+
 def read_state_probs(f, line):
 
     d = {} # keyed by individual, then species, list of probs
@@ -288,21 +301,21 @@ def read_state_probs(f, line):
                 
     return d, rep, line
 
+
 def threshold_predicted(predicted, probs, threshold, default_state):
 
-    predicted_thresholded = []
-    for i in range(len(predicted)):
-        if probs[i] >= threshold:
-            predicted_thresholded.append(predicted[i])
-        else:
-            predicted_thresholded.append(default_state)
-    return predicted_thresholded
+    predicted_thresholded = np.array(predicted)
+    probs = np.array(probs)
+    predicted_thresholded[probs < threshold] = default_state
+    return list(predicted_thresholded)
+
 
 def fill_seq(seq, polymorphic_sites, nsites, fill):
     s = [fill for x in range(nsites)]
     for i in range(len(polymorphic_sites)):
         s[polymorphic_sites[i]] = seq[i]
     return s
+
 
 # add in the nonpolymorphic sites
 def fill_seqs(polymorphic_seqs, polymorphic_sites, nsites, fill):
@@ -314,19 +327,11 @@ def fill_seqs(polymorphic_seqs, polymorphic_sites, nsites, fill):
         seqs_filled.append(''.join(s)) # TODO should return this as list instead
     return seqs_filled
 
-def get_max_path(p):
+
+def get_max_path(p, states):
     # p is a list of dictionaries, one per site; each dict has keys
     # for each state, with associated probability
-    max_path = []
-    max_probs = []
-    for site_probs in p:
-        max_state = None
-        max_prob = -1
-        for state in site_probs:
-            if site_probs[state] > max_prob:
-                max_prob = site_probs[state]
-                max_state = state
-        max_path.append(max_state)
-        max_probs.append(max_prob)
+    max_positions = np.argmax(p, axis=1)
+    max_path = [states[i] for i in max_positions]
+    max_probs = [p[i, pos] for i, pos in enumerate(max_positions)]
     return max_path, max_probs
-

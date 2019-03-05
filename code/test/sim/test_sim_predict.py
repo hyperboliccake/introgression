@@ -1,25 +1,8 @@
-import sim.sim_predict as sim_predict
-import hmm.hmm_bw as hmm
-import pytest
-
-
-@pytest.fixture
-def hm():
-    hm = hmm.HMM()
-    hm.set_states(['N', 'E'])
-    hm.set_obs([list('NNENNENNEN'),
-                list('NNNNNEENNN'),
-                list('NNENNEENEN')])
-    hm.set_trans([[0.5, 0.5], [0.3, 0.7]])
-    hm.set_emis([{'N': 0.3, 'E': 0.7},
-                 {'N': 0.8, 'E': 0.2}])
-    hm.set_init([0.2, 0.8])
-
-    return hm
+from sim import sim_predict
 
 
 def test_convert_predictions(hm):
-    hm.obs = hm.obs[0]
+    hm.observations = hm.observations
     vit = hm.viterbi()
     states = ['N', 'E']
     predicted = sim_predict.convert_predictions(vit, states)

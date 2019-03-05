@@ -67,7 +67,11 @@ ref_fn_prefix = {'S288c':'S288c_SGD-R64', 'CBS432':'CBS432', 'N_45':'N_45', \
 # directory for mugsy to output alignments and for subsequent parts of
 # the program to read the alignments; this directory needs to exist
 # before running the program
+
 alignments_dir = '../alignments/par4/'
+mask_dir = '../alignments/masked/'
+alignments_dir = '/tigress/tcomi/aclark4_temp/par4/'
+#alignments_dir = '../alignments/par4/'
 
 # should we leave the alignments already completed in the alignments
 # directory alone?
@@ -94,7 +98,8 @@ masked_symbol = 'x'
 #====
 
 # output directory for simulpations
-sim_out_dir_absolute = '/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/sim/'
+sim_out_dir_absolute = '/tigress/tcomi/aclark4_temp/results/sim'
+#sim_out_dir_absolute = '/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/sim/'
 
 # prefix for simulation output
 sim_out_prefix = 'sim_out_'
@@ -135,7 +140,8 @@ sim_params.append({'tag':'1', \
 #====
 
 analysis_out_dir_absolute = \
-    '/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/'
+    '/tigress/tcomi/aclark4_temp/results/analysis'
+    #'/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/'
     #'/tigress/anneec/projects/introgression/results/analysis/'
 
 regions_out_dir_absolute = analysis_out_dir_absolute + '/regions/'
@@ -168,6 +174,6 @@ structure_install_path = '/tigress/anneec/software/structure/'
 # other
 #====
 
-chrms = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI']
+chrms = ['I']#, 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI']
 
 chrms_ara = dict(zip(chrms, range(1, len(chrms)+1)))

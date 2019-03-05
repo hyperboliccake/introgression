@@ -1,9 +1,7 @@
 import sys
-# from gene_predictions import *
-import predict
+from analyze import predict
 from collections import defaultdict
 from operator import itemgetter
-sys.path.insert(0, '..')
 import global_params as gp
 
 

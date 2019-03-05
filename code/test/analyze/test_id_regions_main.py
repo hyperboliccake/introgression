@@ -1,4 +1,4 @@
-import analyze.id_regions_main as main
+from analyze import id_regions_main as main
 from operator import itemgetter
 
 
