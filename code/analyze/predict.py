@@ -283,12 +283,13 @@ def initial_hmm_parameters(seq, known_states, unknown_states,
 
 
 def predict_introgressed(ref_seqs, predict_seq, predict_args,
-                         train=True, only_poly_sites=True):
+                         train=True, only_poly_sites=False):
 
     # code sequence by which reference it matches at each site
     seq_coded, positions = ungap_and_code(predict_seq, ref_seqs)
     if only_poly_sites:
         seq_coded, positions = poly_sites(seq_coded, positions)
+        return positions
 
     # sets expected number of tracts and bases for each reference
     # based on expected length of introgressed tracts and expected
