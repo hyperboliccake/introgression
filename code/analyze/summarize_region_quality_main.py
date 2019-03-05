@@ -1,9 +1,9 @@
 import sys
 import os
 import gzip
-import predict
+import analyze.predict as predict
 from collections import defaultdict
-from summarize_region_quality import *
+from analyze.summarize_region_quality import *
 import global_params as gp
 import misc.read_fasta as read_fasta
 import misc.read_table as read_table
@@ -15,7 +15,7 @@ def main():
     args = predict.process_predict_args(sys.argv[2:])
 
     task_ind = int(sys.argv[1])
-    species_ind = task_ind / len(gp.chrms)
+    species_ind = task_ind // len(gp.chrms)
     chrm_ind = task_ind % len(gp.chrms) 
 
     species_from = args['states'][species_ind]
@@ -83,7 +83,7 @@ def main():
         current_chrm = line[1]
         if current_chrm != chrm:
             continue
-        print strain, chrm
+        print(strain, chrm)
 
         # indices of alignment columns used by HMM
         ps = [int(x) for x in line[2:]]

@@ -1,5 +1,5 @@
 import analyze.summarize_region_quality_main as main
-from StringIO import StringIO
+from io import StringIO
 
 
 def test_main(mocker):
@@ -29,7 +29,7 @@ def test_main(mocker):
 
     main.main()
 
-    assert 90 / 16 == 5  # the species (unknown)
+    assert 90 // 16 == 5  # the species (unknown)
     assert 90 % 16 == 10  # the chromosome (XI)
     assert mocked_file.call_count == 1
     mocked_file.assert_any_call(
@@ -37,7 +37,7 @@ def test_main(mocker):
 
     # just headers
     states = ['S288c', 'CBS432', 'N_45', 'DBVPG6304', 'UWOPS91_917_1']
-    symbols = list('.-npbcxNPBCX')
+    symbols = list('.-_npbcxNPBCX')
     mocked_file().write.assert_has_calls([
         mocker.call('\t'.join(['region_id'] +
                               ['match_nongap_' + x for x in states] +

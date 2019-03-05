@@ -1,5 +1,5 @@
 import misc.read_table as read_table
-from StringIO import StringIO
+from io import StringIO
 import pytest
 
 

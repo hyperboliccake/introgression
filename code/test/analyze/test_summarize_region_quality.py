@@ -1,5 +1,5 @@
 import analyze.summarize_region_quality as summarize
-from StringIO import StringIO
+from io import StringIO
 import pytest
 
 
