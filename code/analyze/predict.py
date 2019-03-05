@@ -58,12 +58,13 @@ def process_predict_args(arg_list):
 
     # calculate these based on remaining bases, but after we know
     # which chromosome we're looking at
-    expected_tract_lengths[d['states'][0]] = 0    
+    expected_tract_lengths[d['states'][0]] = 0
     d['expected_tract_lengths'] = expected_tract_lengths
     d['expected_num_tracts'] = {}
     d['expected_bases'] = {}
 
     return d
+
 
 def read_aligned_seqs(fn, strain):
     headers, seqs = read_fasta.read_fasta(fn)
@@ -102,88 +103,42 @@ def set_expectations(args, n):
         args['expected_num_tracts'][species_to]
 
 
-def ungap_and_code_helper(predict_seq, ref_seqs, index_ref):
-
+def ungap_and_code(predict_seq, ref_seqs, index_ref=0):
     # index_ref is index of reference strain to index relative to
-
-    ps = []  # positions that we're keeping in analysis
-    seq = []  # sequence of emitted symbols, e.g. '++-++'
-    ind = 0  # current position in reference strain
-
     # build character array
-    seqs = np.array([list(predict_seq)] +
-                    [list(r) for r in ref_seqs])
+    sequences = np.array([list(predict_seq)] +
+                         [list(r) for r in ref_seqs])
 
     # make boolean for valid characters
-    isvalid = np.logical_and(seqs != gp.gap_symbol,
-                             seqs != gp.unsequenced_symbol)
+    isvalid = np.logical_and(sequences != gp.gap_symbol,
+                             sequences != gp.unsequenced_symbol)
 
-    # positions are where everything is valid, removing invalid reference first
-    # +1 removes the predict sequence at index 0
-    ps = np.where(np.all(isvalid[:, isvalid[index_ref+1, :]], axis=0))[0]
+    # positions are where everything is valid, index where the reference is
+    # valid.  The +1 removes the predict sequence at index 0
+    positions = np.where(
+        np.all(isvalid[:, isvalid[index_ref+1, :]], axis=0))[0]
 
-    matches = np.apply_along_axis(
-        lambda s: np.where(s == seqs, gp.match_symbol, gp.mismatch_symbol),
-        axis=1,
-        arr=seqs
-    )
+    matches = np.where(sequences[0] == sequences[1:],
+                       gp.match_symbol,
+                       gp.mismatch_symbol)
 
-    #print((matches[0, :, np.all(isvalid, axis=0)]))
     # 1: indexing removes currently examined sequence
-    # ref sequences not used!? (commit then test)
-    seq = [''.join(row) for row in matches[0, 1:, np.all(isvalid, axis=0)]]
-    return seq, list(ps)
-    for i in range(len(predict_seq)):
-        xi = predict_seq[i]
-        # only keep this position in sequence if no gaps in
-        # the alignment column
-        keep = True
-        if xi == gp.gap_symbol or xi == gp.unsequenced_symbol:
-            keep = False
-        # determine which references the sequence matches at
-        # this position
-        symbol = ''
-        for r in range(len(ref_seqs)):
-            ri = ref_seqs[r][i]
-            if ri == gp.gap_symbol or ri == gp.unsequenced_symbol:
-                keep = False
-                break
-            elif xi == ri:
-                symbol += gp.match_symbol
-            else:
-                symbol += gp.mismatch_symbol
-        if keep:
-            #seq.append(symbol)
-            ps.append(ind)
-        if ref_seqs[index_ref][i] != gp.gap_symbol:
-            ind += 1
+    matches = [''.join(row)
+               for row in np.transpose(matches[:, np.all(isvalid, axis=0)])]
 
-    print('---')
-    print(ps)
-    print(index_ref)
-    print(isvalid)
-    print(ps)
     # NOTE list is for unit test comparisons
+    return matches, positions
 
 
-def ungap_and_code(predict_seq, ref_seqs, index_ref=0):
-    seq, ps = ungap_and_code_helper(predict_seq, ref_seqs, index_ref)
-    ref_seqs_coded = []
-    for r in ref_seqs:
-        ref_seq_coded, _ = ungap_and_code_helper(r, ref_seqs, index_ref)
-        ref_seqs_coded.append(ref_seq_coded)
-    return seq, ref_seqs_coded, ps
-
-
-def poly_sites(seq, ref_seqs, ps):
-    seq_len = len(seq[0])
+def poly_sites(sequences, positions):
+    seq_len = len(sequences[0])
     # check if seq only contains match_symbol
-    retain = np.vectorize(lambda x: x.count(gp.match_symbol) != seq_len)(seq)
+    retain = np.vectorize(
+        lambda x: x.count(gp.match_symbol) != seq_len)(sequences)
     indices = np.where(retain)[0]
-    ps_poly = [ps[i] for i in indices]
-    seq_poly = [seq[i] for i in indices]
-    ref_seqs_poly = [[r[i] for i in indices] for r in ref_seqs]
-    return seq_poly, ref_seqs_poly, ps_poly
+    ps_poly = [positions[i] for i in indices]
+    seq_poly = [sequences[i] for i in indices]
+    return seq_poly, ps_poly
 
 
 def get_symbol_freqs(sequence):
@@ -331,10 +286,9 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args,
                          train=True, only_poly_sites=True):
 
     # code sequence by which reference it matches at each site
-    seq_coded, ref_seqs_coded, ps = ungap_and_code(predict_seq, ref_seqs)
+    seq_coded, positions = ungap_and_code(predict_seq, ref_seqs)
     if only_poly_sites:
-        seq_coded, ref_seqs_coded, ps = poly_sites(seq_coded,
-                                                   ref_seqs_coded, ps)
+        seq_coded, positions = poly_sites(seq_coded, positions)
 
     # sets expected number of tracts and bases for each reference
     # based on expected length of introgressed tracts and expected
@@ -351,9 +305,7 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args,
                                  predict_args['expected_frac'],
                                  predict_args['expected_tract_lengths'])
 
-    ######
     # make predictions
-    ######
 
     # set states and initial probabilties
     hmm.set_hidden_states(predict_args['states'])
@@ -376,17 +328,18 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args,
         path_t = sim_process.threshold_predicted(path, path_probs,
                                                  predict_args['threshold'],
                                                  predict_args['states'][0])
-        return path_t, p[0], hmm, hmm_init, ps
+        return path_t, p[0], hmm, hmm_init, positions
 
     else:
         hmm.set_observations([seq_coded])
         predicted = sim_predict.convert_predictions(hmm.viterbi(),
                                                     predict_args['states'])
-        return predicted, p[0], hmm, hmm_init, ps
+        return predicted, p[0], hmm, hmm_init, positions
 
 
 def write_positions(ps, writer, strain, chrm):
-    writer.write(f'{strain}\t{chrm}\t' + '\t'.join([str(x) for x in ps]) + '\n')
+    writer.write(f'{strain}\t{chrm}\t' +
+                 '\t'.join([str(x) for x in ps]) + '\n')
 
 
 def read_positions(fn):
@@ -413,6 +366,7 @@ def write_blocks_header(writer):
                  + '\n')
 
 
+# TODO: find source of all the newlines in output!!
 def write_blocks(state_seq_blocks, ps, writer, strain, chrm, species_pred):
     # file format is:
     # strain chrm predicted_species start end number_non_gap
@@ -424,7 +378,8 @@ def write_blocks(state_seq_blocks, ps, writer, strain, chrm, species_pred):
                     str(ps[end]),
                     str(end - start + 1)])
          for start, end in state_seq_blocks]))
-    writer.write('\n')  # for compatibility
+    if state_seq_blocks:
+        writer.write('\n')
 
 
 def read_blocks(fn, labeled=False):

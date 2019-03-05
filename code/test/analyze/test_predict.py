@@ -134,56 +134,55 @@ def test_write_hmm_header():
     assert writer.getvalue() == header + '\n'
 
 
-def test_ungap_and_code_helper():
+def test_ungap_and_code():
     # nothing in prediction
-    sequence, positions = predict.ungap_and_code_helper(
+    sequence, positions = predict.ungap_and_code(
         '---',  # predicted reference string
         ['abc', 'def', 'ghi'],  # several references
         0)  # reference index
-    assert positions == []
+    assert positions == approx([])
     assert sequence == []
 
     # one match
-    sequence, positions = predict.ungap_and_code_helper(
+    sequence, positions = predict.ungap_and_code(
         'a--',
         ['abc', 'def', 'ghi'],
         0)
-    assert positions == [0]
+    assert positions == approx([0])
     assert sequence == ['+--']
 
     # no match from refs
-    sequence, positions = predict.ungap_and_code_helper(
+    sequence, positions = predict.ungap_and_code(
         'a--',
         ['abc', 'def', '-hi'],
         0)
-    assert positions == []
+    assert positions == approx([])
     assert sequence == []
 
     # two matches
-    sequence, positions = predict.ungap_and_code_helper(
+    sequence, positions = predict.ungap_and_code(
         'ae-',
         ['abc', 'def', 'gei'],
         0)
-    assert positions == [0, 1]
+    assert positions == approx([0, 1])
     assert sequence == ['+--', '-++']
 
     # mess with ref index
-    sequence, positions = predict.ungap_and_code_helper(
+    sequence, positions = predict.ungap_and_code(
         'a--e-',
         ['a--bc', 'deeef', 'geeei'],
         0)
-    assert positions == [0, 1]
+    assert positions == approx([0, 1])
     assert sequence == ['+--', '-++']
-    sequence, positions = predict.ungap_and_code_helper(
+    sequence, positions = predict.ungap_and_code(
         'a--e-',
         ['a--bc', 'deeef', 'geeei'],
         1)
-    assert positions == [0, 3]
+    assert positions == approx([0, 3])
     assert sequence == ['+--', '-++']
 
 
-def test_ungap_and_code():
-    sequence, ref_seqs, positions = predict.ungap_and_code(
+    sequence, positions = predict.ungap_and_code(
         'a---ef--i',
         ['ab-dhfghi',
          'a-cceeg-i',
@@ -191,28 +190,16 @@ def test_ungap_and_code():
         0)
 
     assert sequence == '+++ -++ +-+ ++-'.split()
-    assert ref_seqs[0] == '+++ +-- +-- +-+ ++-'.split()
-    assert ref_seqs[1] == '+++ -+- -++ -+- ++-'.split()
-    assert ref_seqs[2] == '+++ --+ -++ +-+ --+'.split()
-    assert len(ref_seqs) == 3
-    assert positions == [0, 3, 4, 7]
+    assert positions == approx([0, 3, 4, 7])
 
 
 def test_poly_sites():
-    sequence, ref_seqs, positions = predict.poly_sites(
+    sequence, positions = predict.poly_sites(
         '+++ -++ +-+ ++-'.split(),
-        ['+++ +-- +-- +-+ ++-'.split(),
-            '+++ -+- -++ -+- ++-'.split(),
-            '+++ --+ -++ +-+ --+'.split()],
         [0, 3, 4, 7]
     )
     assert sequence == '-++ +-+ ++-'.split()
-    # TODO check if this is intended, the last element is removed from ref
-    assert ref_seqs[0] == '+-- +-- +-+'.split()
-    assert ref_seqs[1] == '-+- -++ -+-'.split()
-    assert ref_seqs[2] == '--+ -++ +-+'.split()
-    assert len(ref_seqs) == 3
-    assert positions == [3, 4, 7]
+    assert positions == approx([3, 4, 7])
 
 
 def test_set_expectations_default(args):
@@ -486,7 +473,7 @@ def test_predict_introgressed(args, capsys):
     assert 'finished in 10 iterations' in out[-2]
 
     # ps are locations of polymorphic sites, not counting missing '-'
-    assert ps == [0, 1, 3, 6, 8]
+    assert ps == approx([0, 1, 3, 6, 8])
     assert np.array_equal(hmm.initial_p, np.array([1, 0, 0, 0, 0, 0]))
 
     # check path
@@ -506,6 +493,15 @@ def test_write_positions():
 
 
 def test_write_blocks():
+    output = StringIO()
+    block = []
+    pos = [i * 2 for i in range(20)]
+    predict.write_blocks(block,
+                         pos,
+                         output, 'test', 'I', 'pred')
+
+    assert output.getvalue() == ''
+
     output = StringIO()
     block = [(0, 1), (4, 6), (10, 8)]
     pos = [i * 2 for i in range(20)]
