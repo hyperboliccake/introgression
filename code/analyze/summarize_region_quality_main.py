@@ -4,12 +4,10 @@ import gzip
 import predict
 from collections import defaultdict
 from summarize_region_quality import *
-sys.path.insert(0, '..')
 import global_params as gp
-sys.path.insert(0, '../misc/')
-import read_fasta
-import read_table
-import seq_functions
+import misc.read_fasta as read_fasta
+import misc.read_table as read_table
+import misc.seq_functions as seq_functions
 
 # in main function for profiling purposes
 def main():
