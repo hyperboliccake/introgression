@@ -174,6 +174,7 @@ structure_install_path = '/tigress/anneec/software/structure/'
 # other
 #====
 
-chrms = ['I']#, 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI']
+chrms = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI']
+#chrms = ['I']
 
 chrms_ara = dict(zip(chrms, range(1, len(chrms)+1)))

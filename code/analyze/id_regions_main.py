@@ -1,6 +1,5 @@
 import sys
 from analyze import predict
-from collections import defaultdict
 from operator import itemgetter
 import global_params as gp
 
@@ -10,45 +9,44 @@ def main():
 
     # order regions by chromosome, start (break ties alphabetically by strain)
     all_regions_by_chrm = dict(zip(gp.chrms, [[] for chrm in gp.chrms]))
-    fns = {}
+    output_files = {}
+    base_dir = gp.analysis_out_dir_absolute + args['tag']
     for species_from in args['states']:
 
         # strain chromosome predicted_species start end number_non_gap
-        fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + \
-             'blocks_' + species_from + \
-             '_' + args['tag'] + '.txt'
+        fn = f'{base_dir}/blocks_{species_from}_{args["tag"]}.txt'
 
         # introgressed regions keyed by strain and then chromosome:
         # (start, end, number_non_gap)
         regions = predict.read_blocks(fn)
 
-        for strain in regions.keys():
-            for chrm in regions[strain].keys():
+        for strain in regions:
+            for chrm in regions[strain]:
                 for entry in regions[strain][chrm]:
                     start, end, number_non_gap = entry
-                    all_regions_by_chrm[chrm].append((start, end, number_non_gap, \
-                                                      strain, species_from))
+                    all_regions_by_chrm[chrm].append(
+                        (start, end, number_non_gap, strain, species_from))
 
-        fns[species_from] = fn[:-4] + '_labeled.txt'
+        output_files[species_from] = f'{fn[:-4]}_labeled.txt'
 
-    fs = {}
+    writers = {}
     for species_from in args['states']:
-        fs[species_from] = open(fns[species_from], 'w')
-        fs[species_from].write('region_id\tstrain\tchromosome\tpredicted_species\tstart\tend\tnum_sites_hmm\n')
+        writers[species_from] = open(output_files[species_from], 'w')
+        writers[species_from].write(
+            'region_id\tstrain\tchromosome\tpredicted_species\t'
+            'start\tend\tnum_sites_hmm\n')
 
     idc = 1
     for chrm in gp.chrms:
-        for entry in sorted(all_regions_by_chrm[chrm], key = itemgetter(0, 3)):
-            species_from = entry[4]
-            rid = 'r' + str(idc)
-            fs[species_from].write(rid + '\t' + entry[3] + '\t' + \
-                                   chrm + '\t' + species_from + '\t' + \
-                                   str(entry[0]) + '\t' + str(entry[1]) + \
-                                   '\t' + str(entry[2]) + '\n')
+        for entry in sorted(all_regions_by_chrm[chrm], key=itemgetter(0, 3)):
+            (start, end, number_non_gap, strain, species_from) = entry
+            writers[species_from].write(
+                f'r{idc}\t{strain}\t{chrm}\t{species_from}\t'
+                f'{start}\t{end}\t{number_non_gap}\n')
             idc += 1
 
     for species_from in args['states']:
-        fs[species_from].close()
+        writers[species_from].close()
 
 
 if __name__ == "__main__":

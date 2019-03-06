@@ -11,12 +11,13 @@
 export PYTHONPATH=/home/tcomi/projects/aclark4_introgression/code/
 
 #Make sure chrms is set to only I
-ARGS="_chr1_test .001 viterbi 10000 .025 10000 .025 10000 .025 10000 .025 unknown 1000 .01"
+#ARGS="_chr1_test .001 viterbi 10000 .025 10000 .025 10000 .025 10000 .025 unknown 1000 .01"
+ARGS="_test .001 viterbi 10000 .025 10000 .025 10000 .025 10000 .025 unknown 1000 .01"
 
 module load anaconda3
 conda activate introgression3
 
-python $PYTHONPATH/analyze/predict_main.py $ARGS
+#python $PYTHONPATH/analyze/predict_main.py $ARGS
 # gzip after
-gzip /tigress/tcomi/aclark4_temp/results/analysis_chr1_test/positions__chr1_test.txt
-gzip /tigress/tcomi/aclark4_temp/results/analysis_chr1_test/probs__chr1_test.txt
+gzip /tigress/tcomi/aclark4_temp/results/analysis_test/positions__test.txt
+gzip /tigress/tcomi/aclark4_temp/results/analysis_test/probs__test.txt
