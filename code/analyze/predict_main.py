@@ -1,5 +1,6 @@
 import sys
 import os
+import gzip
 import predict
 import global_params as gp
 from sim import sim_process
@@ -44,9 +45,9 @@ predict.write_hmm_header(args['known_states'], args['unknown_states'],
 
 write_ps = True
 if write_ps:
-    ps_f = open(f'{base_dir}/positions_{args["tag"]}.txt', 'wt')
+    ps_f = gzip.open(f'{base_dir}/positions_{args["tag"]}.txt', 'wt')
 
-probs_f = open(f'{base_dir}/probs_{args["tag"]}.txt', 'wt')
+probs_f = gzip.open(f'{base_dir}/probs_{args["tag"]}.txt', 'wt')
 
 # loop through all sequences and predict introgression
 

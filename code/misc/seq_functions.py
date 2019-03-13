@@ -1,24 +1,28 @@
+import numpy as np
 
-r = {'A':'T', 'T':'A', 'G':'C', 'C':'G', 'a':'t', 't':'a', 'g':'c', 'c':'g'}
+
+r = {'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G',
+     'a': 't', 't': 'a', 'g': 'c', 'c': 'g'}
 
 codon_table = {
-    'ATA':'I', 'ATC':'I', 'ATT':'I', 'ATG':'M',
-    'ACA':'T', 'ACC':'T', 'ACG':'T', 'ACT':'T',
-    'AAC':'N', 'AAT':'N', 'AAA':'K', 'AAG':'K',
-    'AGC':'S', 'AGT':'S', 'AGA':'R', 'AGG':'R',
-    'CTA':'L', 'CTC':'L', 'CTG':'L', 'CTT':'L',
-    'CCA':'P', 'CCC':'P', 'CCG':'P', 'CCT':'P',
-    'CAC':'H', 'CAT':'H', 'CAA':'Q', 'CAG':'Q',
-    'CGA':'R', 'CGC':'R', 'CGG':'R', 'CGT':'R',
-    'GTA':'V', 'GTC':'V', 'GTG':'V', 'GTT':'V',
-    'GCA':'A', 'GCC':'A', 'GCG':'A', 'GCT':'A',
-    'GAC':'D', 'GAT':'D', 'GAA':'E', 'GAG':'E',
-    'GGA':'G', 'GGC':'G', 'GGG':'G', 'GGT':'G',
-    'TCA':'S', 'TCC':'S', 'TCG':'S', 'TCT':'S',
-    'TTC':'F', 'TTT':'F', 'TTA':'L', 'TTG':'L',
-    'TAC':'Y', 'TAT':'Y', 'TAA':'_', 'TAG':'_',
-    'TGC':'C', 'TGT':'C', 'TGA':'_', 'TGG':'W',
+    'ATA': 'I', 'ATC': 'I', 'ATT': 'I', 'ATG': 'M',
+    'ACA': 'T', 'ACC': 'T', 'ACG': 'T', 'ACT': 'T',
+    'AAC': 'N', 'AAT': 'N', 'AAA': 'K', 'AAG': 'K',
+    'AGC': 'S', 'AGT': 'S', 'AGA': 'R', 'AGG': 'R',
+    'CTA': 'L', 'CTC': 'L', 'CTG': 'L', 'CTT': 'L',
+    'CCA': 'P', 'CCC': 'P', 'CCG': 'P', 'CCT': 'P',
+    'CAC': 'H', 'CAT': 'H', 'CAA': 'Q', 'CAG': 'Q',
+    'CGA': 'R', 'CGC': 'R', 'CGG': 'R', 'CGT': 'R',
+    'GTA': 'V', 'GTC': 'V', 'GTG': 'V', 'GTT': 'V',
+    'GCA': 'A', 'GCC': 'A', 'GCG': 'A', 'GCT': 'A',
+    'GAC': 'D', 'GAT': 'D', 'GAA': 'E', 'GAG': 'E',
+    'GGA': 'G', 'GGC': 'G', 'GGG': 'G', 'GGT': 'G',
+    'TCA': 'S', 'TCC': 'S', 'TCG': 'S', 'TCT': 'S',
+    'TTC': 'F', 'TTT': 'F', 'TTA': 'L', 'TTG': 'L',
+    'TAC': 'Y', 'TAT': 'Y', 'TAA': '_', 'TAG': '_',
+    'TGC': 'C', 'TGT': 'C', 'TGA': '_', 'TGG': 'W',
 }
+
 
 def reverse_complement(s):
     rs = ''
@@ -51,16 +55,19 @@ def index_ignoring_gaps(s, i, s_start, gap_symbol):
         x += 1
     return x
 
+
 def seq_id(ref_seq, seq):
-    n = len(ref_seq)
-    total_sites = 0
-    total_match = 0
-    for i in range(n):
-        if ref_seq[i] in r and seq[i] in r:
-            total_sites += 1
-            if ref_seq[i] == seq[i]:
-                total_match += 1
+    length = min(ref_seq.size, seq.size)
+    valid_seq = list(r.keys())
+    valid = np.logical_and(
+        np.isin(ref_seq[:length], valid_seq),
+        np.isin(seq[:length], valid_seq))
+    total_sites = np.sum(valid)
+    total_match = np.sum(np.logical_and(
+        ref_seq[:length] == seq[:length], valid))
+
     return total_match, total_sites
+
 
 def seq_id_windowed(seq1, seq2, window):
     n = len(seq1)
@@ -78,6 +85,7 @@ def seq_id_windowed(seq1, seq2, window):
                 total_match = 0
     return matches
 
+
 def translate(seq):
     if len(seq) % 3 != 0:
         return ''
@@ -86,4 +94,3 @@ def translate(seq):
         codon = seq[i:i+3]
         a += codon_table[codon]
     return a
-

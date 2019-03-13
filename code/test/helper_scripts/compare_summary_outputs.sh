@@ -12,6 +12,6 @@ done
 echo starting on .fa.gz...
 for file in $(ls ${expected}regions/*.fa.gz); do
     act=$(echo $file | sed 's/p4e2/_test/g')
-    cmp <(zcat $file) <(zcat $act) || echo $file failed
+    cmp <(zcat $file) <$act || echo $file failed
 done
 echo done!

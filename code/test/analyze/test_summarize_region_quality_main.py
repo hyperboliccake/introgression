@@ -14,9 +14,11 @@ def test_main(mocker):
     mocker.patch('sys.argv',
                  "test.py 90 tag .001 viterbi 10000 .025 10000 .025 \
                  10000 .025 10000 .025 unknown 1000 .01".split())
+    mocker.patch('analyze.summarize_region_quality_main.os.path.isdir',
+                 return_value=True)
     # TODO check call arguments
     mocker.patch('misc.read_table.read_table_columns',
-                 return_value=({'region_id': []}, ['region_id']))
+                 return_value=({'s': {'region_id': []}}, ['region_id']))
     mocker.patch('analyze.summarize_region_quality_main.read_masked_intervals',
                  return_value=[(1, 2)])
     lines = StringIO('')
