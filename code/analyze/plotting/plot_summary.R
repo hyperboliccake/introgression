@@ -73,7 +73,7 @@ print(a[1:10,])
 ggplot(a, aes(x=reorder(toupper(strain), -frac), y=frac, fill=in3)) + 
     geom_bar(stat='identity',position='dodge') + 
     xlab('Strain') + ylab('Fraction of genome introgressed') +
-    scale_fill_manual(values =c(my_color_palette[['introgressed']], "#9775A3") ) +
+    scale_fill_manual(values =c(my_color_palette[['introgressed']], "#ABBEAB") ) +
     guides(fill=FALSE) +
     scale_y_continuous(expand = c(0,0), limits=c(0,max(a$frac))) +
     theme(panel.background=element_rect(fill="white"),
@@ -176,7 +176,7 @@ ggplot(regions, aes(x=length/1000, colour=in3)) +
     ylab('Fraction of regions shorter') +
     scale_x_continuous(expand=c(0,.4)) +
     scale_y_continuous(expand=c(0,.01)) +
-    scale_colour_manual(values = c("#9775A3", my_color_palette[['introgressed']])) +
+    scale_colour_manual(values = c("#ABBEAB", my_color_palette[['introgressed']])) +
     theme(panel.background=element_rect(fill="white"),
           panel.grid.minor=element_line(colour="gray90"),
           panel.grid.major=element_line(colour="gray80"),

@@ -122,7 +122,7 @@ ggplot(a, aes(x=fpr,y=tpr,shape=method,colour=method)) +
           axis.title.x = element_text(colour="black", size=20),
           axis.title.y = element_text(colour="black", size=20),
           plot.margin=unit(c(.5,.5,.5,.5),"in"),
-          legend.position = c(.8,.2),
+          legend.position = c(.8,.15),
           legend.title = element_text(size=18),
           legend.text = element_text(size=16), 
           legend.key = element_rect(fill = "transparent"))

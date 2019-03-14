@@ -11,7 +11,7 @@ library(reshape2)
 library(RColorBrewer)
 library(viridis)
 library(hexbin)
-source('../my_color_palette.R')
+source('../../my_color_palette.R')
 
 
 args = commandArgs(trailingOnly=TRUE)
@@ -29,6 +29,18 @@ regions$fraction_gap = regions$number_gaps / regions$aligned_length
 regions$fraction_gap_masked = (regions$number_gaps + regions$number_masked_non_gap) / regions$aligned_length
 regions$cer_id = regions$number_match_ref1 / (regions$aligned_length - regions$number_gaps)
 regions$par_id = regions$number_match_ref2 / (regions$aligned_length - regions$number_gaps)
+
+quantile(regions$cer_id)
+quantile(regions$par_id, probs=seq(0,1,.01))
+
+x1 = regions[which(regions$par_id < .9),]
+x1c = sum(x1$aligned_length - x1$number_gaps)
+x2c = sum(regions$aligned_length - regions$number_gaps)
+print(x1c)
+print(x2c)
+print(x1c/x2c)
+
+adsgasklgj
 
 
 #regions_filtered = read.table(paste('/tigress/AKEY/akey_vol2/aclark4/projects/introgression/results/analysis/', tag, '/introgressed_blocks_filtered_par_', tag, '_summary_plus.txt', sep=''), sep='\t', header=T, stringsAsFactors=F)

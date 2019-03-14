@@ -68,7 +68,7 @@ dev.off()
 
 sagsdag
 
-
+#************ 
 tree_all = read.tree('outtree_consense_all_ungapped_bootstrap')
 tree_nonint = read.tree('outtree_upgma_nonint_ungapped')
 
