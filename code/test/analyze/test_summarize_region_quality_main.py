@@ -12,7 +12,7 @@ def test_main(mocker):
                   'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI'])
 
     mocker.patch('sys.argv',
-                 "test.py 90 tag .001 viterbi 10000 .025 10000 .025 \
+                 "test.py 5 tag .001 viterbi 10000 .025 10000 .025 \
                  10000 .025 10000 .025 unknown 1000 .01".split())
     mocker.patch('analyze.summarize_region_quality_main.os.path.isdir',
                  return_value=True)
@@ -31,11 +31,11 @@ def test_main(mocker):
 
     main.main()
 
-    assert 90 // 16 == 5  # the species (unknown)
-    assert 90 % 16 == 10  # the chromosome (XI)
-    assert mocked_file.call_count == 1
+    assert mocked_file.call_count == 2
     mocked_file.assert_any_call(
-        'dir/tag/blocks_unknown_tag_chrXI_quality.txt', 'w')
+        'dir/tag/blocks_unknown_tag_quality.txt', 'w')
+    mocked_file.assert_any_call(
+        'dir/tag/regions/unknown.pkl', 'wb')
 
     # just headers
     states = ['S288c', 'CBS432', 'N_45', 'DBVPG6304', 'UWOPS91_917_1']

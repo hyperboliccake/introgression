@@ -14,6 +14,7 @@ from misc import read_table
 from misc import seq_functions
 import numpy as np
 import bisect
+import pickle
 
 
 def main():
@@ -21,11 +22,9 @@ def main():
     args = predict.process_predict_args(sys.argv[2:])
 
     task_ind = int(sys.argv[1])
-    species_ind = task_ind // len(gp.chrms)
-    chrm_ind = task_ind % len(gp.chrms)
+    species_ind = task_ind
 
     species_from = args['states'][species_ind]
-    chrm = gp.chrms[chrm_ind]
 
     base_dir = gp.analysis_out_dir_absolute + args['tag']
 
@@ -33,47 +32,65 @@ def main():
     if not os.path.isdir(regions_dir):
         os.mkdir(regions_dir)
 
-    # region_id strain chromosome predicted_species start end number_non_gap
-    regions_chrm, labels = read_table.read_table_columns(
-        f'{base_dir}/blocks_{species_from}_{args["tag"]}_labeled.txt', '\t',
-        group_by='strain',
-        chromosome=chrm
-    )
+    quality_writer = None
+    positions = gzip.open(f'{base_dir}/positions_{args["tag"]}.txt.gz', 'rt')
+    line_number = 0
 
-    for r_id in regions_chrm:
-        n = len(regions_chrm[r_id]['region_id'])
+    region_writer = gzip.open(
+        f'{regions_dir}{species_from}{gp.fasta_suffix}.gz', 'wt')
+    region_index = {}
 
-        for s in args['known_states']:
-            regions_chrm[r_id]['match_nongap_' + s] = [0] * n
-            regions_chrm[r_id]['num_sites_nongap_' + s] = [0] * n
-            regions_chrm[r_id]['match_hmm_' + s] = [0] * n
-            regions_chrm[r_id]['match_nonmask_' + s] = [0] * n
-            regions_chrm[r_id]['num_sites_nonmask_' + s] = [0] * n
+    for chrm in gp.chrms:
+        # region_id strain chromosome predicted_species start end num_non_gap
+        regions_chrm, labels = read_table.read_table_columns(
+            f'{base_dir}/blocks_{species_from}_{args["tag"]}_labeled.txt',
+            '\t',
+            group_by='strain',
+            chromosome=chrm
+        )
 
-        info_string_symbols = list('.-_npbcxNPBCX')
-        for s in info_string_symbols:
-            regions_chrm[r_id]['count_' + s] = [0] * n
+        for strain in regions_chrm:
+            n = len(regions_chrm[strain]['region_id'])
 
-    # get masked sites for all references, not just the current
-    # species_from we're considering regions from
-    masked_sites_refs = {}
-    for s, state in enumerate(args['known_states']):
-        species_from_prefix = gp.ref_fn_prefix[state]
-        masked_sites_refs[s] = \
-            convert_intervals_to_sites(
-                read_masked_intervals(
-                    f'{gp.mask_dir}{species_from_prefix}'
-                    f'_chr{chrm}_intervals.txt'))
+            for s in args['known_states']:
+                regions_chrm[strain]['match_nongap_' + s] = [0] * n
+                regions_chrm[strain]['num_sites_nongap_' + s] = [0] * n
+                regions_chrm[strain]['match_hmm_' + s] = [0] * n
+                regions_chrm[strain]['match_nonmask_' + s] = [0] * n
+                regions_chrm[strain]['num_sites_nonmask_' + s] = [0] * n
 
-    # loop through chromosomes and strains, followed by species of
-    # introgression so that we only have to read each alignment in once
-    with gzip.open(f'{base_dir}/positions_{args["tag"]}.txt.gz', 'rt') \
-            as positions:
-        for line in positions:
+            info_string_symbols = list('.-_npbcxNPBCX')
+            for s in info_string_symbols:
+                regions_chrm[strain]['count_' + s] = [0] * n
+
+        # get masked sites for all references, not just the current
+        # species_from we're considering regions from
+        masked_sites_refs = {}
+        for s, state in enumerate(args['known_states']):
+            species_from_prefix = gp.ref_fn_prefix[state]
+            masked_sites_refs[s] = \
+                convert_intervals_to_sites(
+                    read_masked_intervals(
+                        f'{gp.mask_dir}{species_from_prefix}'
+                        f'_chr{chrm}_intervals.txt'))
+
+        # loop through chromosomes and strains, followed by species of
+        # introgression so that we only have to read each alignment in once
+        # move to last read chromosome
+        positions.seek(line_number)
+        line = positions.readline()
+        while line != '':
             line = line.split('\t')
-            strain = line[0]
+
             current_chrm = line[1]
-            if current_chrm != chrm or strain not in regions_chrm:
+            if current_chrm != chrm:
+                break
+
+            strain = line[0]
+            if strain not in regions_chrm:
+                # record current position in case need to re read line
+                line_number = positions.tell()
+                line = positions.readline()
                 continue
 
             print(strain, chrm)
@@ -197,9 +214,8 @@ def main():
                     regions_chrm[strain][f'num_sites_nonmask_{statej}'][i] = \
                         total_sites_nonmask
 
-                region_writer = open(
-                    f'{regions_dir}{r_id}{gp.fasta_suffix}', 'w')
-
+                region_index[int(r_id[1:])] = region_writer.tell()
+                region_writer.write(f'#{r_id}\n')
                 names = args['known_states'] + [strain]
                 for sj in range(len(names)):
                     # write sequence to region alignment file, along with
@@ -215,7 +231,6 @@ def main():
                 info_string = make_info_string(info, 0, species_ind)
                 region_writer.write('> info\n')
                 region_writer.write(info_string + '\n')
-                region_writer.close()
 
                 # TODO this can be made faster with numpy
                 # and keep track of each symbol count
@@ -223,21 +238,26 @@ def main():
                     regions_chrm[strain]['count_' + sym][i] = \
                         info_string.count(sym)
 
+            # record current position in case need to re read line
+            line_number = positions.tell()
+            line = positions.readline()
             sys.stdout.flush()
 
-    labels = labels + ['match_nongap_' + x for x in args['known_states']]
-    labels = labels + ['num_sites_nongap_' + x for x in args['known_states']]
-    labels = labels + ['match_hmm_' + x for x in args['known_states']]
-    labels = labels + ['match_nonmask_' + x for x in args['known_states']]
-    labels = labels + ['num_sites_nonmask_' + x for x in args['known_states']]
-    labels = labels + ['count_' + x for x in info_string_symbols]
-
-    with open(f'{base_dir}/blocks_{species_from}'
-              f'_{args["tag"]}_chr{chrm}_quality.txt', 'w') as writer:
-
-        writer.write('\t'.join(labels) + '\n')
+        labels += ['match_nongap_' + x for x in args['known_states']]
+        labels += ['num_sites_nongap_' + x for x in args['known_states']]
+        labels += ['match_hmm_' + x for x in args['known_states']]
+        labels += ['match_nonmask_' + x for x in args['known_states']]
+        labels += ['num_sites_nonmask_' + x for x in args['known_states']]
+        labels += ['count_' + x for x in info_string_symbols]
 
         assert labels[0] == 'region_id', 'Unexpected labeled format'
+
+        # write on first execution
+        if quality_writer is None:
+            quality_writer = open(f'{base_dir}/blocks_{species_from}'
+                                  f'_{args["tag"]}_quality.txt', 'w')
+
+            quality_writer.write('\t'.join(labels) + '\n')
 
         # reorganize output as list of tuples ordered by label
         output = []
@@ -249,7 +269,12 @@ def main():
 
         # sort by region id (index 0, remove r)
         for entry in sorted(output, key=lambda e: int(e[0][1:])):
-            writer.write('\t'.join([str(e) for e in entry]) + '\n')
+            quality_writer.write('\t'.join([str(e) for e in entry]) + '\n')
+
+    quality_writer.close()
+    region_writer.close()
+    with open(f'{regions_dir}{species_from}.pkl', 'wb') as index:
+        pickle.dump(region_index, index)
 
 
 if __name__ == '__main__':
