@@ -69,7 +69,8 @@ ref_fn_prefix = {'S288c':'S288c_SGD-R64', 'CBS432':'CBS432', 'N_45':'N_45', \
 # before running the program
 
 alignments_dir = '../alignments/par4/'
-mask_dir = '../alignments/masked/'
+mask_dir = '/tigress/tcomi/aclark4_temp/par4/masked/'
+#mask_dir = '../alignments/masked/'
 alignments_dir = '/tigress/tcomi/aclark4_temp/par4/'
 #alignments_dir = '../alignments/par4/'
 
@@ -174,6 +175,7 @@ structure_install_path = '/tigress/anneec/software/structure/'
 # other
 #====
 
-chrms = ['I']#, 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI']
+chrms = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI']
+#chrms = ['I']
 
 chrms_ara = dict(zip(chrms, range(1, len(chrms)+1)))

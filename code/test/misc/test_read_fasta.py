@@ -1,6 +1,8 @@
 from misc.read_fasta import read_fasta
 from io import StringIO
 import pytest
+from pytest import approx
+import numpy as np
 
 
 def test_read_fasta_empty(mocker):
@@ -9,13 +11,13 @@ def test_read_fasta_empty(mocker):
     headers, seqs = read_fasta('mocked')
 
     assert headers == ['>']
-    assert seqs == ['']
+    assert seqs.tolist() == [[]]
     mocked_file.assert_called_with('mocked', 'r')
 
     fasta = StringIO('')
     mocked_file = mocker.patch('misc.read_fasta.open', return_value=fasta)
     # TODO probably handle empty files better
-    with pytest.raises(IndexError): 
+    with pytest.raises(IndexError):
         headers, seqs = read_fasta('mocked')
 
 
@@ -31,7 +33,7 @@ atcg
     headers, seqs = read_fasta('mocked')
 
     assert headers == ['> headseq headfname.fa']
-    assert seqs == ['actg---atcg']
+    assert seqs == approx(np.asarray([list('actg---atcg')]))
     mocked_file.assert_called_with('mocked', 'r')
 
 
@@ -44,9 +46,11 @@ actg
 atcg
 > headseq headfname.fa
 actg
+actg
+---
 > headseq2 headfname.fa
 actg-
-cat
+cataaa
 ''')
     mocked_file = mocker.patch('misc.read_fasta.open', return_value=fasta)
     headers, seqs = read_fasta('mocked')
@@ -54,7 +58,8 @@ cat
     assert headers == ['> headseq headfname.fa',
                        '> headseq headfname.fa',
                        '> headseq2 headfname.fa']
-    assert seqs == ['actg---atcg',
-                    'actg',
-                    'actg-cat']
+    print(seqs)
+    assert seqs == approx(np.array([list('actg---atcg'),
+                                    list('actgactg---'),
+                                    list('actg-cataaa')]))
     mocked_file.assert_called_with('mocked', 'r')

@@ -418,11 +418,10 @@ def initial_hmm_parameters(seqs_coded, species_to_indices, species_to, \
 
     return p['init'], p['emis'], p['trans']
 
+
 def convert_predictions(path, states):
-    new_path = []
-    for p in path:
-        new_path.append(states[p])
-    return new_path
+    return [states[p] for p in path]
+
 
 def fill_prediction(path, ps, seq_start, seq_end, fill_order):
     
@@ -568,7 +567,7 @@ def predict_introgressed(sim, sim_args, predict_args, train, method, only_poly=T
                 0, sim_args['num_sites']-1)
 
     return predicted, probs, hmm, hmm_init, ps
-    
+
 def write_hmm_headers(states, emis_symbols, f, sep):
 
     header_string = ''
@@ -616,4 +615,3 @@ def write_hmm_line(hmm, f, header = False):
 
     f.write(line_string[:-(len(sep))] + '\n')
     f.flush()
-

@@ -86,7 +86,7 @@ class HMM:
         '''
 
         self.initial_p = np.array(initial_p)
-        assert np.isclose(sum(initial_p), 1), f"{initial_p} {sum(initial_p)}"
+        assert np.isclose(np.sum(initial_p), 1), f"{initial_p} {sum(initial_p)}"
 
     def print_results(self, iterations: int, LL: float) -> None:
         '''
@@ -116,7 +116,7 @@ Initial State Probabilities:'''
                       {self.emissions[i, self.symbol_to_ind[k]]:.30e}")
         print()
 
-    def go(self,
+    def train(self,
            improvement_frac: float = .01,
            max_iterations: int = None) -> None:
         '''
@@ -159,10 +159,10 @@ Initial State Probabilities:'''
             assert np.isclose(np.sum(self.initial_p), 1), \
                 f"{beta}\n{np.sum(self.initial_p)} {self.initial_p}"
             for t in self.transitions:
-                assert np.isclose(sum(t), 1), \
-                    f"{xi} {gamma} {sum(t)} {t}"
+                assert np.isclose(np.sum(t), 1), \
+                    f"{xi} {gamma} {np.sum(t)} {t}"
             for e in self.emissions:
-                assert np.isclose(sum(e), 1), f"{sum(e.values())} {e}"
+                assert np.isclose(np.sum(e), 1), f"{np.sum(e.values())} {e}"
 
             iterations += 1
 
