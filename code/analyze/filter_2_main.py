@@ -33,7 +33,7 @@ for species_from in args['known_states'][1:]:
          '_' + args['tag'] + '_filtered1.txt'
     region_summary, fields = read_table.read_table_rows(fn, '\t')
 
-    fields2i = fields + ['alternative_states', 'alternative_ids', \
+    fields2i = fields + ['predicted_species_original', 'alternative_ids', \
                          'alternative_P_counts']
     fields2 = fields
 
@@ -64,9 +64,12 @@ for species_from in args['known_states'][1:]:
         # filtering stage 2: things that we're confident in calling
         # introgressed from one species specifically
         p, alt_states, alt_ids, alt_P_counts = passes_filters2(region, seqs, threshold)
-        region['alternative_states'] = ','.join(alt_states)
-        region['alternative_ids'] = ','.join([str(x) for x in alt_ids])
-        region['alternative_P_counts'] = ','.join([str(x) for x in alt_P_counts])
+        region['alternative_states'] = '/'.join(alt_states)
+        region['alternative_ids'] = '/'.join([str(x) for x in alt_ids])
+        region['alternative_P_counts'] = '/'.join([str(x) for x in alt_P_counts])
+
+        region['predicted_species_original'] = region['predicted_species']
+        region['predicted_species'] = region['alternative_states']
         write_filtered_line(f_out2i, region_id, region, fields2i)
 
         if p:
