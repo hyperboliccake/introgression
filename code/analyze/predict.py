@@ -8,6 +8,7 @@ from sim import sim_process
 import global_params as gp
 from misc import read_fasta
 
+"""
 def process_predict_args(arg_list):
 
     d = {}
@@ -62,7 +63,7 @@ def process_predict_args(arg_list):
     d['expected_bases'] = {}
 
     return d
-
+"""
 def read_aligned_seqs(fn, strain):
     headers, seqs = read_fasta.read_fasta(fn)
     d = {}
@@ -82,11 +83,13 @@ def set_expectations(args, n):
     species_to = gp.alignment_ref_order[0]
     species_from = gp.alignment_ref_order[1:]
 
+    args['expected_num_tracts'] = {}
+    args['expected_bases'] = {}
     for s in species_from:
         args['expected_num_tracts'][s] = \
-            args['expected_frac'][s] * n / args['expected_tract_lengths'][s]
+            args['expected_frac'][s] * n / args['expected_length'][s]
         args['expected_bases'][s] = args['expected_num_tracts'][s] * \
-                                 args['expected_tract_lengths'][s]
+                                 args['expected_length'][s]
 
     args['expected_bases'][species_to] = \
         n - sum([args['expected_bases'][s] for s in species_from])
@@ -94,7 +97,7 @@ def set_expectations(args, n):
     args['expected_num_tracts'][species_to] = \
         sum([args['expected_num_tracts'][s] for s in species_from]) + 1
 
-    args['expected_tract_lengths'][species_to] = \
+    args['expected_length'][species_to] = \
         args['expected_bases'][species_to] / args['expected_num_tracts'][species_to]
 
 def ungap_and_code_helper(predict_seq, ref_seqs, index_ref):
@@ -297,7 +300,7 @@ def emission_probabilities_old(known_states, unknown_states, symbol_freqs):
     return emis
 
 def transition_probabilities(known_states, unknown_states, \
-                             expected_frac, expected_tract_lengths):
+                             expected_frac, expected_length):
 
     # doesn't depend on sequence observations but maybe it should?
 
@@ -319,9 +322,9 @@ def transition_probabilities(known_states, unknown_states, \
         for j in range(len(states)):
             state_to = states[j]
             if state_from == state_to:
-                trans[i].append(1 - 1./expected_tract_lengths[state_from])
+                trans[i].append(1 - 1./expected_length[state_from])
             else:
-                trans[i].append(1./expected_tract_lengths[state_from] * \
+                trans[i].append(1./expected_length[state_from] * \
                                 expected_frac[state_to] * scale_other)
 
         trans[i] = norm_list(trans[i])
@@ -329,7 +332,7 @@ def transition_probabilities(known_states, unknown_states, \
     return trans
 
 def initial_hmm_parameters(seq, known_states, unknown_states, \
-                           expected_frac, expected_tract_lengths):
+                           expected_frac, expected_length):
 
     # get frequencies of individual symbols (e.g. '+') and all full
     # combinations of symbols (e.g. '+++-')
@@ -339,7 +342,7 @@ def initial_hmm_parameters(seq, known_states, unknown_states, \
                                  expected_frac, weighted_match_freqs)
     emis = emission_probabilities(known_states, unknown_states, symbol_freqs.keys())
     trans = transition_probabilities(known_states, unknown_states, \
-                                     expected_frac, expected_tract_lengths)
+                                     expected_frac, expected_length)
 
     return init, emis, trans
 
@@ -373,7 +376,7 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args, \
                                                predict_args['known_states'], \
                                                predict_args['unknown_states'], \
                                                predict_args['expected_frac'], \
-                                               predict_args['expected_tract_lengths'])
+                                               predict_args['expected_length'])
 
     ######
     # make predictions
@@ -420,6 +423,29 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args, \
 
     else:
         print('invalid method')
+
+def convert_to_blocks(state_seq, states):
+    # single individual state sequence
+    blocks = {}
+    for state in states:
+        blocks[state] = []
+    prev_species = state_seq[0]
+    block_start = 0
+    block_end = 0
+    for i in range(len(state_seq)):
+        if state_seq[i] == prev_species:
+            block_end = i
+        else:
+            blocks[prev_species].append((block_start, block_end))
+            block_start = i
+            block_end = i
+            prev_species = state_seq[i]
+    # add last block
+    if prev_species not in blocks:
+        blocks[prev_species] = []
+    blocks[prev_species].append((block_start, block_end))
+
+    return blocks
 
 def write_positions(ps, f, strain, chrm):
     sep = '\t'

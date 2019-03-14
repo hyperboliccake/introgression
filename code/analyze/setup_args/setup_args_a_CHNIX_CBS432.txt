@@ -1,0 +1,4 @@
+references JXXY10.1 CBS432
+reference_directories /tigress/AKEY/akey_vol2/aclark4/nobackup/cer_far_east/all_strain_chromosomes/ /tigress/anneec/projects/introgression/data/CBS432/
+alignments_directory /tigress/anneec/projects/introgression/alignments/CHNIX_CBS432/
+test_strain_directories /tigress/AKEY/akey_vol2/aclark4/nobackup/100_genomes/genomes_gb/ /tigress/AKEY/akey_vol2/aclark4/nobackup/100_genomes/genomes/S288c_SGD-R64/

@@ -1,22 +1,19 @@
 import sys
 import os
 import predict
+import read_args
 import gzip
 import global_params as gp
-from sim import sim_process
-from align import align_helpers
 from misc import read_fasta
 
 ##======
 # read in analysis parameters
 ##======
 
-args = predict.process_predict_args(sys.argv[1:])
+args = read_args.process_predict_args(sys.argv[1:])
 
 # refs: {'cer':('S288c', '../../data/', 'S288C-SGD_R64'), ...]
 # strains: {'cer':[('strain1', '../../data/'), ...], ...}
-
-strain_dirs = align_helpers.get_strains(align_helpers.flatten(gp.non_ref_dirs.values()))
 
 ##======
 # output files and if and where to resume
@@ -26,8 +23,6 @@ resume = False
 open_mode = 'a'
 if not resume:
     open_mode = 'w'
-
-gp_dir = ''  # '../'
 
 if not os.path.isdir(gp.analysis_out_dir_absolute + args['tag']):
     os.makedirs(gp.analysis_out_dir_absolute + args['tag'])
@@ -133,8 +128,9 @@ for chrm in gp.chrms:
 
         print('working on:', strain, chrm)
         
-        ref_prefix = '_'.join(gp.alignment_ref_order)
-        fn = gp_dir + gp.alignments_dir + ref_prefix + '_' + strain + \
+        ref_prefix = '_'.join(args['known_states'])
+        fn = args['setup_args']['alignments_directory'] + \
+             ref_prefix + '_' + strain + \
              '_chr' + chrm + '_mafft' + gp.alignment_suffix
         try:
             headers, seqs = read_fasta.read_fasta(fn)
@@ -158,8 +154,7 @@ for chrm in gp.chrms:
                                          train = True)
 
         # hack
-        state_seq_blocks = sim_process.convert_to_blocks({1:state_seq}, \
-                                                         args['states'])[1]
+        state_seq_blocks = predict.convert_to_blocks(state_seq, args['states'])
         ##======
         # output
         ##======

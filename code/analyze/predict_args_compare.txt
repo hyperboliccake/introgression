@@ -1,0 +1,9 @@
+a_CHNIX_CBS432 setup_args/setup_args_a_CHNIX_CBS432.txt .001 viterbi estimate_hmm 10000 .01 unknown 1000 .01
+a_CHNIX_par4 setup_args/setup_args_a_CHNIX_par4.txt .001 viterbi estimate_hmm 10000 .0025 10000 .0025 10000 .0025 10000 .0025 unknown 1000 .01
+a_S288c_CHNIX_CBS432 setup_args/setup_args_a_S288c_CHNIX_CBS432.txt .001 viterbi estimate_hmm 20000 .49 10000 .01 unknown 1000 .01
+a_S288c_CHNIX_par4 setup_args/setup_args_a_S288c_CHNIX_par4.txt .001 viterbi estimate_hmm 20000 .49 10000 .0025 10000 .0025 10000 .0025 10000 .0025 unknown 1000 .01
+a_par_int_CBS432 setup_args/setup_args_a_par_int_CBS432.txt .001 viterbi estimate_hmm 10000 .01 unknown 1000 .01
+a_par_int_DBVPG6304 setup_args/setup_args_a_par_int_DBVPG6304.txt .001 viterbi estimate_hmm 10000 .01 unknown 1000 .01
+a_par_int_CBS432_DBVPG6304 setup_args/setup_args_a_par_int_CBS432_DBVPG6304.txt .001 viterbi estimate_hmm 10000 .49 10000 .01 unknown 1000 .01
+a setup_args/setup_args_a.txt .001 viterbi estimate_hmm 10000 .01 unknown 1000 .01
+a_par4 setup_args/setup_args_a_par4.txt .001 viterbi estimate_hmm 10000 .0025 10000 .0025 10000 .0025 10000 .0025 unknown 1000 .01
