@@ -22,7 +22,7 @@ for r in gp.alignment_ref_order:
 strain_fn = '*_chr?' + gp.fasta_suffix
 strain_masked_fn = '*_chr?_masked' + gp.fasta_suffix
 intervals_fn = '*_chr?_intervals.txt'
-intervals_d = gp_dir + gp.alignments_dir + 'masked/' 
+intervals_d = gp_dir + gp.mask_dir
 
 for i in range(len(s)):
     strain, d = s[i]

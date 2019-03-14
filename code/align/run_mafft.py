@@ -9,13 +9,14 @@ mask_suffix = ''
 if masked:
     mask_suffix = '_masked'
 
-ref_only = True
+ref_only = False
 
 gp_dir = '../'
 a = []
 if gp.resume_alignment:
-    a = os.listdir(gp_dir + gp.alignments_dir)
-
+    for fn in os.listdir(gp_dir + gp.alignments_dir):
+        if os.stat(gp_dir + gp.alignments_dir + fn).st_size != 0:
+            a.append(fn)
 ref_prefix = '_'.join(gp.alignment_ref_order) + '_'
 ref_fns = [gp.ref_dir[r] + gp.ref_fn_prefix[r] + '_chr' + '?' + \
            mask_suffix + gp.fasta_suffix \
@@ -64,8 +65,6 @@ print strain
 current_strain_fn = d + strain_fn.replace('*', strain)
 
 for chrm in gp.chrms:
-    if chrm != 'XII':
-        continue
     print chrm
     sys.stdout.flush()
 
@@ -75,7 +74,7 @@ for chrm in gp.chrms:
     # if we don't already have an alignment for this strain/chromosome
     # (or that alignment file is empty), then make one
     #if (align_fn not in a) or (os.stat(align_fn_abs).st_size == 0):
-    if True:
+    if align_fn not in a:
         cmd_string = ''
 
         # first put all sequences in same (temporary) file
@@ -108,6 +107,7 @@ for chrm in gp.chrms:
             sys.exit()
     else:
         print "already did this alignment: " + strain + ' chromosome ' + chrm
+        sys.stdout.flush()
 
 #print cmd_string
 #sys.stdout.flush()
