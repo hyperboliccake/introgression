@@ -9,64 +9,6 @@ import global_params as gp
 from misc import read_fasta
 import numpy as np
 
-
-"""
-def process_predict_args(arg_list):
-
-    d = {}
-    i = 0
-
-    d['tag'] = arg_list[i]
-    i += 1
-
-    d['improvement_frac'] = float(arg_list[i])
-    i += 1
-
-    d['threshold'] = 'viterbi'
-    try:
-        d['threshold'] = float(arg_list[i])
-    except:
-        pass
-    i += 1
-
-    # expected length of introgressed tracts and fraction of sequence
-    # introgressed
-    expected_tract_lengths = {}
-    expected_frac = {}
-
-    d['known_states'] = gp.alignment_ref_order
-    for ref in gp.alignment_ref_order[1:]:
-        expected_tract_lengths[ref] = float(arg_list[i])
-        i += 1
-        expected_frac[ref] = float(arg_list[i])
-        i += 1
-
-    d['unknown_states'] = []
-    while i < len(arg_list):
-        state = arg_list[i]
-        d['unknown_states'].append(state)
-        i += 1
-        expected_tract_lengths[state] = float(arg_list[i])
-        i += 1
-        expected_frac[state] = float(arg_list[i])
-        i += 1
-
-    d['states'] = d['known_states'] + d['unknown_states']
-
-    expected_frac[d['states'][0]] = 0
-    expected_frac[d['states'][0]] = 1 - sum(expected_frac.values())
-    d['expected_frac'] = expected_frac
-
-    # calculate these based on remaining bases, but after we know
-    # which chromosome we're looking at
-    expected_tract_lengths[d['states'][0]] = 0
-    d['expected_tract_lengths'] = expected_tract_lengths
-    d['expected_num_tracts'] = {}
-    d['expected_bases'] = {}
-
-    return d
-"""
-
 def read_aligned_seqs(fn, strain):
     headers, seqs = read_fasta.read_fasta(fn)
     d = {}
