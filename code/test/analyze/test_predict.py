@@ -116,7 +116,7 @@ def test_write_hmm_header():
     # TODO this has a return value which doesn't seem to be used
     writer = StringIO()
     predict.write_hmm_header([], [], [], writer)
-    assert writer.getvalue() == 'strain\tchromosome\n'
+    assert writer.getvalue() == 'strain\tchromosome\t\n'
 
     writer = StringIO()
     predict.write_hmm_header(['s1', 's2'], ['u1'], ['-', '+'], writer)
@@ -134,56 +134,55 @@ def test_write_hmm_header():
     assert writer.getvalue() == header + '\n'
 
 
-def test_ungap_and_code_helper():
+def test_ungap_and_code():
     # nothing in prediction
-    sequence, positions = predict.ungap_and_code_helper(
+    sequence, positions = predict.ungap_and_code(
         '---',  # predicted reference string
         ['abc', 'def', 'ghi'],  # several references
         0)  # reference index
-    assert positions == []
+    assert positions == approx([])
     assert sequence == []
 
     # one match
-    sequence, positions = predict.ungap_and_code_helper(
+    sequence, positions = predict.ungap_and_code(
         'a--',
         ['abc', 'def', 'ghi'],
         0)
-    assert positions == [0]
+    assert positions == approx([0])
     assert sequence == ['+--']
 
     # no match from refs
-    sequence, positions = predict.ungap_and_code_helper(
+    sequence, positions = predict.ungap_and_code(
         'a--',
         ['abc', 'def', '-hi'],
         0)
-    assert positions == []
+    assert positions == approx([])
     assert sequence == []
 
     # two matches
-    sequence, positions = predict.ungap_and_code_helper(
+    sequence, positions = predict.ungap_and_code(
         'ae-',
         ['abc', 'def', 'gei'],
         0)
-    assert positions == [0, 1]
+    assert positions == approx([0, 1])
     assert sequence == ['+--', '-++']
 
     # mess with ref index
-    sequence, positions = predict.ungap_and_code_helper(
+    sequence, positions = predict.ungap_and_code(
         'a--e-',
         ['a--bc', 'deeef', 'geeei'],
         0)
-    assert positions == [0, 1]
+    assert positions == approx([0, 1])
     assert sequence == ['+--', '-++']
-    sequence, positions = predict.ungap_and_code_helper(
+    sequence, positions = predict.ungap_and_code(
         'a--e-',
         ['a--bc', 'deeef', 'geeei'],
         1)
-    assert positions == [0, 3]
+    assert positions == approx([0, 3])
     assert sequence == ['+--', '-++']
 
 
-def test_ungap_and_code():
-    sequence, ref_seqs, positions = predict.ungap_and_code(
+    sequence, positions = predict.ungap_and_code(
         'a---ef--i',
         ['ab-dhfghi',
          'a-cceeg-i',
@@ -191,28 +190,16 @@ def test_ungap_and_code():
         0)
 
     assert sequence == '+++ -++ +-+ ++-'.split()
-    assert ref_seqs[0] == '+++ +-- +-- +-+ ++-'.split()
-    assert ref_seqs[1] == '+++ -+- -++ -+- ++-'.split()
-    assert ref_seqs[2] == '+++ --+ -++ +-+ --+'.split()
-    assert len(ref_seqs) == 3
-    assert positions == [0, 3, 4, 7]
+    assert positions == approx([0, 3, 4, 7])
 
 
 def test_poly_sites():
-    sequence, ref_seqs, positions = predict.poly_sites(
+    sequence, positions = predict.poly_sites(
         '+++ -++ +-+ ++-'.split(),
-        ['+++ +-- +-- +-+ ++-'.split(),
-            '+++ -+- -++ -+- ++-'.split(),
-            '+++ --+ -++ +-+ --+'.split()],
         [0, 3, 4, 7]
     )
     assert sequence == '-++ +-+ ++-'.split()
-    # TODO check if this is intended, the last element is removed from ref
-    assert ref_seqs[0] == '+-- +-- +-+'.split()
-    assert ref_seqs[1] == '-+- -++ -+-'.split()
-    assert ref_seqs[2] == '--+ -++ +-+'.split()
-    assert len(ref_seqs) == 3
-    assert positions == [3, 4, 7]
+    assert positions == approx([3, 4, 7])
 
 
 def test_set_expectations_default(args):
@@ -252,51 +239,38 @@ def test_get_symbol_freqs():
 
 
 def symbol_test_helper(sequence):
-    # NOTE this function assumes all transitions are same length, test does not
     ind, symb, weigh = predict.get_symbol_freqs(sequence)
 
-    individual = []
-    weighted = []
+    num_states = len(sequence[0])
+    num_sites = len(sequence)
 
-    symbols = dict(Counter(sequence))
-    total = float(len(sequence))
-    for k in symbols:
-        symbols[k] /= total
-    symbols = defaultdict(int, symbols)
+    individual_symbol_freqs = []
+    for s in range(num_states):
+        d = defaultdict(int)
+        for i in range(num_sites):
+            d[sequence[i][s]] += 1
+        for sym in d:
+            d[sym] /= num_sites
+        individual_symbol_freqs.append(d)
 
-    sequence = np.array([list(s) for s in sequence])
+    symbol_freqs = defaultdict(int)
+    for i in range(num_sites):
+        symbol_freqs[sequence[i]] += 1
+    for sym in symbol_freqs:
+        symbol_freqs[sym] /= num_sites
 
-    # look along species
-    for s in np.transpose(sequence):
-        s = ''.join(s)
-        counts = Counter(s)
-        weighted.append(counts[predict.gp.match_symbol])
-        # NOTE casting unncessary in python 3
-        total = float(sum(counts.values()))
-        for k in counts:
-            counts[k] /= total
-        individual.append(defaultdict(int, counts))
+    # for each state, how often seq matches that state relative to
+    # others
+    weighted_match_freqs = []
+    for s in range(num_states):
+        weighted_match_freqs.append(
+            individual_symbol_freqs[s][predict.gp.match_symbol])
 
-    total = float(sum(weighted))
-    weighted = [w / total for w in weighted]
+    weighted_match_freqs /= np.sum(weighted_match_freqs)
 
-    assert ind == individual
-    assert symb == symbols
-    assert weigh == approx(weighted)
-
-
-def test_norm_list():
-    random.seed(0)
-
-    for test_list in ([], [1], [1, 1]):
-        mynorm = test_list / np.sum(test_list, dtype=np.float)
-        assert predict.norm_list(test_list) == approx(mynorm)
-
-    for i in range(10):
-        test_list = [random.randint(0, 100) for j in range(100)]
-
-        mynorm = test_list / np.sum(test_list, dtype=np.float)
-        assert predict.norm_list(test_list) == approx(mynorm)
+    assert ind == individual_symbol_freqs
+    assert symb == symbol_freqs
+    assert weigh == approx(weighted_match_freqs)
 
 
 def test_initial_probabilities(args):
@@ -369,40 +343,32 @@ def np_emission(args, symbols):
              '+-': 0.001}
     mismatch_bias = 0.99
 
+    known_len = len(args['known_states'])
     for k in probs:
-        probs[k] *= 2**(len(args['known_states']) - 2)
+        probs[k] *= 2**(known_len - 2)
 
-    # make char array
-    sym_array = np.array([list(s) for s in symbols], dtype='<U1')
+    emis = []
+    # using older, iterative version
+    for s in range(known_len):
+        emis.append(defaultdict(float))
+        for symbol in symbols:
+            key = symbol[0] + symbol[s]
+            emis[s][symbol] = probs[key]
 
-    # for unknown
-    num_match = np.vectorize(
-        lambda x: x.count(predict.gp.match_symbol))(symbols)
-    # convert to match * (1-bias) + mismatch * bias, simplified
-    num_match = num_match + mismatch_bias * (len(symbols[0]) - 2 * num_match)
-    # normalize
-    num_match /= sum(num_match)
-    # repeat for number of unknown states
-    num_match = np.transpose(
-        np.tile(num_match, (len(args['unknown_states']), 1)))
+        emis[s] = mynorm(emis[s])
 
-    # add first column to rest
-    first_col = np.tile(sym_array[:, 0:1], (1, len(args['known_states'])))
-    sym_array = np.core.defchararray.add(
-        first_col, sym_array[:, 0:len(args['known_states'])])
-    # lookup in table
-    emit = np.vectorize(probs.__getitem__)(sym_array)
-    # normalize
-    emit /= sum(emit)
+    symbol_len = len(symbols[0])
+    for s in range(len(args['unknown_states'])):
+        emis.append(defaultdict(float))
+        for symbol in symbols:
+            match_count = symbol.count('+')
+            mismatch_count = symbol_len - match_count
+            emis[s + known_len][symbol] = \
+                (match_count * (1 - mismatch_bias)
+                 + mismatch_count * mismatch_bias)
+        emis[s + known_len] = mynorm(emis[s + known_len])
 
-    # create result
-    result = [defaultdict(float, {k: v for k, v in zip(symbols, emit[:, i])})
-              for i in range(emit.shape[1])]
-    result.extend([defaultdict(float, {k: v for k, v in
-                                       zip(symbols, num_match[:, i])})
-                   for i in range(num_match.shape[1])])
-
-    return result
+    return emis
 
 
 def is_approx_equal_list_dict(actual, expected):
@@ -412,19 +378,9 @@ def is_approx_equal_list_dict(actual, expected):
                 "failed at i={}, k={}".format(i, k)
 
 
-def test_norm_dict():
-    def mynorm(d):
-        total = float(sum(d.values()))
-        return {k: v/total for k, v in d.items()}
-
-    for d in ({}, {'a': 1}, {'a': 1, 'b': 1}):
-        is_approx_equal_list_dict([predict.norm_dict(d)], [mynorm(d)])
-
-    random.seed(0)
-    for i in range(10):
-        d = {k: v for k, v in zip(range(i),
-                                  [random.randint(0, 100) for j in range(i)])}
-        is_approx_equal_list_dict([predict.norm_dict(d)], [mynorm(d)])
+def mynorm(d):
+    total = float(sum(d.values()))
+    return {k: v/total for k, v in d.items()}
 
 
 def test_transition_probabilities(args):
@@ -440,27 +396,31 @@ def test_transition_probabilities(args):
 
 
 def np_transition(args):
-    fracs = np.array([args['expected_frac'][k]
-                      for k in args['known_states'] + args['unknown_states']])
-    lens = np.array([1./args['expected_tract_lengths'][k]
-                     for k in args['known_states'] + args['unknown_states']])
+    states = args['known_states'] + args['unknown_states']
+    expected_frac = args['expected_frac']
+    expected_tract_lengths = args['expected_tract_lengths']
+    trans = []
+    for i in range(len(states)):
+        state_from = states[i]
+        trans.append([])
+        scale_other = 1 / (1 - expected_frac[state_from])
+        for j in range(len(states)):
+            state_to = states[j]
+            if state_from == state_to:
+                trans[i].append(1 - 1./expected_tract_lengths[state_from])
+            else:
+                trans[i].append(1./expected_tract_lengths[state_from] *
+                                expected_frac[state_to] * scale_other)
 
-    np_trans = np.outer(np.multiply(lens, 1/(1-fracs)),
-                        fracs)
-    for i in range(np_trans.shape[0]):
-        np_trans[i, i] = 1 - lens[i]
+        trans[i] /= np.sum(trans[i])
 
-    # NOTE due to some floating point error (I suspect), the norm_list doesn't
-    # actually alter the list
-    # np_trans /= sum(np_trans)
-    np_trans = [[el for el in row] for row in np_trans]
-    return np_trans
+    return trans
 
 
 def test_initial_hmm_parameters(args):
     args['expected_tract_lengths']['S288c'] = 45000
     symbols = predict.get_emis_symbols([1]*5)
-    probs, emis, trans = predict.initial_hmm_parameters(
+    hm = predict.initial_hmm_parameters(
         symbols,
         args['known_states'],
         args['unknown_states'],
@@ -481,14 +441,16 @@ def test_initial_hmm_parameters(args):
          0.01]
 
     p = p / np.sum(p, dtype=np.float)
-    assert probs == approx(p)
+    assert hm.initial_p == approx(p)
 
     np_emis = np_emission(args, symbols)
-    is_approx_equal_list_dict(emis, np_emis)
+    hm2 = hmm.HMM()
+    hm2.set_emissions(np_emis)
+    assert hm.emissions == approx(hm2.emissions)
 
     np_trans = np_transition(args)
-    for i in range(len(trans)):
-        assert trans[i] == approx(np_trans[i])
+    for i in range(len(hm.transitions)):
+        assert hm.transitions[i] == approx(np_trans[i])
 
 
 def test_predict_introgressed(args, capsys):
@@ -511,7 +473,7 @@ def test_predict_introgressed(args, capsys):
     assert 'finished in 10 iterations' in out[-2]
 
     # ps are locations of polymorphic sites, not counting missing '-'
-    assert ps == [0, 1, 3, 6, 8]
+    assert ps == approx([0, 1, 3, 6, 8])
     assert np.array_equal(hmm.initial_p, np.array([1, 0, 0, 0, 0, 0]))
 
     # check path
@@ -531,6 +493,15 @@ def test_write_positions():
 
 
 def test_write_blocks():
+    output = StringIO()
+    block = []
+    pos = [i * 2 for i in range(20)]
+    predict.write_blocks(block,
+                         pos,
+                         output, 'test', 'I', 'pred')
+
+    assert output.getvalue() == ''
+
     output = StringIO()
     block = [(0, 1), (4, 6), (10, 8)]
     pos = [i * 2 for i in range(20)]
@@ -645,7 +616,7 @@ def test_write_hmm():
 
     # empty hmm
     predict.write_hmm(hm, output, 'strain', 'I', list('abc'))
-    assert output.getvalue() == 'strain\tI\n'
+    assert output.getvalue() == 'strain\tI\t\n'
 
     hm.set_hidden_states(list('abc'))
     hm.set_initial_p([0, 1, 0])
@@ -669,7 +640,7 @@ def test_write_state_probs():
     output = StringIO()
     predict.write_state_probs([{}], output, 'strain', 'I', [])
 
-    assert output.getvalue() == 'strain\tI\n'
+    assert output.getvalue() == 'strain\tI\t\n'
 
     output = StringIO()
     predict.write_state_probs([

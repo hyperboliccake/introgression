@@ -2,7 +2,6 @@ import sys
 import os
 import gzip
 import predict
-sys.path.insert(0, '..')
 import global_params as gp
 
 args = predict.process_predict_args(sys.argv[1:])

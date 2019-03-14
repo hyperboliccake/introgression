@@ -27,6 +27,7 @@ alignment_suffix = '.maf'
 ## alignments directory now specified in setup_args file
 
 mask_dir = '../alignments/masked/'
+#mask_dir = '/tigress/tcomi/aclark4_temp/par4/masked/'
 
 # should we leave the alignments already completed in the alignments
 # directory alone?
@@ -99,5 +100,6 @@ structure_install_path = '/tigress/anneec/software/structure/'
 #====
 
 chrms = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI']
+#chrms = ['I']
 
 chrms_ara = dict(zip(chrms, range(1, len(chrms)+1)))

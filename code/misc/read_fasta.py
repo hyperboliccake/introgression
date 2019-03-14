@@ -1,4 +1,6 @@
 import gzip
+import numpy as np
+
 
 def read_fasta(fn, gz=False):
 
@@ -11,14 +13,16 @@ def read_fasta(fn, gz=False):
     else:
         f = open(fn, 'r')
     line = f.readline()
+
     while line[0] != '>':
         line = f.readline()
+
     while True:
         h = line[:-1]
-        s = ''
+        s = []
         line = f.readline()
         while line != '' and line[0] != '>':
-            s += line[:-1]
+            s += list(line[:-1])
             line = f.readline()
         headers.append(h)
         seqs.append(s)
@@ -26,4 +30,4 @@ def read_fasta(fn, gz=False):
             break
     f.close()
 
-    return headers, seqs
+    return headers, np.asarray(seqs)

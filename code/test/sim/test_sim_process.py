@@ -7,11 +7,21 @@ import random
 def test_get_max_path(hm):
     post = hm.posterior_decoding()[0]
     path, probs = sim_process.get_max_path(post, hm.hidden_states)
-    max_pos = np.argmax(post, axis=1)
-    other_path = [hm.hidden_states[i] for i in max_pos]
-    other_prob = [post[i, pos] for i, pos in enumerate(max_pos)]
-    assert path == other_path
-    assert probs == other_prob
+
+    max_path = []
+    max_probs = []
+    for site_probs in post:
+        max_state = None
+        max_prob = -1
+        for i, prob in enumerate(site_probs):
+            if prob > max_prob:
+                max_prob = prob
+                max_state = hm.hidden_states[i]
+        max_path.append(max_state)
+        max_probs.append(max_prob)
+
+    assert path == max_path
+    assert probs == max_probs
 
 
 def test_get_threshold_predicted(hm):
