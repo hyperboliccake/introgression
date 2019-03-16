@@ -11,9 +11,6 @@ from misc import read_fasta
 
 args = read_args.process_predict_args(sys.argv[1:])
 
-strain_dirs = align_helpers.get_strains(
-    align_helpers.flatten(gp.non_ref_dirs.values()))
-
 ##======
 # output files and if and where to resume
 ##======
@@ -47,16 +44,16 @@ predict.write_hmm_header(args['known_states'], args['unknown_states'],
 
 write_ps = True
 if write_ps:
-    ps_f = gzip.open(f'{base_dir}/positions_{args["tag"]}.txt', 'wt')
+    ps_f = gzip.open(f'{base_dir}/positions_{args["tag"]}.txt.gz', 'wt')
 
-probs_f = gzip.open(f'{base_dir}/probs_{args["tag"]}.txt', 'wt')
+probs_f = gzip.open(f'{base_dir}/probs_{args["tag"]}.txt.gz', 'wt')
 
 # loop through all sequences and predict introgression
 
 
 for chrm in gp.chrms:
 
-    for strain, strain_dir in strain_dirs:
+    for strain, strain_dir in args['setup_args']['strain_dirs']:
 
         print(f'working on: {strain} {chrm}')
 
