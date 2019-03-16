@@ -1,4 +1,4 @@
-references S288c CBS432
+references S288c_SGD-R64 CBS432
 reference_directories /tigress/AKEY/akey_vol2/aclark4/nobackup/100_genomes/genomes/S288c_SGD-R64/ /tigress/anneec/projects/introgression/data/CBS432/
-alignments_directory ../alignments/genbank/
+alignments_directory ../alignments/a/
 test_strain_directories /tigress/AKEY/akey_vol2/aclark4/nobackup/100_genomes/genomes_gb/
