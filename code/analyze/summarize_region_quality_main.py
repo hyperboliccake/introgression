@@ -1,7 +1,7 @@
 import sys
 import os
 import gzip
-from analyze import predict
+from analyze import read_args
 from analyze.summarize_region_quality import (convert_intervals_to_sites,
                                               read_masked_intervals,
                                               index_alignment_by_reference,
@@ -19,7 +19,7 @@ import pickle
 
 def main():
 
-    args = predict.process_predict_args(sys.argv[2:])
+    args = read_args.process_predict_args(sys.argv[2:])
 
     task_ind = int(sys.argv[1])
     species_ind = task_ind
@@ -67,11 +67,10 @@ def main():
         # species_from we're considering regions from
         masked_sites_refs = {}
         for s, state in enumerate(args['known_states']):
-            species_from_prefix = gp.ref_fn_prefix[state]
             masked_sites_refs[s] = \
                 convert_intervals_to_sites(
                     read_masked_intervals(
-                        f'{gp.mask_dir}{species_from_prefix}'
+                        f'{gp.mask_dir}{state}'
                         f'_chr{chrm}_intervals.txt'))
 
         # loop through chromosomes and strains, followed by species of
@@ -99,14 +98,15 @@ def main():
             ps = np.array([int(x) for x in line[2:]])
 
             headers, seqs = read_fasta.read_fasta(
-                gp.alignments_dir + '_'.join(gp.alignment_ref_order)
+                args['setup_args']['alignments_directory'] + \
+                '_'.join(args['known_states'])
                 + f'_{strain}_chr{chrm}_mafft{gp.alignment_suffix}')
 
             # to go from index in reference seq to index in alignment
             ind_align = []
             for seq in seqs:
                 ind_align.append(index_alignment_by_reference(seq))
-
+            
             masked_sites = convert_intervals_to_sites(
                 read_masked_intervals(
                     f'{gp.mask_dir}{strain}_chr{chrm}_intervals.txt'))
@@ -161,6 +161,10 @@ def main():
                         'match_flag': np.zeros((len_seqx, len_states), bool)}
 
                 for sj, statej in enumerate(args['known_states']):
+                    print(statej)
+                    print(start)
+                    print(slice_start)
+                    print(seqs[sj][slice_start:slice_start + 400])
                     seqj = seqs[sj][slice_start:slice_end+1]
 
                     # only alignment columns used by HMM (polymorphic, no
