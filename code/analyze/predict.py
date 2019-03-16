@@ -53,7 +53,7 @@ def ungap_and_code(predict_seq, ref_seqs, index_ref=0):
     sequences = np.array([list(predict_seq)] +
                          [list(r) for r in ref_seqs])
 
-    isbase = sequences != gp.gapsymbol
+    isbase = sequences != gp.gap_symbol
 
     # make boolean for valid characters
     isvalid = np.logical_and(sequences != gp.gap_symbol,
