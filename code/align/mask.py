@@ -2,8 +2,10 @@ import sys
 import os
 from mask_helpers import *
 import align_helpers
-sys.path.insert(0, '..')
+from analyze import read_args
 import global_params as gp
+
+args = read_args.read_setup_args(sys.argv[1])
 
 only_ref = True
 
@@ -11,23 +13,22 @@ s = []
 
 if not only_ref:
     # get all non-reference strains of cerevisiae and paradoxus
-    s = align_helpers.get_strains(align_helpers.flatten(gp.non_ref_dirs.values()))
+    s = args['strain_dirs']
 
-gp_dir = '../'
 a = []
 
-for r in gp.alignment_ref_order:
-    s.append((gp.ref_fn_prefix[r], gp.ref_dir[r]))
+for r in args['references']:
+    s.append((r, args['reference_directories'][r]))
 
 strain_fn = '*_chr?' + gp.fasta_suffix
 strain_masked_fn = '*_chr?_masked' + gp.fasta_suffix
 intervals_fn = '*_chr?_intervals.txt'
-intervals_d = gp_dir + gp.mask_dir
+intervals_d = gp.mask_dir
 
 for i in range(len(s)):
     strain, d = s[i]
 
-    print strain
+    print(strain)
     sys.stdout.flush()
 
     current_strain_fn = d + strain_fn.replace('*', strain)
