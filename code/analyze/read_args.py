@@ -1,6 +1,5 @@
 import sys
-sys.path.insert(0, '../align/')
-import align_helpers
+from align import align_helpers
 
 def process_predict_args(args):
     
@@ -14,7 +13,7 @@ def process_predict_args(args):
     setup_args = read_setup_args(fn_setup)
 
     i += 1
-    d['improvement_frac'] = args[i]
+    d['improvement_frac'] = float(args[i])
     
     i += 1
     d['threshold'] = args[i]
@@ -50,7 +49,7 @@ def process_predict_args(args):
 
     else:
         assert d['hmm_init_option'] == 'provided_hmm'
-        print 'not implemented yet'
+        print('not implemented yet')
         sys.exit()
 
     d['states'] = d['known_states'] + d['unknown_states']
@@ -68,25 +67,27 @@ def read_setup_args(fn):
     while line != '':
         line = line[:-1].split(' ')
         x[line[0]] = line[1:]
+        line = f.readline()
     f.close()
 
     d = {}
     d['references'] = x['references']
-    d['refence_directories'] =  dict(zip(x['references'], x['reference_directories']))
+    d['reference_directories'] =  dict(zip(x['references'], x['reference_directories']))
     d['alignments_directory'] = x['alignments_directory'][0]
 
     d['strain_dirs'] = \
-        align_helpers.get_strains(align_helpers.flatten(x['test_strain_directories']))
+        align_helpers.get_strains(x['test_strain_directories'])
 
     return d
 
 def get_predict_args_by_tag(fn, tag):
     f = open(fn, 'r')
     line = f.readline()
-    while True:
-        line.split(' ')
+    while line != '':
+        line = line.split(' ')
         if line[0] == tag:
             return line
         line = f.readline()
-    return 'tag not found'
+    print(f'tag not found: {tag}')
+    return None
 
