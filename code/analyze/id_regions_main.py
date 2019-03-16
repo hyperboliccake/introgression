@@ -1,11 +1,12 @@
 import sys
 from analyze import predict
+from analyze import read_args
 from operator import itemgetter
 import global_params as gp
 
 
 def main():
-    args = predict.process_predict_args(sys.argv[1:])
+    args = read_args.process_predict_args(sys.argv[1:])
 
     # order regions by chromosome, start (break ties alphabetically by strain)
     all_regions_by_chrm = dict(zip(gp.chrms, [[] for chrm in gp.chrms]))
