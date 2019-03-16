@@ -26,8 +26,8 @@ def read_aligned_seqs(fn, strain):
 
 def set_expectations(args, n):
 
-    species_to = gp.alignment_ref_order[0]
-    species_from = gp.alignment_ref_order[1:]
+    species_to = args['known_states'][0]
+    species_from = args['known_states'][1:]
 
     args['expected_num_tracts'] = {}
     args['expected_bases'] = {}
@@ -45,114 +45,6 @@ def set_expectations(args, n):
 
     args['expected_length'][species_to] = \
         args['expected_bases'][species_to] / args['expected_num_tracts'][species_to]
-
-def ungap_and_code_helper(predict_seq, ref_seqs, index_ref):
-
-    # index_ref is index of reference strain to index relative to 
-
-    ps = [] # positions that we're keeping in analysis
-    seq = [] # sequence of emitted symbols, e.g. '++-++'
-    ind = 0 # current position in reference strain
-    
-    # TODO: move positions file to more general location (maybe? but
-    # it can change based on references so unless there's a deeper
-    # organizational structure it needs to be for the specific run),
-    # and here first see if we have this info stored in a file already
-
-    for i in range(len(predict_seq)):
-        xi = predict_seq[i]
-        # only keep this position in sequence if no gaps in
-        # the alignment column
-        keep = True
-        if xi == gp.gap_symbol or xi == gp.unsequenced_symbol:
-            keep = False
-        # determine which references the sequence matches at
-        # this position
-        symbol = ''
-        for r in range(len(ref_seqs)):
-            ri = ref_seqs[r][i]
-            if ri == gp.gap_symbol or ri == gp.unsequenced_symbol:
-                keep = False
-                break
-            elif xi == ri:
-                symbol += gp.match_symbol
-            else:
-                symbol += gp.mismatch_symbol
-        if keep:
-            seq.append(symbol)
-            ps.append(ind)
-        if ref_seqs[index_ref][i] != gp.gap_symbol:
-            ind += 1
-    return seq, ps
-        
-def ungap_and_code(predict_seq, ref_seqs, index_ref = 0):
-    
-    seq, ps = ungap_and_code_helper(predict_seq, ref_seqs, index_ref)
-    ref_seqs_coded = []
-    for r in ref_seqs:
-        ref_seq_coded, ps_r = ungap_and_code_helper(r, ref_seqs, index_ref)
-        ref_seqs_coded.append(ref_seq_coded)
-    return seq, ref_seqs_coded, ps
-
-
-def poly_sites(seq, ref_seqs, ps):
-    ps_poly = []
-    seq_poly = []
-    ref_seqs_poly = [[] for r in ref_seqs]
-
-    for i in range(len(ps)):
-        if set(seq[i]) != set([gp.match_symbol]):
-            ps_poly.append(ps[i])
-            seq_poly.append(seq[i])
-            for j in range(len(ref_seqs)):
-                ref_seqs_poly[j].append(ref_seqs[j][i])
-    
-    return seq_poly, ref_seqs_poly, ps_poly
-
-def get_symbol_freqs(seq):
-
-    num_states = len(seq[0])
-    num_sites = len(seq)
-
-    individual_symbol_freqs = []
-    for s in range(num_states):
-        d = defaultdict(int)
-        for i in range(num_sites):
-            d[seq[i][s]] += 1
-        for sym in d:
-            d[sym] /= float(num_sites)
-        individual_symbol_freqs.append(d)
-
-    symbol_freqs = defaultdict(int)
-    for i in range(num_sites):
-        symbol_freqs[seq[i]] += 1
-    for sym in symbol_freqs:
-        symbol_freqs[sym] /= float(num_sites)
-
-    # for each state, how often seq matches that state relative to
-    # others
-    weighted_match_freqs = []
-    for s in range(num_states):
-        weighted_match_freqs.append(individual_symbol_freqs[s][gp.match_symbol])
-    weighted_match_freqs = norm_list(weighted_match_freqs)
-
-    return individual_symbol_freqs, symbol_freqs, weighted_match_freqs
-
-def norm_list(l):
-    scale = float(sum(l))
-    for i in range(len(l)):
-        l[i] /= scale
-    return l
-            
-
-def norm_dict(d):
-    scale = float(sum(d.values()))
-    for k in d:
-        d[k] /= scale
-    return d
-    args['expected_length'][species_to] = \
-        args['expected_bases'][species_to] /\
-        args['expected_num_tracts'][species_to]
 
 
 def ungap_and_code(predict_seq, ref_seqs, index_ref=0):
@@ -190,6 +82,7 @@ def poly_sites(sequences, positions):
     indices = np.where(retain)[0]
     ps_poly = [positions[i] for i in indices]
     seq_poly = [sequences[i] for i in indices]
+
     return seq_poly, ps_poly
 
 
@@ -249,54 +142,6 @@ def emission_probabilities(known_states, unknown_states, symbols):
 
     mismatch_bias = .99
 
-    for s in range(len(unknown_states)):
-        state = unknown_states[s]
-        emis.append(defaultdict(float))
-        for symbol in symbols:
-            match_count = symbol.count(gp.match_symbol)
-            mismatch_count = symbol.count(gp.mismatch_symbol)
-            emis[s + len(known_states)][symbol] = (match_count * (1 - mismatch_bias) + \
-                                                    mismatch_count * mismatch_bias)
-        emis[s + len(known_states)] = norm_dict(emis[s + len(known_states)])
-
-    return emis
-
-def emission_probabilities_old(known_states, unknown_states, symbol_freqs):
-
-    # doesn't use prior expectations, but probably should if we ever
-    # want to include multiple unknown states
-
-    own_bias = .99
-    
-    emis = []
-    for s in range(len(known_states)):
-        state = known_states[s]
-        emis.append(defaultdict(float))
-        for symbol in symbol_freqs:
-            f = symbol_freqs[symbol]
-            match = symbol[s] == gp.match_symbol
-            if match:
-                emis[s][symbol] = f * own_bias
-            else:
-                emis[s][symbol] = f * (1 - own_bias)
-        emis[s] = norm_dict(emis[s])
-    for s in range(len(unknown_states)):
-        state = unknown_states[s]
-        emis.append(defaultdict(float))
-        for symbol in symbol_freqs:
-            f = symbol_freqs[symbol]
-            match_count = symbol.count(gp.match_symbol)
-            mismatch_count = symbol.count(gp.mismatch_symbol)
-            emis[s + len(known_states)][symbol] = f
-            emis[s + len(known_states)][symbol] *= (match_count * (1 - own_bias) + \
-                                                    mismatch_count * own_bias)
-        emis[s + len(known_states)] = norm_dict(emis[s + len(known_states)])
-
-    return emis
-
-def transition_probabilities(known_states, unknown_states, \
-                             expected_frac, expected_length):
-
     num_per_category = 2 ** (len(known_states) - 2)
     for key in probabilities:
         probabilities[key] *= num_per_category
@@ -335,7 +180,7 @@ def transition_probabilities(known_states, unknown_states, \
 
 
 def transition_probabilities(known_states, unknown_states,
-                             expected_frac, expected_tract_lengths):
+                             expected_frac, expected_length):
 
     # doesn't depend on sequence observations but maybe it should?
 
@@ -345,21 +190,8 @@ def transition_probabilities(known_states, unknown_states,
 
     states = known_states + unknown_states
 
-    trans = []
-    for i in range(len(states)):
-        state_from = states[i]
-        trans.append([])
-        scale_other = 1 / (1 - expected_frac[state_from])
-        for j in range(len(states)):
-            state_to = states[j]
-            if state_from == state_to:
-                trans[i].append(1 - 1./expected_length[state_from])
-            else:
-                trans[i].append(1./expected_length[state_from] * \
-                                expected_frac[state_to] * scale_other)
-
     fractions = np.array([expected_frac[s] for s in states])
-    lengths = 1/np.array([expected_tract_lengths[s] for s in states])
+    lengths = 1/np.array([expected_length[s] for s in states])
 
     # general case,
     # trans[i,j] = 1/ length[i] * expected[j] * 1 /(1 - fraction[i])
@@ -372,7 +204,8 @@ def transition_probabilities(known_states, unknown_states,
     # normalize
     return transitions / transitions.sum(axis=1)[:, None]
 
-def initial_hmm_parameters(seq, known_states, unknown_states, \
+
+def initial_hmm_parameters(seq, known_states, unknown_states,
                            expected_frac, expected_length):
 
     # get frequencies of individual symbols (e.g. '+') and all full
@@ -382,8 +215,7 @@ def initial_hmm_parameters(seq, known_states, unknown_states, \
     init = initial_probabilities(known_states, unknown_states,
                                  expected_frac, weighted_match_freqs)
     emis = emission_probabilities(known_states, unknown_states, symbol_freqs.keys())
-
-    trans = transition_probabilities(known_states, unknown_states, \
+    trans = transition_probabilities(known_states, unknown_states,
                                      expected_frac, expected_length)
 
     # new Hidden Markov Model
@@ -399,13 +231,14 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args,
                          train=True, only_poly_sites=True,
                          return_positions=False):
 
-    # code sequence by which reference it matches at each site
+    # code sequence by which reference it matches at each site;
+    # positions are relative to master (first) reference sequence
     seq_coded, positions = ungap_and_code(predict_seq, ref_seqs)
     if only_poly_sites:
         seq_coded, positions = poly_sites(seq_coded, positions)
     if return_positions:
         return positions
-
+    
     # sets expected number of tracts and bases for each reference
     # based on expected length of introgressed tracts and expected
     # total fraction of genome
@@ -415,7 +248,6 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args,
     # expectations (length of introgressed tract and fraction of
     # genome/total number tracts and bases) and (2) number of sites at
     # which predict seq matches each reference
-
     hmm = initial_hmm_parameters(seq_coded,
                                  predict_args['known_states'],
                                  predict_args['unknown_states'],
@@ -454,11 +286,6 @@ def predict_introgressed(ref_seqs, predict_seq, predict_args,
         return predicted, p[0], hmm, hmm_init, positions
 
 
-def write_positions(ps, writer, strain, chrm):
-    writer.write(f'{strain}\t{chrm}\t' +
-                 '\t'.join([str(x) for x in ps]) + '\n')
-
-
 def convert_to_blocks(state_seq, states):
     # single individual state sequence
     blocks = {}
@@ -482,10 +309,11 @@ def convert_to_blocks(state_seq, states):
 
     return blocks
 
-def write_positions(ps, f, strain, chrm):
-    sep = '\t'
-    f.write(strain + sep + chrm + sep + sep.join([str(x) for x in ps]) + '\n')
-    f.flush()
+
+def write_positions(ps, writer, strain, chrm):
+    writer.write(f'{strain}\t{chrm}\t' +
+                 '\t'.join([str(x) for x in ps]) + '\n')
+
 
 def read_positions(fn):
     # dictionary keyed by strain and then chromosome
