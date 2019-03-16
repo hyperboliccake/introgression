@@ -53,6 +53,8 @@ def ungap_and_code(predict_seq, ref_seqs, index_ref=0):
     sequences = np.array([list(predict_seq)] +
                          [list(r) for r in ref_seqs])
 
+    isbase = sequences != gp.gapsymbol
+
     # make boolean for valid characters
     isvalid = np.logical_and(sequences != gp.gap_symbol,
                              sequences != gp.unsequenced_symbol)
@@ -60,7 +62,7 @@ def ungap_and_code(predict_seq, ref_seqs, index_ref=0):
     # positions are where everything is valid, index where the reference is
     # valid.  The +1 removes the predict sequence at index 0
     positions = np.where(
-        np.all(isvalid[:, isvalid[index_ref+1, :]], axis=0))[0]
+        np.all(isvalid[:, isbase[index_ref+1, :]], axis=0))[0]
 
     matches = np.where(sequences[0] == sequences[1:],
                        gp.match_symbol,
