@@ -1,4 +1,5 @@
 import bisect
+import gzip
 import global_params as gp
 from misc import binary_search
 import numpy as np
@@ -183,7 +184,7 @@ def seq_id_hmm(seq1, seq2, offset, include_sites):
     info_hmm[sites] = True
 
     total_sites = np.sum(info_hmm)
-    total_match = np.sum(np.logical_and(info_hmm, info_match))
+    total_moatch = np.sum(np.logical_and(info_hmm, info_match))
 
     # check all included are not gapped or skipped
     include_in_skip = np.logical_and(
@@ -296,3 +297,28 @@ def make_info_string(info, master_ind, predict_ind):
         axis=1)] = 10  # -
 
     return ''.join(decoder[indices])
+
+def read_region_file(fn):
+    f = gzip.open(fn, 'rb')
+    d = {}
+    line = f.readline().decode()
+    while line != '':
+        region_id = line[1:-1]
+        line = f.readline().decode()
+        seqs = {}
+        while line[0] != '#':
+            line = line[:-1].split(' ')
+            strain = line[1]
+            seqs[strain] = {}
+            if len(line) > 2:
+                seqs[strain]['start'] = int(line[2])
+                seqs[strain]['end'] = int(line[3])
+            seqs[strain]['seq'] = f.readline().decode()[:-1]
+            line = f.readline().decode()
+            if line == '':
+                break
+        d[region_id] = seqs
+
+    f.close()
+    return d
+    
