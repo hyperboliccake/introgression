@@ -1,4 +1,4 @@
 references JXXY10.1 CBS432 N_45 DBVPG6304 UWOPS91_917_1
-reference_directories /tigress/AKEY/akey_vol2/aclark4/nobackup/cer_far_east/all_strain_chromosomes/ /tigress/anneec/projects/introgression/data/CBS432/ /tigress/AKEY/akey_vol2/aclark4/nobackup/para_sgrp/strains/N_45/ /tigress/AKEY/akey_vol2/aclark4/nobackup/para_sgrp/strains/DBVPG6304/ /tigress/AKEY/akey_vol2/aclark4/nobackup/para_sgrp/strains/UWOPS91_917_1/
+reference_directories /tigress/AKEY/akey_vol2/aclark4/nobackup/cer_far_east/all_strain_chromosomes/ /tigress/AKEY/akey_vol2/aclark4/nobackup/para_sgrp/all_strain_chromosomes/ /tigress/AKEY/akey_vol2/aclark4/nobackup/para_sgrp/all_strain_chromosomes/ /tigress/AKEY/akey_vol2/aclark4/nobackup/para_sgrp/all_strain_chromosomes/ /tigress/AKEY/akey_vol2/aclark4/nobackup/para_sgrp/all_strain_chromosomes/
 alignments_directory /tigress/anneec/projects/introgression/alignments/CHNIX_par4/
 test_strain_directories /tigress/AKEY/akey_vol2/aclark4/nobackup/100_genomes/genomes_gb/ /tigress/AKEY/akey_vol2/aclark4/nobackup/100_genomes/genomes/S288c_SGD-R64/

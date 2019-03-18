@@ -1,4 +1,4 @@
-references CBS432 S288c_SGD-R64
+references DBVPG6304 S288c_SGD-R64
 reference_directories /tigress/AKEY/akey_vol2/aclark4/nobackup/para_sgrp/all_strain_chromosomes/ /tigress/AKEY/akey_vol2/aclark4/nobackup/100_genomes/genomes/S288c_SGD-R64/
-alignments_directory /tigress/anneec/projects/introgression/alignments/par_int_CBS432/
+alignments_directory /tigress/anneec/projects/introgression/alignments/par_int_DBVPG6304/
 test_strain_directories /tigress/AKEY/akey_vol2/aclark4/nobackup/para_sgrp/all_strain_chromosomes/
