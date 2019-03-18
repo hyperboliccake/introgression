@@ -14,19 +14,18 @@ import re
 import sys
 import os
 import copy
-import predict
+import read_args
 from filter_helpers import *
-sys.path.insert(0, '..')
+import summarize_region_quality
 import global_params as gp
-sys.path.insert(0, '../misc/')
-import read_table
-import read_fasta
+from misc import read_table
+from misc import read_fasta
 
-args = predict.process_predict_args(sys.argv[1:])
+args = read_args.process_predict_args(sys.argv[1:])
 
 for species_from in args['known_states'][1:]:
 
-    print species_from
+    print(species_from)
 
     fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + \
          'blocks_' + species_from + \
@@ -50,19 +49,19 @@ for species_from in args['known_states'][1:]:
     f_out1 = open(fn_out1, 'w')
     f_out1.write('\t'.join(fields1) + '\n')
 
+    regions_fn = gp.analysis_out_dir_absolute + args['tag'] + '/regions/' + \
+                 species_from + gp.fasta_suffix + '.gz'
+    region_seqs = summarize_region_quality.read_region_file(regions_fn)
+
     for region_id in region_summary:
-        #print region_id, '****'
+
         region = region_summary[region_id]
-        headers, seqs = read_fasta.read_fasta(gp.analysis_out_dir_absolute + \
-                                              args['tag'] + \
-                                              '/regions/' + region_id + '.fa.gz', \
-                                              gz = True)
-        info_string = seqs[-1]
-        seqs = seqs[:-1]
+
+        info_string = region_seqs[region_id]['info']['seq']
  
         # filtering stage 1: things that we're confident in calling not
         # S288c
-        p, reason = passes_filters1(region, info_string)
+        p, reason = passes_filters1(region, info_string, args['known_states'][0])
         region['reason'] = reason
         write_filtered_line(f_out1i, region_id, region, fields1i)
 

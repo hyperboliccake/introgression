@@ -13,20 +13,20 @@ import re
 import sys
 import os
 import copy
-import predict
+import numpy as np
+import read_args
+import summarize_region_quality
 from filter_helpers import *
-sys.path.insert(0, '..')
 import global_params as gp
-sys.path.insert(0, '../misc/')
-import read_table
-import read_fasta
+from misc import read_table
+from misc import read_fasta
 
-args = predict.process_predict_args(sys.argv[2:])
+args = read_args.process_predict_args(sys.argv[2:])
 threshold = float(sys.argv[1])
 
 for species_from in args['known_states'][1:]:
 
-    print species_from
+    print(species_from)
 
     fn = gp.analysis_out_dir_absolute + args['tag'] + '/' + \
          'blocks_' + species_from + \
@@ -51,19 +51,23 @@ for species_from in args['known_states'][1:]:
     f_out2 = open(fn_out2, 'w')
     f_out2.write('\t'.join(fields2) + '\n')
 
+    regions_fn = gp.analysis_out_dir_absolute + args['tag'] + '/regions/' + \
+                 species_from + gp.fasta_suffix + '.gz'
+    region_seqs = summarize_region_quality.read_region_file(regions_fn)
+
     for region_id in region_summary:
-        #print region_id, '****'
+
         region = region_summary[region_id]
-        headers, seqs = read_fasta.read_fasta(gp.analysis_out_dir_absolute + \
-                                              args['tag'] + \
-                                              '/regions/' + region_id + '.fa.gz', \
-                                              gz = True)
-        info_string = seqs[-1]
-        seqs = seqs[:-1]
- 
+
+        info_string = region_seqs[region_id]['info']['seq']
+        seqs = np.asarray([list(region_seqs[region_id][ref]['seq']) \
+                           for ref in args['known_states']])
+
         # filtering stage 2: things that we're confident in calling
         # introgressed from one species specifically
-        p, alt_states, alt_ids, alt_P_counts = passes_filters2(region, seqs, threshold)
+        p, alt_states, alt_ids, alt_P_counts = passes_filters2(region, seqs, \
+                                                               threshold, \
+                                                               args['known_states'])
         region['alternative_states'] = '/'.join(alt_states)
         region['alternative_ids'] = '/'.join([str(x) for x in alt_ids])
         region['alternative_P_counts'] = '/'.join([str(x) for x in alt_P_counts])

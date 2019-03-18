@@ -2,15 +2,10 @@ import re
 import sys
 import os
 import copy
-import gene_predictions
-sys.path.insert(0, '..')
 import global_params as gp
-sys.path.insert(0, '../sim/')
-import sim_analyze_hmm_bw as sim
-sys.path.insert(0, '../misc/')
-import mystats
-import read_table
-import seq_functions
+from misc import mystats
+from misc import read_table
+from misc import seq_functions
 
 def write_filtered_line(f, region_id, region, fields):
     f.write(region_id + '\t' + '\t'.join([str(region[field]) for field in fields[1:]]))
@@ -42,12 +37,11 @@ def passes_filters(region):
     
     return True
 
-def passes_filters1(region, info_string):
+def passes_filters1(region, info_string, r):
     # filtering out things that we can't call introgressed in general
     # with confidence (i.e. doesn't seem like a strong case against
     # being S288c)
 
-    r = gp.alignment_ref_order[0]
     s = region['predicted_species']
     
     aligned_length = (int(region['end']) - int(region['start']) + 1)
@@ -62,7 +56,6 @@ def passes_filters1(region, info_string):
     fraction_gaps_masked_s = \
         1 - float(region['num_sites_nonmask_' + s]) / aligned_length
 
-    #print fraction_gaps_masked_r, fraction_gaps_masked_s
     if fraction_gaps_masked_r > fraction_gaps_masked_threshold:
         return False, 'fraction gaps/masked in master = ' + \
             str(fraction_gaps_masked_r)
@@ -86,7 +79,7 @@ def passes_filters1(region, info_string):
                    float(region['num_sites_nongap_' + s])
     id_master = float(region['match_nongap_' + r]) / \
                 float(region['num_sites_nongap_' + r])
-    #print region['match_nongap_' + s], region['num_sites_nongap_' + s], region['match_nongap_' + r], region['num_sites_nongap_' + r] 
+
     if id_master >= id_predicted:
         return False, 'id with master = ' + str(id_master) + \
             ' and id with predicted = ' + str(id_predicted)
@@ -97,12 +90,11 @@ def passes_filters1(region, info_string):
 
     return True, ''
 
-def passes_filters2(region, seqs, threshold):
+def passes_filters2(region, seqs, threshold, refs):
     # filter out things we can't assign to one species specifically;
     # also return the other reasonable alternatives if we're filtering
     # it out
 
-    refs = gp.alignment_ref_order
     n = len(seqs[0])
     s = region['predicted_species']
     
