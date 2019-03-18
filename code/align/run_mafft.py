@@ -49,11 +49,10 @@ if ref_only:
     sys.exit()
 
 # get all non-reference strains of cerevisiae and paradoxus
-s = get_strains(args['strain_dirs'])
 
 strain_fn = '*_chr?' + mask_suffix + gp.fasta_suffix
 
-strain, d = s[int(sys.argv[1])]
+strain, d = args['strain_dirs'][int(sys.argv[1])]
 
 print(strain)
 
@@ -72,6 +71,7 @@ for chrm in gp.chrms:
     align_fn = ref_prefix + strain + '_chr' + chrm + \
         '_mafft' + gp.alignment_suffix
     align_fn_abs = args['alignments_directory'] + align_fn
+
     # if we don't already have an alignment for this strain/chromosome
     # (or that alignment file is empty), then make one
     #if (align_fn not in a) or (os.stat(align_fn_abs).st_size == 0):
