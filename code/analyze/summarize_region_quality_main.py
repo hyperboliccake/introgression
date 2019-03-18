@@ -161,10 +161,6 @@ def main():
                         'match_flag': np.zeros((len_seqx, len_states), bool)}
 
                 for sj, statej in enumerate(args['known_states']):
-                    print(statej)
-                    print(start)
-                    print(slice_start)
-                    print(seqs[sj][slice_start:slice_start + 400])
                     seqj = seqs[sj][slice_start:slice_end+1]
 
                     # only alignment columns used by HMM (polymorphic, no
